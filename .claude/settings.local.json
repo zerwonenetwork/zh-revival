@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find C:UserszerwoOneDriveDesktopZHzh-revivalGeneralsMDCode -path */SafeDisc* -o -path */CopyProtection*)",
+      "Bash(find C:UserszerwoOneDriveDesktopZHzh-revivalGeneralsMDCodeGameEngineIncludeGameNetwork -name *.h)"
+    ]
+  }
+}

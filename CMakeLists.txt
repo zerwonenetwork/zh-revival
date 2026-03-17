@@ -69,23 +69,75 @@ if(NOT DEFINED DXSDK_LIB_DIR)
 endif()
 
 # ─────────────────────────────────────────────
-#  Common include paths shared by all targets
+#  Stub mode (P1-03)
+#  ON by default — enables building without proprietary SDKs.
+#  Turn OFF only when real Miles, Bink, SafeDisc, and GameSpy SDKs are
+#  present on the include path.
 # ─────────────────────────────────────────────
-set(ZH_COMMON_INCLUDES
-    ${ZH}/Libraries/Include
-    ${ZH}/Libraries/Include/Granny
-    ${ZH}/Libraries/Include/MSS
-    ${ZH}/GameEngine/Include
-    ${ZH}/GameEngineDevice/Include
-    ${ZH}/Libraries/Source/WWVegas
-    ${ZH}/Libraries/Source/WWVegas/WWLib
-    ${ZH}/Libraries/Source/WWVegas/WWMath
-    ${ZH}/Libraries/Source/WWVegas/WWDebug
-    ${ZH}/Libraries/Source/WWVegas/WWSaveLoad
-    ${ZH}/Libraries/Source/WWVegas/WW3D2
-    ${ZH}/Libraries/Source/WWVegas/WWAudio
-    ${ZH}/Libraries/Source/WWVegas/Miles6/include
-)
+option(ZH_USE_STUBS
+    "Use no-op stub implementations for proprietary SDKs (Miles, Bink, SafeDisc, GameSpy)"
+    ON)
+
+if(ZH_USE_STUBS)
+    message(STATUS "[zh-revival] Stub mode ON  — proprietary SDK stubs active (P1-03)")
+    set(ZH_STUB_DIR ${ZH}/Libraries/Stubs)
+
+    # Build a small stub library so the .cpp files get compiled.
+    # This catches any type or ABI errors in the stub headers at build time.
+    add_library(zh_stubs STATIC
+        ${ZH_STUB_DIR}/MilesSoundStub.cpp
+        ${ZH_STUB_DIR}/BinkVideoStub.cpp
+        ${ZH_STUB_DIR}/SafeDiscStub.cpp
+        ${ZH_STUB_DIR}/GameSpyStub.cpp
+    )
+    # The stub dir must appear BEFORE the real SDK dirs so the forwarding
+    # headers (MSS/MSS.h, bink.h, GameSpy/…, Common/SafeDisc/CdaPfn.h)
+    # are found instead of the real (absent) SDK headers.
+    target_include_directories(zh_stubs PUBLIC ${ZH_STUB_DIR})
+    target_compile_definitions(zh_stubs PUBLIC STUB_IMPL)
+    # Propagate STUB_IMPL to all translation units in this build.
+    add_compile_definitions(STUB_IMPL)
+else()
+    message(STATUS "[zh-revival] Stub mode OFF — expecting real proprietary SDKs on include path")
+endif()
+
+# ─────────────────────────────────────────────
+#  Common include paths shared by all targets
+#  When ZH_USE_STUBS=ON the stub dir is prepended so forwarding headers
+#  shadow the (absent) real SDK headers.
+# ─────────────────────────────────────────────
+if(ZH_USE_STUBS)
+    set(ZH_COMMON_INCLUDES
+        ${ZH}/Libraries/Stubs          # stubs FIRST — shadows real SDK dirs
+        ${ZH}/Libraries/Include
+        ${ZH}/Libraries/Include/Granny
+        ${ZH}/GameEngine/Include
+        ${ZH}/GameEngineDevice/Include
+        ${ZH}/Libraries/Source/WWVegas
+        ${ZH}/Libraries/Source/WWVegas/WWLib
+        ${ZH}/Libraries/Source/WWVegas/WWMath
+        ${ZH}/Libraries/Source/WWVegas/WWDebug
+        ${ZH}/Libraries/Source/WWVegas/WWSaveLoad
+        ${ZH}/Libraries/Source/WWVegas/WW3D2
+        ${ZH}/Libraries/Source/WWVegas/WWAudio
+    )
+else()
+    set(ZH_COMMON_INCLUDES
+        ${ZH}/Libraries/Include
+        ${ZH}/Libraries/Include/Granny
+        ${ZH}/Libraries/Include/MSS
+        ${ZH}/GameEngine/Include
+        ${ZH}/GameEngineDevice/Include
+        ${ZH}/Libraries/Source/WWVegas
+        ${ZH}/Libraries/Source/WWVegas/WWLib
+        ${ZH}/Libraries/Source/WWVegas/WWMath
+        ${ZH}/Libraries/Source/WWVegas/WWDebug
+        ${ZH}/Libraries/Source/WWVegas/WWSaveLoad
+        ${ZH}/Libraries/Source/WWVegas/WW3D2
+        ${ZH}/Libraries/Source/WWVegas/WWAudio
+        ${ZH}/Libraries/Source/WWVegas/Miles6/include
+    )
+endif()
 
 # ─────────────────────────────────────────────
 #  Per-configuration compile definitions
@@ -170,6 +222,10 @@ add_library(wwaudio STATIC ${WWAUDIO_SRCS})
 target_include_directories(wwaudio PUBLIC ${ZH_COMMON_INCLUDES})
 zh_target_defs(wwaudio)
 target_link_libraries(wwaudio PUBLIC wwlib wwmath wwdebug wwsaveload)
+if(ZH_USE_STUBS)
+    # Pull in stub types for Miles — zh_stubs is PUBLIC so dependents also see them
+    target_link_libraries(wwaudio PUBLIC zh_stubs)
+endif()
 
 # ─── WW3D2  (DirectX 8 renderer) ─────────────
 zh_glob_sources(WW3D2_SRCS ${ZH}/Libraries/Source/WWVegas/WW3D2)
@@ -208,27 +264,40 @@ target_include_directories(eabrowserdispatch PUBLIC
 
 # ─── GameSpy libraries ────────────────────────
 #  Source layout: Libraries/Source/GameSpy/GameSpy/<module>/
+#  The GameSpy SDK source is proprietary and gitignored.
+#  When ZH_USE_STUBS=ON the stubs cover the entire GameSpy API; real source
+#  targets are replaced by INTERFACE libraries that just forward zh_stubs.
+#  When ZH_USE_STUBS=OFF the real source must be present (private SDK).
 set(GAMESPY_ROOT ${ZH}/Libraries/Source/GameSpy/GameSpy)
 
-zh_glob_sources(GAMESPY_HTTP_SRCS    ${GAMESPY_ROOT}/ghttp)
-zh_glob_sources(GAMESPY_PEER_SRCS    ${GAMESPY_ROOT}/peer)
-zh_glob_sources(GAMESPY_GP_SRCS      ${GAMESPY_ROOT}/gp)
-zh_glob_sources(GAMESPY_STATS_SRCS   ${GAMESPY_ROOT}/gstats)
-zh_glob_sources(GAMESPY_PT_SRCS      ${GAMESPY_ROOT}/pt)
+if(ZH_USE_STUBS)
+    # Create INTERFACE libraries so that link lines that mention
+    # gamespyhttp etc. still resolve without real source files.
+    foreach(_gs IN ITEMS gamespyhttp gamespypeer gamespypresence gamespystats gamespypatching)
+        add_library(${_gs} INTERFACE)
+        target_link_libraries(${_gs} INTERFACE zh_stubs)
+    endforeach()
+else()
+    zh_glob_sources(GAMESPY_HTTP_SRCS    ${GAMESPY_ROOT}/ghttp)
+    zh_glob_sources(GAMESPY_PEER_SRCS    ${GAMESPY_ROOT}/peer)
+    zh_glob_sources(GAMESPY_GP_SRCS      ${GAMESPY_ROOT}/gp)
+    zh_glob_sources(GAMESPY_STATS_SRCS   ${GAMESPY_ROOT}/gstats)
+    zh_glob_sources(GAMESPY_PT_SRCS      ${GAMESPY_ROOT}/pt)
 
-add_library(gamespyhttp     STATIC ${GAMESPY_HTTP_SRCS})
-add_library(gamespypeer     STATIC ${GAMESPY_PEER_SRCS})
-add_library(gamespypresence STATIC ${GAMESPY_GP_SRCS})
-add_library(gamespystats    STATIC ${GAMESPY_STATS_SRCS})
-add_library(gamespypatching STATIC ${GAMESPY_PT_SRCS})
+    add_library(gamespyhttp     STATIC ${GAMESPY_HTTP_SRCS})
+    add_library(gamespypeer     STATIC ${GAMESPY_PEER_SRCS})
+    add_library(gamespypresence STATIC ${GAMESPY_GP_SRCS})
+    add_library(gamespystats    STATIC ${GAMESPY_STATS_SRCS})
+    add_library(gamespypatching STATIC ${GAMESPY_PT_SRCS})
 
-foreach(_gs IN ITEMS gamespyhttp gamespypeer gamespypresence gamespystats gamespypatching)
-    target_include_directories(${_gs} PUBLIC
-        ${GAMESPY_ROOT}
-        ${ZH_COMMON_INCLUDES}
-    )
-    zh_target_defs(${_gs})
-endforeach()
+    foreach(_gs IN ITEMS gamespyhttp gamespypeer gamespypresence gamespystats gamespypatching)
+        target_include_directories(${_gs} PUBLIC
+            ${GAMESPY_ROOT}
+            ${ZH_COMMON_INCLUDES}
+        )
+        zh_target_defs(${_gs})
+    endforeach()
+endif()
 
 # ─── GameEngine  (core game logic) ───────────
 zh_glob_sources(GAMEENGINE_SRCS ${ZH}/GameEngine/Source)
@@ -243,6 +312,11 @@ target_link_libraries(gameengine PUBLIC
     wwlib wwmath wwdebug wwsaveload wwutil
     eabrowserdispatch compression benchmark_lib
 )
+if(ZH_USE_STUBS)
+    # GameSpy stubs — GameEngine/Source/GameNetwork/GameSpy/ includes ghttp,
+    # Peer, GP headers throughout.
+    target_link_libraries(gameengine PUBLIC zh_stubs)
+endif()
 
 # ─── GameEngineDevice  (D3D8 / audio device layer) ───
 zh_glob_sources(GAMEENGINEDEVICE_SRCS ${ZH}/GameEngineDevice/Source)
@@ -261,6 +335,11 @@ target_link_libraries(gameenginedevice PUBLIC
     gameengine ww3d2 wwaudio
     eabrowserdispatch compression benchmark_lib
 )
+if(ZH_USE_STUBS)
+    # Bink and Miles stubs — gameenginedevice hosts BinkVideoPlayer.cpp
+    # and MilesAudioManager.cpp which both include proprietary headers.
+    target_link_libraries(gameenginedevice PUBLIC zh_stubs)
+endif()
 
 # ═════════════════════════════════════════════
 #  MAIN EXECUTABLE: zh-revival  (Zero Hour)
@@ -276,6 +355,10 @@ target_include_directories(zh-revival PRIVATE
 )
 
 zh_target_defs(zh-revival)
+if(ZH_USE_STUBS)
+    # WinMain.cpp includes Common/SafeDisc/CdaPfn.h — resolved via stubs.
+    target_link_libraries(zh-revival PRIVATE zh_stubs)
+endif()
 
 # Link order mirrors the original LINK32 line in RTS.dsp
 target_link_libraries(zh-revival PRIVATE
@@ -307,10 +390,11 @@ target_link_libraries(zh-revival PRIVATE
     ole32 oleaut32 uuid odbc32 odbccp32
     winmm vfw32 wsock32 imm32 wininet
     # Proprietary audio/video .lib files
-    # These are either present in Libraries/Lib (from an existing install)
-    # or replaced by P1-03 stubs. Both cases use the same filename.
-    $<$<EXISTS:${ZH}/Libraries/Lib/binkw32.lib>:${ZH}/Libraries/Lib/binkw32.lib>
-    $<$<EXISTS:${ZH}/Libraries/Lib/mss32.lib>:${ZH}/Libraries/Lib/mss32.lib>
+    # Present only when real SDKs are available (ZH_USE_STUBS=OFF + real libs).
+    # When ZH_USE_STUBS=ON the stub headers provide inline no-ops so no .lib
+    # is needed; the real .dll is not loaded at runtime.
+    $<$<AND:$<NOT:$<BOOL:${ZH_USE_STUBS}>>,$<EXISTS:${ZH}/Libraries/Lib/binkw32.lib>>:${ZH}/Libraries/Lib/binkw32.lib>
+    $<$<AND:$<NOT:$<BOOL:${ZH_USE_STUBS}>>,$<EXISTS:${ZH}/Libraries/Lib/mss32.lib>>:${ZH}/Libraries/Lib/mss32.lib>
 )
 
 # Output directory mirrors original .dsp: ../Run/ relative to Code/

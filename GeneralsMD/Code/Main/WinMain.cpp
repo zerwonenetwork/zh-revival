@@ -49,6 +49,9 @@
 #include "Common/GameSounds.h"
 #include "Common/Debug.h"
 #include "Common/GameMemory.h"
+// P1-11: SafeDisc/launcher copy-protection is obsolete on modern systems and
+// blocks launch for legitimate installs. The project builds with stubs, and we
+// also bypass the launcher gating in this task.
 #include "Common/SafeDisc/CdaPfn.h"
 #include "Common/StackDump.h"
 #include "Common/MessageStream.h"
@@ -1013,11 +1016,10 @@ Int APIENTRY WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance,
 		if (!CopyProtect::isLauncherRunning())
 		{
 			DEBUG_LOG(("Launcher is not running - about to bail\n"));
-			delete TheVersion;
-			TheVersion = NULL;
-			shutdownMemoryManager();
-			DEBUG_SHUTDOWN();
-			return 0;
+			// P1-11: Do not hard-fail startup when the legacy launcher / SafeDisc
+			// wrapper isn't present. Continue running; modern installs and digital
+			// distributions legitimately won't have it.
+			DEBUG_LOG(("P1-11: Continuing without copy-protection launcher.\n"));
 		}
 #endif
 
@@ -1053,11 +1055,8 @@ Int APIENTRY WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance,
 		if (!CopyProtect::notifyLauncher())
 		{
 			DEBUG_LOG(("Could not talk to the launcher - about to bail\n"));
-			delete TheVersion;
-			TheVersion = NULL;
-			shutdownMemoryManager();
-			DEBUG_SHUTDOWN();
-			return 0;
+			// P1-11: Same as above — log and continue.
+			DEBUG_LOG(("P1-11: Continuing after launcher notify failure.\n"));
 		}
 #endif
 

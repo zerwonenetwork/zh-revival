@@ -2931,6 +2931,16 @@ void ParticleSystemManager::update( void )
 		return;
 	}
 
+	// P1-06: Pause all particle emission while the D3D device is non-cooperative.
+	// This prevents thousands of particles from accumulating when the screen is
+	// locked (Win+L) or the window loses D3D access (fullscreen Alt-Tab).
+	// On device resume the deferred particles are simply discarded — visual only,
+	// no determinism impact.  TheDisplay is always valid here (called from the
+	// game client update path after Display init).
+	if (TheDisplay && TheDisplay->isDeviceLost()) {
+		return;
+	}
+
 	// update the last logic frame.
 	m_lastLogicFrameUpdate = TheGameLogic->getFrame();
 

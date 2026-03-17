@@ -68,6 +68,8 @@ public:
 	virtual void setHeight( UnsignedInt height );
 	virtual Bool setDisplayMode( UnsignedInt xres, UnsignedInt yres, UnsignedInt bitdepth, Bool windowed );
 	virtual Int getDisplayModeCount(void);	///<return number of display modes/resolutions supported by video card.
+	/// P1-06: Returns TRUE when the D3D device is non-cooperative (screen locked / Alt-Tab in fullscreen).
+	virtual Bool isDeviceLost( void ) const;
 	virtual void getDisplayModeDescription(Int modeIndex, Int *xres, Int *yres, Int *bitDepth);	///<return description of mode
  	virtual void setGamma(Real gamma, Real bright, Real contrast, Bool calibrate);
 	virtual void doSmartAssetPurgeAndPreload(const char* usageFileName);

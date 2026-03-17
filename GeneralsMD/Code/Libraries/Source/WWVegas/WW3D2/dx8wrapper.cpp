@@ -296,10 +296,16 @@ bool DX8Wrapper::Init(void * hwnd, bool lite)
 	if (!lite) {
 		D3D8Lib = LoadLibrary("D3D8.DLL");
 
-		if (D3D8Lib == NULL) return false;	// Return false at this point if init failed
+		if (D3D8Lib == NULL) {
+			WWDEBUG_SAY(("LoadLibrary(D3D8.DLL) failed, gle=%lu\n", (unsigned long)GetLastError()));
+			return false;	// Return false at this point if init failed
+		}
 
 		Direct3DCreate8Ptr = (Direct3DCreate8Type) GetProcAddress(D3D8Lib, "Direct3DCreate8");
-		if (Direct3DCreate8Ptr == NULL) return false;
+		if (Direct3DCreate8Ptr == NULL) {
+			WWDEBUG_SAY(("GetProcAddress(Direct3DCreate8) failed, gle=%lu\n", (unsigned long)GetLastError()));
+			return false;
+		}
 
 		/*
 		** Create the D3D interface object
@@ -307,6 +313,7 @@ bool DX8Wrapper::Init(void * hwnd, bool lite)
 		WWDEBUG_SAY(("Create Direct3D8\n"));
 		D3DInterface = Direct3DCreate8Ptr(D3D_SDK_VERSION);		// TODO: handle failure cases...
 		if (D3DInterface == NULL) {
+			WWDEBUG_SAY(("Direct3DCreate8 returned NULL\n"));
 			return(false);
 		}
 		IsInitted = true;
@@ -516,6 +523,7 @@ bool DX8Wrapper::Create_Device(void)
 		)
 	)
 	{
+		WWDEBUG_SAY(("GetDeviceCaps failed for adapter %d\n", CurRenderDevice));
 		return false;
 	}
 
@@ -566,48 +574,74 @@ bool DX8Wrapper::Create_Device(void)
 	Vertex_Processing_Behavior|=D3DCREATE_FPU_PRESERVE;
 #endif
 
-	HRESULT hr=D3DInterface->CreateDevice
-	(
-		CurRenderDevice,
-		WW3D_DEVTYPE,
-		_Hwnd,
-		Vertex_Processing_Behavior,
-		&_PresentParameters,
-		&D3DDevice 
-	);
+	// P1-08: Robust device creation on modern drivers.
+	// Some adapters/drivers can fail CreateDevice for certain caps combinations
+	// (e.g. mixed vertex processing, depth-stencil format), which historically
+	// surfaced as a generic "Serious Error" at startup. Retry with safer options
+	// and fall back to the default adapter where possible.
+	const int original_adapter = CurRenderDevice;
+	const DWORD original_vp = Vertex_Processing_Behavior;
+	const D3DFORMAT original_z = _PresentParameters.AutoDepthStencilFormat;
 
-	if (FAILED(hr)) 
-	{
-		// The device selection may fail because the device lied that it supports 32 bit zbuffer with 16 bit
-		// display. This happens at least on Voodoo2.
-
-		if ((_PresentParameters.BackBufferFormat==D3DFMT_R5G6B5 ||
-			_PresentParameters.BackBufferFormat==D3DFMT_X1R5G5B5 ||
-			_PresentParameters.BackBufferFormat==D3DFMT_A1R5G5B5) &&
-			(_PresentParameters.AutoDepthStencilFormat==D3DFMT_D32 ||
-			_PresentParameters.AutoDepthStencilFormat==D3DFMT_D24S8 ||
-			_PresentParameters.AutoDepthStencilFormat==D3DFMT_D24X8)) 
-		{
-			_PresentParameters.AutoDepthStencilFormat=D3DFMT_D16;
-			hr = D3DInterface->CreateDevice
-			(
-				CurRenderDevice,
-				WW3D_DEVTYPE,
-				_Hwnd,
-				Vertex_Processing_Behavior,
-				&_PresentParameters,
-				&D3DDevice 
-			);
-
-			if (FAILED(hr)) 
-			{
-				return false;
-			}
-        }
-		else 
-		{
-				return false;
+	auto try_create = [&](int adapter, DWORD vp_behavior, D3DFORMAT zfmt) -> HRESULT {
+		_PresentParameters.AutoDepthStencilFormat = zfmt;
+		HRESULT hr = D3DInterface->CreateDevice(
+			adapter,
+			WW3D_DEVTYPE,
+			_Hwnd,
+			vp_behavior,
+			&_PresentParameters,
+			&D3DDevice
+		);
+		if (FAILED(hr)) {
+			WWDEBUG_SAY(("CreateDevice failed: adapter=%d vp=0x%08x z=%d hr=0x%08x\n",
+				adapter, (unsigned)vp_behavior, (int)zfmt, (unsigned)hr));
+			Non_Fatal_Log_DX8_ErrorCode((unsigned)hr, __FILE__, __LINE__);
 		}
+		return hr;
+	};
+
+	HRESULT hr = try_create(CurRenderDevice, Vertex_Processing_Behavior, _PresentParameters.AutoDepthStencilFormat);
+
+	// The device selection may fail because the device lied that it supports 32 bit zbuffer with 16 bit
+	// display. This happens at least on Voodoo2.
+	if (FAILED(hr) &&
+		(_PresentParameters.BackBufferFormat==D3DFMT_R5G6B5 ||
+		 _PresentParameters.BackBufferFormat==D3DFMT_X1R5G5B5 ||
+		 _PresentParameters.BackBufferFormat==D3DFMT_A1R5G5B5) &&
+		(_PresentParameters.AutoDepthStencilFormat==D3DFMT_D32 ||
+		 _PresentParameters.AutoDepthStencilFormat==D3DFMT_D24S8 ||
+		 _PresentParameters.AutoDepthStencilFormat==D3DFMT_D24X8))
+	{
+		hr = try_create(CurRenderDevice, Vertex_Processing_Behavior, D3DFMT_D16);
+	}
+
+	// Retry with software vertex processing (more compatible on some drivers).
+	if (FAILED(hr)) {
+		hr = try_create(CurRenderDevice, D3DCREATE_SOFTWARE_VERTEXPROCESSING | (original_vp & ~(D3DCREATE_MIXED_VERTEXPROCESSING | D3DCREATE_HARDWARE_VERTEXPROCESSING)), _PresentParameters.AutoDepthStencilFormat);
+	}
+
+	// If still failing and we're not already on default adapter, fall back.
+	if (FAILED(hr) && original_adapter != D3DADAPTER_DEFAULT) {
+		WWDEBUG_SAY(("Falling back to default adapter (%d -> %d)\n", original_adapter, (int)D3DADAPTER_DEFAULT));
+		CurRenderDevice = D3DADAPTER_DEFAULT;
+		::ZeroMemory(&CurrentAdapterIdentifier, sizeof(D3DADAPTER_IDENTIFIER8));
+		D3DInterface->GetAdapterIdentifier(CurRenderDevice, D3DENUM_NO_WHQL_LEVEL, &CurrentAdapterIdentifier);
+		hr = try_create(CurRenderDevice, Vertex_Processing_Behavior, original_z);
+		if (FAILED(hr) && original_z != D3DFMT_D16) {
+			hr = try_create(CurRenderDevice, Vertex_Processing_Behavior, D3DFMT_D16);
+		}
+		if (FAILED(hr)) {
+			hr = try_create(CurRenderDevice, D3DCREATE_SOFTWARE_VERTEXPROCESSING | (original_vp & ~(D3DCREATE_MIXED_VERTEXPROCESSING | D3DCREATE_HARDWARE_VERTEXPROCESSING)), _PresentParameters.AutoDepthStencilFormat);
+		}
+	}
+
+	if (FAILED(hr)) {
+		// Restore original fields for callers that may attempt a different path.
+		CurRenderDevice = original_adapter;
+		Vertex_Processing_Behavior = original_vp;
+		_PresentParameters.AutoDepthStencilFormat = original_z;
+		return false;
 	}
 
 	/*
@@ -622,6 +656,20 @@ bool DX8Wrapper::Reset_Device(bool reload_assets)
 	WWDEBUG_SAY(("Resetting device.\n"));
 	DX8_THREAD_ASSERT();
 	if ((IsInitted) && (D3DDevice != NULL)) {
+		// P1-07: Check cooperative level BEFORE releasing any resources.
+		// The original code released everything first, then checked — if the device
+		// was still in D3DERR_DEVICELOST (not yet resetable) it returned false
+		// with all resources already freed, leaving the renderer in a broken state
+		// that crashed on the next draw call.  By bailing out here we ensure
+		// resources stay valid so the render loop can keep skipping frames safely
+		// until the device is truly ready to reset (D3DERR_DEVICENOTRESET / D3D_OK).
+		HRESULT hr = _Get_D3D_Device8()->TestCooperativeLevel();
+		if (hr == D3DERR_DEVICELOST) {
+			IsDeviceLost = true;
+			WWDEBUG_SAY(("Reset_Device: device still lost, deferring reset.\n"));
+			return false;
+		}
+
 		// Release all non-MANAGED stuff
 		WW3D::_Invalidate_Textures();
 
@@ -644,14 +692,11 @@ bool DX8Wrapper::Reset_Device(bool reload_assets)
 		memset(Vertex_Shader_Constants,0,sizeof(Vector4)*MAX_VERTEX_SHADER_CONSTANTS);
 		memset(Pixel_Shader_Constants,0,sizeof(Vector4)*MAX_PIXEL_SHADER_CONSTANTS);
 
-		HRESULT hr=_Get_D3D_Device8()->TestCooperativeLevel();
-		if (hr != D3DERR_DEVICELOST )
-		{	DX8CALL_HRES(Reset(&_PresentParameters),hr)
-			if (hr != D3D_OK)
-				return false;	//reset failed.
-		}
-		else
-			return false;	//device is lost and can't be reset.
+		// hr is D3DERR_DEVICENOTRESET or D3D_OK here (D3DERR_DEVICELOST already
+		// handled above), so Reset() is safe to call.
+		DX8CALL_HRES(Reset(&_PresentParameters),hr)
+		if (hr != D3D_OK)
+			return false;	//reset failed.
 
 		if (reload_assets)
 		{
@@ -663,6 +708,7 @@ bool DX8Wrapper::Reset_Device(bool reload_assets)
 		Invalidate_Cached_Render_States();
 		Set_Default_Global_Render_States();
 		SHD_INIT_SHADERS;
+		IsDeviceLost = false;
 		WWDEBUG_SAY(("Device reset completed\n"));
 		return true;
 	}

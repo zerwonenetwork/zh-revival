@@ -439,7 +439,11 @@ private:
 #define PATHFIND_CELL_SIZE		10
 #define PATHFIND_CELL_SIZE_F	10.0f
 
-enum { PATHFIND_QUEUE_LEN=512};
+// P1-09: Large matches can legitimately queue far more than 512 path requests
+// (especially when many AI updates request paths in the same frame).  When the
+// fixed queue overflows the game hits a fatal "Ran out of pathfind queue slots."
+// crash. Increase the queue to a safer size.
+enum { PATHFIND_QUEUE_LEN=4096};
 
 struct TCheckMovementInfo;
 

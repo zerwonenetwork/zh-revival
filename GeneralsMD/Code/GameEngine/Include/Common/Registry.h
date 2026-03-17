@@ -39,13 +39,27 @@
 Bool GetStringFromGeneralsRegistry(AsciiString path, AsciiString key, AsciiString& val);
 /**
 	* Get a string from the registry
+	* P1-05: checks HKCU first, then falls back to HKLM for existing installs.
 	*/
 Bool GetStringFromRegistry(AsciiString path, AsciiString key, AsciiString& val);
 
 /**
 	* Get an unsigned int from the registry
+	* P1-05: checks HKCU first, then falls back to HKLM for existing installs.
 	*/
 Bool GetUnsignedIntFromRegistry(AsciiString path, AsciiString key, UnsignedInt& val);
+
+/**
+	* Write a string value to the registry (HKCU — no admin rights required).
+	* P1-05: always writes to HKCU so the game saves settings without admin rights.
+	*/
+Bool SetStringInRegistry(AsciiString path, AsciiString key, AsciiString val);
+
+/**
+	* Write an unsigned int value to the registry (HKCU — no admin rights required).
+	* P1-05: always writes to HKCU so the game saves settings without admin rights.
+	*/
+Bool SetUnsignedIntInRegistry(AsciiString path, AsciiString key, UnsignedInt val);
 
 AsciiString GetRegistryLanguage(void); // convenience function
 AsciiString GetRegistryGameName(void); // convenience function

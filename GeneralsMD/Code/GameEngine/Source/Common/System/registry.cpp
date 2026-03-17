@@ -124,12 +124,14 @@ Bool GetStringFromGeneralsRegistry(AsciiString path, AsciiString key, AsciiStrin
 
 	fullPath.concat(path);
 	DEBUG_LOG(("GetStringFromRegistry - looking in %s for key %s\n", fullPath.str(), key.str()));
-	if (getStringFromRegistry(HKEY_LOCAL_MACHINE, fullPath.str(), key.str(), val))
+	// P1-05: Try HKCU first (digital installs, non-admin users on Windows 10+).
+	// Fall back to HKLM for backward compatibility with existing physical installs.
+	if (getStringFromRegistry(HKEY_CURRENT_USER, fullPath.str(), key.str(), val))
 	{
 		return TRUE;
 	}
 
-	return getStringFromRegistry(HKEY_CURRENT_USER, fullPath.str(), key.str(), val);
+	return getStringFromRegistry(HKEY_LOCAL_MACHINE, fullPath.str(), key.str(), val);
 }
 
 Bool GetStringFromRegistry(AsciiString path, AsciiString key, AsciiString& val)
@@ -138,12 +140,14 @@ Bool GetStringFromRegistry(AsciiString path, AsciiString key, AsciiString& val)
 
 	fullPath.concat(path);
 	DEBUG_LOG(("GetStringFromRegistry - looking in %s for key %s\n", fullPath.str(), key.str()));
-	if (getStringFromRegistry(HKEY_LOCAL_MACHINE, fullPath.str(), key.str(), val))
+	// P1-05: Try HKCU first (digital installs, non-admin users on Windows 10+).
+	// Fall back to HKLM for backward compatibility with existing physical installs.
+	if (getStringFromRegistry(HKEY_CURRENT_USER, fullPath.str(), key.str(), val))
 	{
 		return TRUE;
 	}
 
-	return getStringFromRegistry(HKEY_CURRENT_USER, fullPath.str(), key.str(), val);
+	return getStringFromRegistry(HKEY_LOCAL_MACHINE, fullPath.str(), key.str(), val);
 }
 
 Bool GetUnsignedIntFromRegistry(AsciiString path, AsciiString key, UnsignedInt& val)
@@ -152,12 +156,33 @@ Bool GetUnsignedIntFromRegistry(AsciiString path, AsciiString key, UnsignedInt& 
 
 	fullPath.concat(path);
 	DEBUG_LOG(("GetUnsignedIntFromRegistry - looking in %s for key %s\n", fullPath.str(), key.str()));
-	if (getUnsignedIntFromRegistry(HKEY_LOCAL_MACHINE, fullPath.str(), key.str(), val))
+	// P1-05: Try HKCU first (digital installs, non-admin users on Windows 10+).
+	// Fall back to HKLM for backward compatibility with existing physical installs.
+	if (getUnsignedIntFromRegistry(HKEY_CURRENT_USER, fullPath.str(), key.str(), val))
 	{
 		return TRUE;
 	}
 
-	return getUnsignedIntFromRegistry(HKEY_CURRENT_USER, fullPath.str(), key.str(), val);
+	return getUnsignedIntFromRegistry(HKEY_LOCAL_MACHINE, fullPath.str(), key.str(), val);
+}
+
+// P1-05: Public write functions — always write to HKCU so no admin rights are needed.
+// These were missing from the file despite being declared and called by OptionsMenu.cpp,
+// ScoreScreen.cpp, PopupPlayerInfo.cpp, and MainMenuUtils.cpp.
+Bool SetStringInRegistry(AsciiString path, AsciiString key, AsciiString val)
+{
+	AsciiString fullPath = "SOFTWARE\\Electronic Arts\\EA Games\\Command and Conquer Generals Zero Hour";
+	fullPath.concat(path);
+	DEBUG_LOG(("SetStringInRegistry - writing to HKCU %s key %s\n", fullPath.str(), key.str()));
+	return setStringInRegistry(HKEY_CURRENT_USER, fullPath, key, val);
+}
+
+Bool SetUnsignedIntInRegistry(AsciiString path, AsciiString key, UnsignedInt val)
+{
+	AsciiString fullPath = "SOFTWARE\\Electronic Arts\\EA Games\\Command and Conquer Generals Zero Hour";
+	fullPath.concat(path);
+	DEBUG_LOG(("SetUnsignedIntInRegistry - writing to HKCU %s key %s\n", fullPath.str(), key.str()));
+	return setUnsignedIntInRegistry(HKEY_CURRENT_USER, fullPath, key, val);
 }
 
 AsciiString GetRegistryLanguage(void)

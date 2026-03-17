@@ -1112,6 +1112,10 @@ void AudioManager::loseFocus( void )
 
 	// Now, set them all to 0.
 	setVolume(0.0f, (AudioAffect) (AudioAffect_All | AudioAffect_SystemSetting));
+
+	// P1-10: Explicitly pause audio on focus loss so device backends that
+	// don't gracefully handle minimize/deactivate can recover cleanly.
+	pauseAudio(AudioAffect_All);
 }
 
 //-------------------------------------------------------------------------------------------------
@@ -1126,6 +1130,16 @@ void AudioManager::regainFocus( void )
 	setVolume(m_savedValues[1], (AudioAffect) (AudioAffect_Sound | AudioAffect_SystemSetting));
 	setVolume(m_savedValues[2], (AudioAffect) (AudioAffect_Sound3D | AudioAffect_SystemSetting));
 	setVolume(m_savedValues[3], (AudioAffect) (AudioAffect_Speech | AudioAffect_SystemSetting));
+
+	// P1-10: Some audio backends (notably legacy drivers on modern Windows)
+	// can lose their device/context on minimize and fail to resume output even
+	// when volumes are restored. Re-open the device to reacquire resources, then
+	// resume audio playback.
+	if (isOn(AudioAffect_Music) || isOn(AudioAffect_Sound) || isOn(AudioAffect_Sound3D) || isOn(AudioAffect_Speech)) {
+		closeDevice();
+		openDevice();
+	}
+	resumeAudio(AudioAffect_All);
 
 	// Now, blow away the old volumes.
 	delete [] m_savedValues;
