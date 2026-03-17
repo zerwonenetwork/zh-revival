@@ -131,7 +131,7 @@ private:
 		AsciiString curBestMatchStr, dupMatchStr;
 	#endif
 
-		for (std::vector<MATCHABLE>::const_iterator it = v.begin(); it != v.end(); ++it)
+		for (typename std::vector<MATCHABLE>::const_iterator it = v.begin(); it != v.end(); ++it)
 		{
 			for (Int i = it->getConditionsYesCount()-1; i >= 0; --i)
 			{

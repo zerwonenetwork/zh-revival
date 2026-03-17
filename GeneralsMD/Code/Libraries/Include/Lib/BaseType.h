@@ -169,6 +169,10 @@ inline Real deg2rad(Real rad) { return rad * (PI/180); }
 //-----------------------------------------------------------------------------
 // For twiddling bits
 //-----------------------------------------------------------------------------
+// winnt.h defines BitTest as _bittest (takes LONG*), override with our version
+#ifdef BitTest
+#undef BitTest
+#endif
 #define BitTest( x, i ) ( ( (x) & (i) ) != 0 )
 #define BitSet( x, i ) ( (x) |= (i) )
 #define BitClear( x, i ) ( (x ) &= ~(i) )

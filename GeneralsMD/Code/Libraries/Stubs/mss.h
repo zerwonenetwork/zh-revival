@@ -170,10 +170,10 @@ static __inline S32 AIL_enumerate_filters(HPROENUM*, HPROVIDER*, char**) { retur
 #define AIL_3D_4_SPEAKER 2
 
 // File callbacks
-typedef void* (AILCALLBACK *AIL_file_open_callback)(const char*, U32*);
-typedef void (AILCALLBACK *AIL_file_close_callback)(void*);
-typedef S32 (AILCALLBACK *AIL_file_seek_callback)(void*, S32, U32);
-typedef U32 (AILCALLBACK *AIL_file_read_callback)(void*, void*, U32);
+typedef U32 (AILCALLBACK *AIL_file_open_callback)(const char*, U32*);
+typedef void (AILCALLBACK *AIL_file_close_callback)(U32);
+typedef S32 (AILCALLBACK *AIL_file_seek_callback)(U32, S32, U32);
+typedef U32 (AILCALLBACK *AIL_file_read_callback)(U32, void*, U32);
 static __inline void AIL_set_file_callbacks(AIL_file_open_callback, AIL_file_close_callback, AIL_file_seek_callback, AIL_file_read_callback) {}
 
 // File seek constants
@@ -217,9 +217,14 @@ static __inline void AIL_sample_ms_position(HSAMPLE, S32*, S32*) {}
 // Stream sample rate
 static __inline void AIL_set_stream_ms_position(HSTREAM, S32) {}
 static __inline S32 AIL_stream_ms_position(HSTREAM) { return 0; }
+static __inline S32 AIL_stream_playback_rate(HSTREAM) { return 0; }
+static __inline void AIL_set_stream_playback_rate(HSTREAM, S32) {}
+static __inline S32 AIL_stream_loop_count(HSTREAM) { return 0; }
+static __inline void AIL_set_stream_loop_block(HSTREAM, S32, S32) {}
+static __inline HSTREAM AIL_open_stream_by_sample(HDIGDRIVER, HSAMPLE, const char*, S32) { return 0; }
 
 // 3D sample file
-static __inline void AIL_set_3D_sample_file(H3DSAMPLE, const void*) {}
+static __inline U32 AIL_set_3D_sample_file(H3DSAMPLE, const void*) { return 1; }
 static __inline void AIL_set_3D_sample_playback_rate(H3DSAMPLE, S32) {}
 static __inline S32 AIL_3D_sample_playback_rate(H3DSAMPLE) { return 0; }
 static __inline void AIL_set_3D_sample_loop_count(H3DSAMPLE, S32) {}
@@ -227,7 +232,4 @@ static __inline S32 AIL_3D_sample_loop_count(H3DSAMPLE) { return 0; }
 static __inline void AIL_set_3D_sample_ms_position(H3DSAMPLE, S32) {}
 static __inline void AIL_3D_sample_ms_position(H3DSAMPLE, S32*, S32*) {}
 
-// Reverb
-static __inline void AIL_set_3D_room_type(HPROVIDER, S32) {}
-static __inline S32 AIL_3D_room_type(HPROVIDER) { return 0; }
 
