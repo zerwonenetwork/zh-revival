@@ -361,7 +361,7 @@ MixFileFactoryClass::Flush_Changes (void)
 		//
 		//	Add the new files that are pending
 		//
-		for (index = 0; index < PendingAddFileList.Count (); index ++) {
+		for (int index = 0; index < PendingAddFileList.Count (); index ++) {
 			new_mix_file.Add_File (PendingAddFileList[index].FullPath, PendingAddFileList[index].Filename);
 		}
 	}
@@ -438,7 +438,8 @@ bool	MixFileFactoryClass::Build_Ordered_Filename_List (DynamicVectorClass<String
 	// associate offset with each name and add to list
 	DynamicVectorClass<FileOffsetStruct>	local_file_info;
 	local_file_info.Resize( name_list.Count());
-	for (int i = 0; i < name_list.Count(); ++i) {
+	int i;
+	for (i = 0; i < name_list.Count(); ++i) {
 		// Here, we have to assume that the names in the list are in CRC order, just like FileInfo is.
 		FileOffsetStruct temp;
 		temp.Filename	= name_list[i];
