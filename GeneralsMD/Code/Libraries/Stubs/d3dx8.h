@@ -10,6 +10,10 @@
 extern "C" {
 #endif
 
+// Minimal D3DX buffer typedef used by shader build path.
+typedef struct ID3DXBuffer ID3DXBuffer;
+typedef ID3DXBuffer* LPD3DXBUFFER;
+
 // Filter constants used by texture helper calls
 #ifndef D3DX_FILTER_BOX
 #define D3DX_FILTER_BOX 0

@@ -56,6 +56,9 @@ typedef struct IDirect3DSwapChain8 IDirect3DSwapChain8;
 typedef unsigned int D3DFORMAT;
 typedef int D3DPOOL;
 
+#define D3DPOOL_DEFAULT 0
+#define D3DPOOL_MANAGED 1
+
 typedef struct _D3DMATRIX {
   float m[4][4];
 } D3DMATRIX;
@@ -213,6 +216,12 @@ typedef DWORD D3DCOLOR;
 #define D3DRS_FOGSTART 0
 #define D3DRS_FOGEND   0
 #define D3DRS_AMBIENT  0
+#define D3DRS_ZBIAS    0
+#define D3DRS_SOFTWAREVERTEXPROCESSING 0
+
+// Texture stage state IDs used by shader code
+#define D3DTSS_TEXCOORDINDEX 0
+#define D3DTSS_TCI_PASSTHRU  0
 
 struct IDirect3DDevice8 {
   virtual HRESULT TestCooperativeLevel() = 0;
