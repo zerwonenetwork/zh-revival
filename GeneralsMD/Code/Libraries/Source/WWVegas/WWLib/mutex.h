@@ -141,6 +141,7 @@ public:
       // ASM statements because sometimes the jump
       // would be 1 byte off....
       
+#ifdef _MSC_VER
 		  __asm mov ebx, [nFlag]
 		  __asm ts_lock
 		  __asm bts dword ptr [ebx], 0
@@ -159,11 +160,20 @@ public:
 
       BitSet:
         ;
+#else
+      while (__atomic_test_and_set(&nFlag, __ATOMIC_ACQUIRE)) {
+        ThreadClass::Switch_Thread();
+      }
+#endif
 		}
 
 		~LockClass()
 		{
+#ifdef _MSC_VER
       cs.Flag=0;
+#else
+      __atomic_clear(&cs.Flag, __ATOMIC_RELEASE);
+#endif
 		}
     
 	private:
