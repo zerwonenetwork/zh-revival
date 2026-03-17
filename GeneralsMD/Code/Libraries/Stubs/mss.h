@@ -8,9 +8,19 @@ typedef void* HSAMPLE;
 typedef void* HSTREAM;
 typedef void* HDIGDRIVER;
 typedef void* HMDIDRIVER;
+typedef void* H3DSAMPLE;
+typedef void* H3DPOBJECT;
 
 typedef int S32;
 typedef unsigned int U32;
 
 typedef void* LPWAVEFORMAT;
+
+#ifndef AILCALLBACK
+  #if defined(_MSC_VER)
+    #define AILCALLBACK __cdecl
+  #else
+    #define AILCALLBACK
+  #endif
+#endif
 
