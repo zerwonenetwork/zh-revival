@@ -432,6 +432,9 @@ inline bool TTimerClass<T>::Is_Active(void) const
 template<class T>
 class CDTimerClass : public BasicTimerClass<T> {
 	public:
+		using BasicTimerClass<T>::Started;
+		using BasicTimerClass<T>::Timer;
+
 		// Constructor allows assignment as if class was integral 'long' type.
 		CDTimerClass(int set=0);
 		CDTimerClass(NoInitClass const & x);
