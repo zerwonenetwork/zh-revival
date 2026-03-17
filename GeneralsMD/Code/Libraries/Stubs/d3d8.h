@@ -51,6 +51,14 @@ typedef struct IDirect3DTexture8 IDirect3DTexture8;
 typedef struct IDirect3DBaseTexture8 IDirect3DBaseTexture8;
 typedef struct IDirect3DVertexBuffer8 IDirect3DVertexBuffer8;
 typedef struct IDirect3DIndexBuffer8 IDirect3DIndexBuffer8;
+typedef struct IDirect3DSwapChain8 IDirect3DSwapChain8;
+
+typedef unsigned int D3DFORMAT;
+typedef int D3DPOOL;
+
+typedef struct _D3DMATRIX {
+  float m[4][4];
+} D3DMATRIX;
 
 typedef struct _D3DDISPLAYMODE {
   unsigned int Width;
@@ -131,6 +139,11 @@ typedef int D3DTRANSFORMSTATETYPE;
 typedef int D3DRENDERSTATETYPE;
 typedef int D3DTEXTURESTAGESTATETYPE;
 
+// Common transform state IDs
+#define D3DTS_WORLD       256
+#define D3DTS_VIEW        2
+#define D3DTS_PROJECTION  3
+
 // Minimal enums/constants used by the engine
 #define D3DENUM_NO_WHQL_LEVEL 0x00000002
 #define D3DCREATE_SOFTWARE_VERTEXPROCESSING 0x00000020
@@ -196,6 +209,8 @@ struct IDirect3DDevice8 {
   HRESULT (*TestCooperativeLevel)(IDirect3DDevice8*);
   HRESULT (*Reset)(IDirect3DDevice8*, D3DPRESENT_PARAMETERS*);
   HRESULT (*Present)(IDirect3DDevice8*, const void*, const void*, void*, const void*);
+  HRESULT (*SetVertexShader)(IDirect3DDevice8*, DWORD);
+  HRESULT (*SetPixelShader)(IDirect3DDevice8*, DWORD);
 };
 
 #ifdef __cplusplus
