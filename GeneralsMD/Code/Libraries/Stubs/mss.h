@@ -6,17 +6,23 @@
 typedef unsigned long HPROVIDER;
 typedef unsigned long HSAMPLE;
 typedef unsigned long HSTREAM;
-typedef unsigned long HDIGDRIVER;
 typedef unsigned long HMDIDRIVER;
 typedef unsigned long H3DSAMPLE;
 typedef unsigned long H3DPOBJECT;
 typedef unsigned int HTIMER;
 
+// HDIGDRIVER is a pointer to a driver struct (Miles SDK uses pointer type)
+typedef struct _HDIGDRIVER_STRUCT {
+  int emulated_ds;
+} * HDIGDRIVER;
+
 typedef int S32;
 typedef unsigned int U32;
 typedef float F32;
 
-#ifndef _WAVEFORMATEX_
+// LPWAVEFORMAT is defined in mmeapi.h (included via windows.h) as WAVEFORMAT*
+// Only define it here if windows.h hasn't been included yet
+#if !defined(_MMEAPI_H_) && !defined(_WAVEFORMATEX_) && !defined(LPWAVEFORMAT)
 typedef void* LPWAVEFORMAT;
 #endif
 
@@ -69,7 +75,6 @@ static __inline void AIL_shutdown(void) {}
 static __inline S32 AIL_set_preference(U32 number, S32 value) { (void)number; (void)value; return AIL_NO_ERROR; }
 
 // 2D driver open/close
-typedef struct _HDIGDRIVER_STRUCT { int emulated_ds; } *HDIGDRIVER_REAL;
 static __inline S32 AIL_waveOutOpen(HDIGDRIVER*, void*, U32, void*) { return AIL_NO_ERROR; }
 static __inline void AIL_waveOutClose(HDIGDRIVER) {}
 

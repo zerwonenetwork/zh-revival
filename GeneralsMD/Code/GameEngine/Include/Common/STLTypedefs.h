@@ -132,6 +132,10 @@ namespace rts
 	// the case of pointers.)
 	template<typename T> struct equal_to
 	{
+		typedef T value_type;
+		typedef T first_argument_type;
+		typedef T second_argument_type;
+		typedef Bool result_type;
 		Bool operator()(const T& __t1, const T& __t2) const
 		{
 			return (__t1 == __t2);

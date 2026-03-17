@@ -510,10 +510,11 @@ public:
 			(*object)			= (ObjectType *)CurNode->Object;
 
 
-			// Remove the node from the head of the list and
-			// add it to the tail of the list
-			Remove_Current_Object();
-			((MultiListClass<ObjectType> *)PriorityMultiListIterator::List)->Add_Tail ((*object));
+		// Remove the node from the head of the list and
+		// add it to the tail of the list
+		Remove_Current_Object();
+		MultiListClass<ObjectType> *typed_list = (MultiListClass<ObjectType> *)this->List;
+		typed_list->Add_Tail ((*object));
 
 			retval = true;
 		}
