@@ -20,7 +20,7 @@
 - [x] P1-10 — Fix R3: Audio loss after minimize — completed 2026-03-17
 - [x] P1-11 — Remove superfluous CD/DRM checks — completed 2026-03-17
 - [x] P1-12 — Create BUILDING.md — completed 2026-03-17
-- [ ] P1-FINAL — Tag v0.1-stability
+- [x] P1-FINAL — Tag v0.1-stability — completed 2026-03-17
 
 ## Phase 2 — Online
 - [ ] P2-01 — RNG discipline audit
