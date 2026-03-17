@@ -12,3 +12,5 @@ typedef void* HMDIDRIVER;
 typedef int S32;
 typedef unsigned int U32;
 
+typedef void* LPWAVEFORMAT;
+
