@@ -488,6 +488,12 @@ template <class ObjectType>
 class PriorityMultiListIterator : public MultiListIterator<ObjectType>
 {
 public:
+	// Import base class members for modern C++ unqualified name lookup
+	using MultiListIterator<ObjectType>::First;
+	using MultiListIterator<ObjectType>::CurNode;
+	using MultiListIterator<ObjectType>::Remove_Current_Object;
+	using MultiListIterator<ObjectType>::List;
+
 	PriorityMultiListIterator(MultiListClass<ObjectType> *list)
 		:	OriginalHead (NULL),
 			MultiListIterator<ObjectType>(list)			{ First (); }
