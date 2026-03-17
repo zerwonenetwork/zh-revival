@@ -8,14 +8,7 @@
   "dependencies": [
     {
       "name": "zlib",
-      "version>=": "1.3.1",
-      "description": "Replaces the gitignored ZLib source in Libraries/Source/Compression/ZLib/. Used by the Compression library for .big archive and save-file compression."
+      "version>=": "1.3.1"
     }
-  ],
-  "$note-future-phases": {
-    "P5-01-openal-soft": "openal-soft — replaces Miles Sound System (mss32)",
-    "P5-02-ffmpeg": "ffmpeg — replaces Bink video (binkw32)",
-    "P5-03-sdl3": "sdl3 — replaces Win32 windowing and DirectInput",
-    "P5-03-dxvk": "dxvk — translates Direct3D 8 calls to Vulkan"
-  }
+  ]
 }
