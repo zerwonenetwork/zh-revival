@@ -10,6 +10,7 @@ typedef void* HDIGDRIVER;
 typedef void* HMDIDRIVER;
 typedef void* H3DSAMPLE;
 typedef void* H3DPOBJECT;
+typedef unsigned int HTIMER;
 
 typedef int S32;
 typedef unsigned int U32;
@@ -23,4 +24,7 @@ typedef void* LPWAVEFORMAT;
     #define AILCALLBACK
   #endif
 #endif
+
+static __inline void AIL_lock(void) {}
+static __inline void AIL_unlock(void) {}
 
