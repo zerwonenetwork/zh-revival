@@ -28,6 +28,12 @@
 #define WIN32_LEAN_AND_MEAN
 #endif
 #include <windows.h>
+#include <cstdint>
+
+// RAD's public headers typically define these basic types; define them here
+// so stub consumers don't need the proprietary type headers.
+typedef int32_t  S32;
+typedef uint32_t U32;
 
 // ---------------------------------------------------------------------------
 //  BINK open flags (used by callers: BinkOpen(path, BINKPRELOADALL))

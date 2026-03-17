@@ -1,0 +1,140 @@
+// d3d8.h — minimal stub header for Direct3D 8
+//
+// This project can be built in "stub mode" without the legacy DirectX 8 SDK.
+// The real D3D8 headers (d3d8.h / d3dx8.h) are not shipped with modern Windows SDKs.
+// To keep compilation working, we provide a tiny subset of types/constants used by
+// the WW3D2 renderer. These declarations are NOT a functional D3D8 implementation.
+//
+// If you have the legacy DX8 SDK, prefer using it instead (see DXSDK_LIB_DIR).
+#pragma once
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#ifndef _HRESULT_DEFINED
+typedef long HRESULT;
+#define _HRESULT_DEFINED
+#endif
+
+#ifndef _ULONG_DEFINED
+typedef unsigned long ULONG;
+#define _ULONG_DEFINED
+#endif
+
+#ifndef D3D_OK
+#define D3D_OK ((HRESULT)0L)
+#endif
+
+#ifndef E_FAIL
+#define E_FAIL ((HRESULT)0x80004005L)
+#endif
+
+// Common D3D8 error codes used for device loss handling
+#ifndef D3DERR_DEVICELOST
+#define D3DERR_DEVICELOST ((HRESULT)0x88760868L)
+#endif
+#ifndef D3DERR_DEVICENOTRESET
+#define D3DERR_DEVICENOTRESET ((HRESULT)0x88760869L)
+#endif
+
+// Forward declarations for COM-style interfaces
+typedef struct IDirect3D8 IDirect3D8;
+typedef struct IDirect3DDevice8 IDirect3DDevice8;
+typedef struct IDirect3DSurface8 IDirect3DSurface8;
+typedef struct IDirect3DTexture8 IDirect3DTexture8;
+typedef struct IDirect3DBaseTexture8 IDirect3DBaseTexture8;
+typedef struct IDirect3DVertexBuffer8 IDirect3DVertexBuffer8;
+typedef struct IDirect3DIndexBuffer8 IDirect3DIndexBuffer8;
+
+typedef struct _D3DDISPLAYMODE {
+  unsigned int Width;
+  unsigned int Height;
+  unsigned int RefreshRate;
+  unsigned int Format;
+} D3DDISPLAYMODE;
+
+typedef struct _D3DCAPS8 {
+  unsigned int DevCaps;
+  unsigned int MaxTextureWidth;
+  unsigned int MaxTextureHeight;
+} D3DCAPS8;
+
+typedef struct _D3DADAPTER_IDENTIFIER8 {
+  char Driver[512];
+  char Description[512];
+  unsigned int VendorId;
+  unsigned int DeviceId;
+  unsigned int SubSysId;
+  unsigned int Revision;
+} D3DADAPTER_IDENTIFIER8;
+
+typedef struct _D3DPRESENT_PARAMETERS {
+  unsigned int BackBufferWidth;
+  unsigned int BackBufferHeight;
+  unsigned int BackBufferFormat;
+  unsigned int BackBufferCount;
+  unsigned int MultiSampleType;
+  unsigned int SwapEffect;
+  void*        hDeviceWindow;
+  int          Windowed;
+  int          EnableAutoDepthStencil;
+  unsigned int AutoDepthStencilFormat;
+  unsigned int Flags;
+  unsigned int FullScreen_RefreshRateInHz;
+  unsigned int FullScreen_PresentationInterval;
+} D3DPRESENT_PARAMETERS;
+
+// Minimal enums/constants used by the engine
+#define D3DENUM_NO_WHQL_LEVEL 0x00000002
+#define D3DCREATE_SOFTWARE_VERTEXPROCESSING 0x00000020
+#define D3DCREATE_MIXED_VERTEXPROCESSING    0x00000080
+#define D3DCREATE_MULTITHREADED             0x00000004
+#define D3DCREATE_FPU_PRESERVE              0x00000002
+
+#define D3DDEVCAPS_HWTRANSFORMANDLIGHT      0x00000080
+
+#define D3DSWAPEFFECT_DISCARD               1
+#define D3DPRESENT_INTERVAL_DEFAULT         0
+#define D3DPRESENT_RATE_DEFAULT             0
+
+// Formats referenced in code
+#define D3DFMT_UNKNOWN 0
+#define D3DFMT_R5G6B5   23
+#define D3DFMT_X1R5G5B5 24
+#define D3DFMT_A1R5G5B5 25
+#define D3DFMT_D16      80
+#define D3DFMT_D24X8    77
+#define D3DFMT_D24S8    75
+#define D3DFMT_D32      71
+
+// Device type
+#define D3DDEVTYPE_HAL  1
+
+// Adapter
+#define D3DADAPTER_DEFAULT 0
+
+// Dummy interface method sets (only signatures used by compilation)
+struct IDirect3D8 {
+  HRESULT (/*STDMETHODCALLTYPE*/ *GetDeviceCaps)(IDirect3D8*, unsigned int, unsigned int, D3DCAPS8*);
+  HRESULT (*GetAdapterIdentifier)(IDirect3D8*, unsigned int, unsigned int, D3DADAPTER_IDENTIFIER8*);
+  unsigned int (*GetAdapterCount)(IDirect3D8*);
+  unsigned int (*GetAdapterModeCount)(IDirect3D8*, unsigned int);
+  HRESULT (*EnumAdapterModes)(IDirect3D8*, unsigned int, unsigned int, D3DDISPLAYMODE*);
+  HRESULT (*GetAdapterDisplayMode)(IDirect3D8*, unsigned int, D3DDISPLAYMODE*);
+  HRESULT (*CheckDeviceFormat)(IDirect3D8*, unsigned int, unsigned int, unsigned int, unsigned int, unsigned int, unsigned int);
+  HRESULT (*CheckDepthStencilMatch)(IDirect3D8*, unsigned int, unsigned int, unsigned int, unsigned int, unsigned int);
+  HRESULT (*CreateDevice)(IDirect3D8*, unsigned int, unsigned int, void*, unsigned long, D3DPRESENT_PARAMETERS*, IDirect3DDevice8**);
+  ULONG (*Release)(IDirect3D8*);
+};
+
+struct IDirect3DDevice8 {
+  HRESULT (*TestCooperativeLevel)(IDirect3DDevice8*);
+  HRESULT (*Reset)(IDirect3DDevice8*, D3DPRESENT_PARAMETERS*);
+  HRESULT (*Present)(IDirect3DDevice8*, const void*, const void*, void*, const void*);
+};
+
+#ifdef __cplusplus
+} // extern "C"
+#endif
+
