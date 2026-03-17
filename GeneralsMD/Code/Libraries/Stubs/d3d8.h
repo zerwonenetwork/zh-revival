@@ -22,6 +22,11 @@ typedef unsigned long ULONG;
 #define _ULONG_DEFINED
 #endif
 
+#ifndef _DWORD_DEFINED
+typedef unsigned long DWORD;
+#define _DWORD_DEFINED
+#endif
+
 #ifndef D3D_OK
 #define D3D_OK ((HRESULT)0L)
 #endif
@@ -84,6 +89,47 @@ typedef struct _D3DPRESENT_PARAMETERS {
   unsigned int FullScreen_RefreshRateInHz;
   unsigned int FullScreen_PresentationInterval;
 } D3DPRESENT_PARAMETERS;
+
+typedef struct _D3DVIEWPORT8 {
+  DWORD X;
+  DWORD Y;
+  DWORD Width;
+  DWORD Height;
+  float MinZ;
+  float MaxZ;
+} D3DVIEWPORT8;
+
+typedef struct _D3DCOLORVALUE {
+  float r, g, b, a;
+} D3DCOLORVALUE;
+
+typedef struct _D3DMATERIAL8 {
+  D3DCOLORVALUE Diffuse;
+  D3DCOLORVALUE Ambient;
+  D3DCOLORVALUE Specular;
+  D3DCOLORVALUE Emissive;
+  float Power;
+} D3DMATERIAL8;
+
+typedef struct _D3DLIGHT8 {
+  DWORD Type;
+  D3DCOLORVALUE Diffuse;
+  D3DCOLORVALUE Specular;
+  D3DCOLORVALUE Ambient;
+  float Position[3];
+  float Direction[3];
+  float Range;
+  float Falloff;
+  float Attenuation0;
+  float Attenuation1;
+  float Attenuation2;
+  float Theta;
+  float Phi;
+} D3DLIGHT8;
+
+typedef int D3DTRANSFORMSTATETYPE;
+typedef int D3DRENDERSTATETYPE;
+typedef int D3DTEXTURESTAGESTATETYPE;
 
 // Minimal enums/constants used by the engine
 #define D3DENUM_NO_WHQL_LEVEL 0x00000002
