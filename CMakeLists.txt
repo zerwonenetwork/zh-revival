@@ -205,10 +205,17 @@ target_include_directories(wwutil PUBLIC ${ZH_COMMON_INCLUDES})
 zh_target_defs(wwutil)
 
 # ─── wwshade ─────────────────────────────────
-zh_glob_sources(WWSHADE_SRCS ${ZH}/Libraries/Source/WWVegas/wwshade)
-add_library(wwshade STATIC ${WWSHADE_SRCS})
-target_include_directories(wwshade PUBLIC ${ZH_COMMON_INCLUDES})
-zh_target_defs(wwshade)
+if(ZH_USE_STUBS)
+    # Shader sources depend on generated shader bytecode headers which are not committed.
+    # In stub builds we keep the target name but don't compile wwshade.
+    add_library(wwshade INTERFACE)
+    target_include_directories(wwshade INTERFACE ${ZH_COMMON_INCLUDES})
+else()
+    zh_glob_sources(WWSHADE_SRCS ${ZH}/Libraries/Source/WWVegas/wwshade)
+    add_library(wwshade STATIC ${WWSHADE_SRCS})
+    target_include_directories(wwshade PUBLIC ${ZH_COMMON_INCLUDES})
+    zh_target_defs(wwshade)
+endif()
 
 # ─── WWDownload ──────────────────────────────
 zh_glob_sources(WWDOWNLOAD_SRCS ${ZH}/Libraries/Source/WWVegas/WWDownload)
