@@ -240,11 +240,22 @@ target_link_libraries(ww3d2 PUBLIC wwlib wwmath wwdebug wwsaveload wwutil wwshad
 
 # ─── Benchmark ───────────────────────────────
 zh_glob_sources(BENCHMARK_SRCS ${ZH}/Libraries/Source/Benchmark)
-add_library(benchmark_lib STATIC ${BENCHMARK_SRCS})
-target_include_directories(benchmark_lib PUBLIC
-    ${ZH}/Libraries/Source/Benchmark
-    ${ZH_COMMON_INCLUDES}
-)
+if(BENCHMARK_SRCS)
+    add_library(benchmark_lib STATIC ${BENCHMARK_SRCS})
+    target_include_directories(benchmark_lib PUBLIC
+        ${ZH}/Libraries/Source/Benchmark
+        ${ZH_COMMON_INCLUDES}
+    )
+    zh_target_defs(benchmark_lib)
+else()
+    # Some source drops omit this optional library; keep the target name so
+    # downstream link lines remain stable.
+    add_library(benchmark_lib INTERFACE)
+    target_include_directories(benchmark_lib INTERFACE
+        ${ZH}/Libraries/Source/Benchmark
+        ${ZH_COMMON_INCLUDES}
+    )
+endif()
 
 # ─── Compression ─────────────────────────────
 zh_glob_sources(COMPRESSION_SRCS ${ZH}/Libraries/Source/Compression)
@@ -256,11 +267,21 @@ target_include_directories(compression PUBLIC
 
 # ─── EABrowserDispatch ───────────────────────
 zh_glob_sources(EABROWSER_SRCS ${ZH}/Libraries/Source/EABrowserDispatch)
-add_library(eabrowserdispatch STATIC ${EABROWSER_SRCS})
-target_include_directories(eabrowserdispatch PUBLIC
-    ${ZH}/Libraries/Source/EABrowserDispatch
-    ${ZH_COMMON_INCLUDES}
-)
+if(EABROWSER_SRCS)
+    add_library(eabrowserdispatch STATIC ${EABROWSER_SRCS})
+    target_include_directories(eabrowserdispatch PUBLIC
+        ${ZH}/Libraries/Source/EABrowserDispatch
+        ${ZH_COMMON_INCLUDES}
+    )
+    zh_target_defs(eabrowserdispatch)
+else()
+    # Optional/proprietary library not present in open drop; keep a stub target.
+    add_library(eabrowserdispatch INTERFACE)
+    target_include_directories(eabrowserdispatch INTERFACE
+        ${ZH}/Libraries/Source/EABrowserDispatch
+        ${ZH_COMMON_INCLUDES}
+    )
+endif()
 
 # ─── GameSpy libraries ────────────────────────
 #  Source layout: Libraries/Source/GameSpy/GameSpy/<module>/
