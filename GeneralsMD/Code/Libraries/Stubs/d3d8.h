@@ -98,6 +98,17 @@ typedef struct _D3DPRESENT_PARAMETERS {
 #define D3DFVF_DIFFUSE   0x0040
 #define D3DFVF_TEX1      0x0100
 #define D3DFVF_TEX2      0x0200
+#define D3DFVF_TEX3      0x0300
+#define D3DFVF_TEX4      0x0400
+
+// Texcoord size macros (stubs: values only need to compile)
+#define D3DFVF_TEXCOORDSIZE1(i) 0
+#define D3DFVF_TEXCOORDSIZE2(i) 0
+#define D3DFVF_TEXCOORDSIZE3(i) 0
+#define D3DFVF_TEXCOORDSIZE4(i) 0
+
+// Device caps / limits referenced by engine code
+#define D3DDP_MAXTEXCOORD 8
 
 #define D3DDEVCAPS_HWTRANSFORMANDLIGHT      0x00000080
 
