@@ -473,7 +473,7 @@ int INIClass::Load(Straw & ffile)
 				strtrim(divider);
 				if (!strlen(divider)) {
 					if (KeepBlankEntries)
-						divider = " ";
+						divider = (char*)" ";
 					else
 						continue;
 				}
@@ -539,7 +539,7 @@ int INIClass::Load(Straw & ffile)
 				strtrim(divider);
 				if (!strlen(divider)) {
 					if (KeepBlankEntries)
-						divider = " ";
+						divider = (char*)" ";
 					else
 						continue;
 				}
