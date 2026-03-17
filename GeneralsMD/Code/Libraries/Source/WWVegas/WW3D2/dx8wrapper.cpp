@@ -622,6 +622,20 @@ bool DX8Wrapper::Reset_Device(bool reload_assets)
 	WWDEBUG_SAY(("Resetting device.\n"));
 	DX8_THREAD_ASSERT();
 	if ((IsInitted) && (D3DDevice != NULL)) {
+		// P1-07: Check cooperative level BEFORE releasing any resources.
+		// The original code released everything first, then checked — if the device
+		// was still in D3DERR_DEVICELOST (not yet resetable) it returned false
+		// with all resources already freed, leaving the renderer in a broken state
+		// that crashed on the next draw call.  By bailing out here we ensure
+		// resources stay valid so the render loop can keep skipping frames safely
+		// until the device is truly ready to reset (D3DERR_DEVICENOTRESET / D3D_OK).
+		HRESULT hr = _Get_D3D_Device8()->TestCooperativeLevel();
+		if (hr == D3DERR_DEVICELOST) {
+			IsDeviceLost = true;
+			WWDEBUG_SAY(("Reset_Device: device still lost, deferring reset.\n"));
+			return false;
+		}
+
 		// Release all non-MANAGED stuff
 		WW3D::_Invalidate_Textures();
 
@@ -644,14 +658,11 @@ bool DX8Wrapper::Reset_Device(bool reload_assets)
 		memset(Vertex_Shader_Constants,0,sizeof(Vector4)*MAX_VERTEX_SHADER_CONSTANTS);
 		memset(Pixel_Shader_Constants,0,sizeof(Vector4)*MAX_PIXEL_SHADER_CONSTANTS);
 
-		HRESULT hr=_Get_D3D_Device8()->TestCooperativeLevel();
-		if (hr != D3DERR_DEVICELOST )
-		{	DX8CALL_HRES(Reset(&_PresentParameters),hr)
-			if (hr != D3D_OK)
-				return false;	//reset failed.
-		}
-		else
-			return false;	//device is lost and can't be reset.
+		// hr is D3DERR_DEVICENOTRESET or D3D_OK here (D3DERR_DEVICELOST already
+		// handled above), so Reset() is safe to call.
+		DX8CALL_HRES(Reset(&_PresentParameters),hr)
+		if (hr != D3D_OK)
+			return false;	//reset failed.
 
 		if (reload_assets)
 		{
@@ -663,6 +674,7 @@ bool DX8Wrapper::Reset_Device(bool reload_assets)
 		Invalidate_Cached_Render_States();
 		Set_Default_Global_Render_States();
 		SHD_INIT_SHADERS;
+		IsDeviceLost = false;
 		WWDEBUG_SAY(("Device reset completed\n"));
 		return true;
 	}
