@@ -191,6 +191,9 @@ zh_glob_sources(WWLIB_SRCS ${ZH}/Libraries/Source/WWVegas/WWLib)
 add_library(wwlib STATIC ${WWLIB_SRCS})
 target_include_directories(wwlib PUBLIC ${ZH_COMMON_INCLUDES})
 zh_target_defs(wwlib)
+if(WIN32)
+    target_link_libraries(wwlib PUBLIC winmm)
+endif()
 
 # ─── WWSaveLoad ──────────────────────────────
 zh_glob_sources(WWSAVELOAD_SRCS ${ZH}/Libraries/Source/WWVegas/WWSaveLoad)
