@@ -92,6 +92,13 @@ typedef struct _D3DPRESENT_PARAMETERS {
 #define D3DCREATE_MULTITHREADED             0x00000004
 #define D3DCREATE_FPU_PRESERVE              0x00000002
 
+// Flexible Vertex Format (FVF) bits used by dx8fvf.h
+#define D3DFVF_XYZ       0x0002
+#define D3DFVF_NORMAL    0x0010
+#define D3DFVF_DIFFUSE   0x0040
+#define D3DFVF_TEX1      0x0100
+#define D3DFVF_TEX2      0x0200
+
 #define D3DDEVCAPS_HWTRANSFORMANDLIGHT      0x00000080
 
 #define D3DSWAPEFFECT_DISCARD               1
