@@ -27,6 +27,7 @@ static __inline void AIL_set_3D_position(H3DSAMPLE, F32, F32, F32) {}
 static __inline void AIL_set_3D_orientation(H3DSAMPLE, F32, F32, F32, F32, F32, F32) {}
 static __inline void AIL_set_3D_velocity_vector(H3DSAMPLE, F32, F32, F32) {}
 static __inline void AIL_set_3D_sample_distances(H3DSAMPLE, F32, F32) {}
+static __inline void AIL_set_3D_sample_effects_level(H3DSAMPLE, F32) {}
 
 #ifndef WAVE_FORMAT_IMA_ADPCM
 #define WAVE_FORMAT_IMA_ADPCM 0x0011
