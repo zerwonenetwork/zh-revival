@@ -93,8 +93,13 @@
 	// additional overloads for 'placement new'
 	//inline void* __cdecl operator new							(size_t s, void *p) { return p; }
 	//inline void __cdecl operator delete						(void *, void *p)		{ }
+	// MSVC 2015+ (vcruntime_new.h) and C++11 standard <new> already provide
+	// placement new[]/delete[] for void*; only define here for older toolchains.
+#ifndef __PLACEMENT_VEC_NEW_INLINE
+	#define __PLACEMENT_VEC_NEW_INLINE
 	inline void* __cdecl operator new[]						(size_t s, void *p) { return p; }
 	inline void __cdecl operator delete[]					(void *, void *p)		{ }
+#endif
 
 #endif
 
