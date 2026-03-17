@@ -37,7 +37,7 @@
 #ifndef __PRIORITY_VECTOR_H
 #define __PRIORITY_VECTOR_H
 
-#include "Vector.H"
+#include "vector.h"
 
 ////////////////////////////////////////////////////////////////////
 //
@@ -69,18 +69,18 @@ template <class T>
 __inline bool PriorityVectorClass<T>::Process_Head (T &object)
 {
 	bool retval = false;	
-	if (Vector != NULL) {
+	if (this->Count() > 0) {
 		
 		// Pass the object back to the caller
-		object = Vector[0];
+		object = (*this)[0];
 
 		//
 		//	Move the head object to the end of the list
 		//
-		for (int index = 1; index < ActiveCount; index ++) {
-			Vector[index - 1] = Vector[index];
+		for (int index = 1; index < this->Count(); index ++) {
+			(*this)[index - 1] = (*this)[index];
 		}
-		Vector[ActiveCount - 1] = object;
+		(*this)[this->Count() - 1] = object;
 
 		// Success!
 		retval = true;
