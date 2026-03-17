@@ -23,9 +23,19 @@
 
 #include "Compression.h"
 #include "LZHCompress/NoxCompress.h"
+#ifndef STUB_IMPL
 extern "C" {
-#include <zlib.h>
+  #include <zlib.h>
 }
+#else
+// Stub builds compile without external zlib to avoid type conflicts (Byte) and
+// missing dependency wiring; ZLib compression modes will just fail gracefully.
+#define Z_OK 0
+#define Z_STREAM_END 1
+#define Z_STREAM_ERROR (-2)
+static int compress2(unsigned char*, unsigned long*, const unsigned char*, unsigned long, int) { return Z_STREAM_ERROR; }
+static int uncompress(unsigned char*, unsigned long*, const unsigned char*, unsigned long) { return Z_STREAM_ERROR; }
+#endif
 #include "EAC/codex.h"
 #include "EAC/btreecodex.h"
 #include "EAC/huffcodex.h"
@@ -262,7 +272,7 @@ Int CompressionManager::compressData( CompressionType compType, void *srcVoid, I
 		*(Int *)(dest+4) = 0;
 
 		unsigned long outLen = destLen;
-		Int err = z_compress2( dest+8, &outLen, src, srcLen, level );
+		Int err = compress2( (unsigned char*)dest+8, &outLen, (const unsigned char*)src, (unsigned long)srcLen, level );
 
 		if (err == Z_OK || err == Z_STREAM_END)
 		{
@@ -333,7 +343,7 @@ Int CompressionManager::decompressData( void *srcVoid, Int srcLen, void *destVoi
 #endif
 
 		unsigned long outLen = destLen;
-		Int err = z_uncompress(dest, &outLen, src+8, srcLen-8);
+		Int err = uncompress((unsigned char*)dest, &outLen, (const unsigned char*)src+8, (unsigned long)(srcLen-8));
 		if (err == Z_OK || err == Z_STREAM_END)
 		{
 			return outLen;

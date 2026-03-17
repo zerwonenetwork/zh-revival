@@ -160,6 +160,8 @@ public:
 };
 // ----------------------------------------------------------------------------
 
+#endif // _OPERATOR_NEW_DEFINED_
+
 #else
 
 	#define MSGW3DNEW(MSG)					new

@@ -258,14 +258,18 @@ else()
 endif()
 
 # ─── Compression ─────────────────────────────
-find_package(ZLIB REQUIRED)
 zh_glob_sources(COMPRESSION_SRCS ${ZH}/Libraries/Source/Compression)
 add_library(compression STATIC ${COMPRESSION_SRCS})
 target_include_directories(compression PUBLIC
     ${ZH}/Libraries/Source/Compression
     ${ZH_COMMON_INCLUDES}
 )
-target_link_libraries(compression PUBLIC ZLIB::ZLIB)
+if(NOT ZH_USE_STUBS)
+    # Only required when building with real external dependencies.
+    # CI builds in stub mode, where we compile without zlib.
+    find_package(ZLIB REQUIRED)
+    target_link_libraries(compression PUBLIC ZLIB::ZLIB)
+endif()
 
 # ─── EABrowserDispatch ───────────────────────
 zh_glob_sources(EABROWSER_SRCS ${ZH}/Libraries/Source/EABrowserDispatch)
