@@ -394,6 +394,14 @@ typedef DWORD D3DCOLOR;
 // C++ interface declarations (virtual method tables)
 #ifdef __cplusplus
 
+// Forward declarations needed for cross-references
+struct IDirect3DSurface8;
+struct IDirect3DTexture8;
+struct IDirect3DBaseTexture8;
+struct IDirect3DVertexBuffer8;
+struct IDirect3DIndexBuffer8;
+struct IDirect3DSwapChain8;
+
 struct IDirect3DBaseTexture8 {
   virtual ULONG AddRef() = 0;
   virtual ULONG Release() = 0;
