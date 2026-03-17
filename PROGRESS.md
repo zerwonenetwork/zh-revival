@@ -18,7 +18,7 @@
 - [x] P1-08 — Fix R1: Startup Serious Error / DirectX init failure — completed 2026-03-17
 - [x] P1-09 — Fix R5: Large-match pathfinder crash — completed 2026-03-17
 - [x] P1-10 — Fix R3: Audio loss after minimize — completed 2026-03-17
-- [ ] P1-11 — Remove superfluous CD/DRM checks
+- [x] P1-11 — Remove superfluous CD/DRM checks — completed 2026-03-17
 - [ ] P1-12 — Create BUILDING.md
 - [ ] P1-FINAL — Tag v0.1-stability
 
@@ -78,3 +78,4 @@
 | 2026-03-17 | P1-08 DirectX init “Serious Error” | task/P1-07-alttab-crash | done | Improved DX8Wrapper startup robustness: added detailed logging for D3D8 load/Create8 failures and added CreateDevice retry/fallback strategy (software VP, D16 Z, default adapter) to reduce startup initialization failures on modern drivers |
 | 2026-03-17 | P1-09 large-match pathfinder crash | task/P1-07-alttab-crash | done | Increased pathfind request queue length (PATHFIND_QUEUE_LEN) from 512 to 4096 to prevent overflow crashes when many units request paths in the same frame |
 | 2026-03-17 | P1-10 audio loss after minimize | task/P1-07-alttab-crash | done | On focus regain, AudioManager now pauses on focus loss then reopens the audio device + resumes playback to recover from legacy backend/device context loss after minimize/restore |
+| 2026-03-17 | P1-11 remove CD/DRM checks | task/P1-07-alttab-crash | done | Removed hard-fail startup gating on legacy copy-protection launcher presence/notify; game now logs and continues on modern installs without SafeDisc wrapper |
