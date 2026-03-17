@@ -113,6 +113,7 @@ if(ZH_USE_STUBS)
         ${ZH}/Libraries/Include
         ${ZH}/Libraries/Include/Granny
         ${ZH}/GameEngine/Include
+        ${ZH}/GameEngine/Include/Precompiled   # PreRTS.h needed by every GameEngine .cpp
         ${ZH}/GameEngineDevice/Include
         ${ZH}/Libraries/Source/WWVegas
         ${ZH}/Libraries/Source/WWVegas/WWLib
@@ -128,6 +129,7 @@ else()
         ${ZH}/Libraries/Include/Granny
         ${ZH}/Libraries/Include/MSS
         ${ZH}/GameEngine/Include
+        ${ZH}/GameEngine/Include/Precompiled   # PreRTS.h needed by every GameEngine .cpp
         ${ZH}/GameEngineDevice/Include
         ${ZH}/Libraries/Source/WWVegas
         ${ZH}/Libraries/Source/WWVegas/WWLib
@@ -339,6 +341,12 @@ endif()
 
 # ─── GameEngine  (core game logic) ───────────
 zh_glob_sources(GAMEENGINE_SRCS ${ZH}/GameEngine/Source)
+# Exclude files that depend on unavailable SDKs (wpaudio/wsys, Windows Media Foundation)
+list(REMOVE_ITEM GAMEENGINE_SRCS
+    "${ZH}/GameEngine/Source/Common/Audio/GameSpeech.cpp"
+    "${ZH}/GameEngine/Source/Common/Audio/simpleplayer.cpp"
+    "${ZH}/GameEngine/Source/Common/Audio/urllaunch.cpp"
+)
 add_library(gameengine STATIC ${GAMEENGINE_SRCS})
 target_include_directories(gameengine PUBLIC
     ${ZH}/GameEngine/Include

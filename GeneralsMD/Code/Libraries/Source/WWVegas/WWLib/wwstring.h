@@ -121,9 +121,14 @@ public:
 	bool			Is_Empty (void) const;
 
 	void			Erase (int start_index, int char_count);
-#ifdef _MSC_VER
-	int _cdecl  Format (const TCHAR *format, ...);
-	int _cdecl  Format_Args (const TCHAR *format, const va_list & arg_list );
+	// _cdecl is MSVC-only keyword; MinGW uses __cdecl (double underscore).
+	// Use __cdecl when defined (MSVC or MinGW targeting Windows); plain otherwise.
+#if defined(_MSC_VER)
+	int __cdecl  Format (const TCHAR *format, ...);
+	int __cdecl  Format_Args (const TCHAR *format, const va_list & arg_list );
+#elif defined(__GNUC__) && defined(_WIN32)
+	int __cdecl  Format (const TCHAR *format, ...);
+	int __cdecl  Format_Args (const TCHAR *format, const va_list & arg_list );
 #else
 	int  Format (const TCHAR *format, ...);
 	int  Format_Args (const TCHAR *format, const va_list & arg_list );

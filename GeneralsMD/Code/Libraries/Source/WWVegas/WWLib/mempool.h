@@ -157,8 +157,24 @@ private:
 ** Macro to declare the allocator for your class.  Put this in the cpp file for
 ** the class.
 */
+// GCC (MinGW cross-compiler) requires the outer class specialization to appear first
+// before specializing individual static members.  The simplest cross-compiler fix is to
+// NOT use template<> (explicit specialization) syntax but instead emit the definition via
+// a helper explicit-specialization wrapper.
+// DEFINE_AUTO_POOL(T,BLOCKSIZE):
+// Defines the static Allocator member for AutoPoolClass<T,BLOCKSIZE>.
+// MSVC accepts  template<> directly.
+// GCC (MinGW cross-compiler) requires a full class-level template<> specialization
+// to appear before specializing individual members.  We emit a forward class specialization
+// declaration so the member specialization is well-formed in C++17 on both compilers.
+#if defined(__GNUC__) && !defined(_MSC_VER)
+#define DEFINE_AUTO_POOL(T,BLOCKSIZE) \
+template<> class AutoPoolClass<T,BLOCKSIZE>; \
+template<> ObjectPoolClass<T,BLOCKSIZE> AutoPoolClass<T,BLOCKSIZE>::Allocator;
+#else
 #define DEFINE_AUTO_POOL(T,BLOCKSIZE) \
 template<> ObjectPoolClass<T,BLOCKSIZE> AutoPoolClass<T,BLOCKSIZE>::Allocator;
+#endif
 
 
 /***********************************************************************************************

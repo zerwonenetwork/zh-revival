@@ -43,6 +43,11 @@ class STLSpecialAlloc;
 #define WIN32_LEAN_AND_MEAN
 #include <atlbase.h>
 #include <windows.h>
+// winnt.h defines BitTest as _bittest (takes LONG*); override immediately with our bitwise version
+#ifdef BitTest
+#undef BitTest
+#endif
+#define BitTest( x, i ) ( ( (x) & (i) ) != 0 )
 
 #include <assert.h>
 #include <ctype.h>

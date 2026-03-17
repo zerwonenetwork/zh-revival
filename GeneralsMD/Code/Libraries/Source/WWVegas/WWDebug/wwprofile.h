@@ -45,9 +45,17 @@
 
 #include "wwstring.h"
 
-#ifdef _UNIX
+// _int64 and __int64 are MSVC-only built-in types.
+// Non-MSVC compilers (GCC/Clang, including MinGW cross-compiler targeting Windows)
+// use 'long long' and do not have the single/double-underscore aliases unless
+// provided here.  We define them for all non-MSVC compilers.
+#ifndef _MSC_VER
+# ifndef __int64
 typedef signed long long __int64;
+# endif
+# ifndef _int64
 typedef signed long long _int64;
+# endif
 #endif
 
 // enable profiling by default in debug mode.

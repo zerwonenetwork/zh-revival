@@ -70,15 +70,11 @@ enum DrawableID;
 
 #include <algorithm>
 #include <bitset>
-#ifdef _MSC_VER
 #include <unordered_map>
 namespace std {
   template<class K, class V, class H = std::hash<K>, class E = std::equal_to<K>, class A = std::allocator<std::pair<const K,V>>>
   using hash_map = std::unordered_map<K, V, H, E, A>;
 }
-#else
-#include <hash_map>
-#endif
 #include <list>
 #include <map>
 #include <queue>

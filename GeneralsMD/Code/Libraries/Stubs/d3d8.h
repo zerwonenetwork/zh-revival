@@ -91,6 +91,22 @@ typedef struct _D3DPRESENT_PARAMETERS {
   UINT  FullScreen_PresentationInterval;
 } D3DPRESENT_PARAMETERS;
 
+typedef struct _D3DSURFACE_DESC {
+  D3DFORMAT Format;
+  DWORD     Type;
+  DWORD     Usage;
+  D3DPOOL   Pool;
+  UINT      Size;
+  UINT      MultiSampleType;
+  UINT      Width;
+  UINT      Height;
+} D3DSURFACE_DESC;
+
+typedef struct _D3DLOCKED_RECT {
+  INT   Pitch;
+  void* pBits;
+} D3DLOCKED_RECT;
+
 typedef struct _D3DVIEWPORT8 {
   DWORD X;
   DWORD Y;
@@ -192,6 +208,22 @@ typedef DWORD D3DCOLOR;
 #define D3DFMT_DXT3     0x33545844
 #define D3DFMT_DXT4     0x34545844
 #define D3DFMT_DXT5     0x35545844
+// Additional format enums used by assetmgr.cpp / ww3d.cpp
+#define D3DFMT_A8         28
+#define D3DFMT_R3G3B2     27
+#define D3DFMT_A8R3G3B2   29
+#define D3DFMT_X4R4G4B4   30
+#define D3DFMT_A8P8       40
+#define D3DFMT_A8L8       51
+#define D3DFMT_A4L4       52
+#define D3DFMT_Q8W8V8U8   63
+#define D3DFMT_V16U16     64
+#define D3DFMT_W11V11U10  65
+#define D3DFMT_UYVY       0x59565955
+#define D3DFMT_YUY2       0x32595559
+#define D3DFMT_D16_LOCKABLE 70
+#define D3DFMT_D15S1        73
+#define D3DFMT_D24X4S4      79
 
 // Device type
 #define D3DDEVTYPE_HAL  1
@@ -409,6 +441,9 @@ struct IDirect3DBaseTexture8 {
 
 struct IDirect3DTexture8 : public IDirect3DBaseTexture8 {
   virtual HRESULT GetSurfaceLevel(UINT, IDirect3DSurface8**) = 0;
+  virtual HRESULT GetLevelDesc(UINT, D3DSURFACE_DESC*) = 0;
+  virtual HRESULT LockRect(UINT, D3DLOCKED_RECT*, const RECT*, DWORD) = 0;
+  virtual HRESULT UnlockRect(UINT) = 0;
 };
 
 struct IDirect3DCubeTexture8 : public IDirect3DBaseTexture8 {};

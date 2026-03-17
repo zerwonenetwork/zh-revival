@@ -128,6 +128,11 @@ public:
 
   /// Is this a permenant sound? That is, if I start this sound up, will it ever end
   /// "on its own" or only if I explicitly kill it?
+  // winnt.h may define BitTest as _bittest (LONG* intrinsic); override with bitwise version
+#ifdef BitTest
+#undef BitTest
+#endif
+#define BitTest( x, i ) ( ( (x) & (i) ) != 0 )
   Bool isPermanentSound() const { return BitTest( m_control, AC_LOOP ) && (m_loopCount == 0 );  }
   
 	static const FieldParse m_audioEventInfo[];		///< the parse table for INI definition

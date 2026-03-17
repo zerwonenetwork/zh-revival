@@ -144,6 +144,13 @@ public: \
 	inline void operator delete(void *p, const char* msg, int unused) { freeFromW3DMemPool(getClassMemoryPool(), p); } \
 
 // ----------------------------------------------------------------------------
+
+#endif // _OPERATOR_NEW_DEFINED_
+
+// W3DMPO must be visible even when _OPERATOR_NEW_DEFINED_ was set by GameMemory.h
+// (which defines operator new but not W3DMPO). Define it once unconditionally here.
+#ifndef W3DMPO_DEFINED
+#define W3DMPO_DEFINED
 class W3DMPO
 {
 private:
@@ -158,9 +165,8 @@ protected:
 public:
 	virtual ~W3DMPO() { /* nothing */ }
 };
+#endif // W3DMPO_DEFINED
 // ----------------------------------------------------------------------------
-
-#endif // _OPERATOR_NEW_DEFINED_
 
 #else
 

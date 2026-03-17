@@ -197,7 +197,7 @@ public:
 	//-------------------------------------------------------------------------------------------------
 	const MATCHABLE* findBestInfo(const std::vector<MATCHABLE>& v, const BITSET& bits) const
 	{
-		MatchMap::const_iterator it = m_bestMatches.find(bits);
+		typename MatchMap::const_iterator it = m_bestMatches.find(bits);
 
 		const MATCHABLE *first = NULL;
 		if (it != m_bestMatches.end())

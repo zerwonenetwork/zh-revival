@@ -173,7 +173,7 @@ public:
 
 
 	// this copy routine is used when the model coords are needed to be copied along with the other information.
-	inline void IntersectionClass::Copy_Results(IntersectionResultClass *Destination, IntersectionResultClass *Source) {
+	inline void Copy_Results(IntersectionResultClass *Destination, IntersectionResultClass *Source) {
 		Destination->ModelMatrix = Source->ModelMatrix;
 		Destination->ModelLocation = Source->ModelLocation;
 		Copy_Partial_Results(Destination, Source);
@@ -181,7 +181,7 @@ public:
 	}
 
 
-	inline void IntersectionClass::Copy_Results(IntersectionResultClass *Source) {
+	inline void Copy_Results(IntersectionResultClass *Source) {
 		Copy_Results(&Result, Source);
 	}
 
@@ -190,7 +190,7 @@ public:
 	// otherwise the results are copied into the request structure.
 	// This does not copy the matrix or location members; it is intended to be used during poly testing
 	// where these values are identical between results, or as a completion function for Copy_Results()
-	inline void IntersectionClass::Copy_Partial_Results(IntersectionResultClass *Destination, IntersectionResultClass *Source) 
+	inline void Copy_Partial_Results(IntersectionResultClass *Destination, IntersectionResultClass *Source)
 	{
 		Destination->IntersectedPolygon = Source->IntersectedPolygon;
 		Destination->Intersection = Source->Intersection;

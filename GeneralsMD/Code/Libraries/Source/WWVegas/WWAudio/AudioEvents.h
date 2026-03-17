@@ -171,7 +171,7 @@ public:
 template <class T> void
 AudioCallbackListClass<T>::Add_Callback (T pointer, uint32 user_data)
 {
-	Add ( AUDIO_CALLBACK_STRUCT<T> (pointer, user_data));
+	this->Add ( AUDIO_CALLBACK_STRUCT<T> (pointer, user_data));
 	return ;
 }
 

@@ -621,8 +621,9 @@ WWINLINE bool operator!=(const FastSTLAllocator<T>&, const FastSTLAllocator<T>&)
 #include <map>
 #include <string>
 #include <memory>
-#include <hash_set> //Uncomment this if you have hash containers available.
-#include <hash_map>
+// hash_set / hash_map removed — use unordered_set / unordered_map (C++11+)
+#include <unordered_set>
+#include <unordered_map>
 using namespace std;
 
 

@@ -144,14 +144,15 @@ DDSFileClass::DDSFileClass(const char* name,unsigned reduction_factor)
 
 	LevelSizes=W3DNEWARRAY unsigned[MipLevels];
 	LevelOffsets=W3DNEWARRAY unsigned[MipLevels];
-	for (unsigned level=0;level<ReductionFactor;++level) 
+	unsigned level;
+	for (level=0;level<ReductionFactor;++level)
 	{
-		if (level_size>16) 
+		if (level_size>16)
 		{	// If surface is bigger than one block (8 or 16 bytes)...
 			level_size/=level_mip_dec;
 		}
 	}
-	for (level=0;level<MipLevels;++level) 
+	for (level=0;level<MipLevels;++level)
 	{
 		LevelSizes[level]=level_size;
 		LevelOffsets[level]=level_offset;
