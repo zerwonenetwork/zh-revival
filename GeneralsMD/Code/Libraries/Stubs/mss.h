@@ -20,11 +20,8 @@ typedef int S32;
 typedef unsigned int U32;
 typedef float F32;
 
-// LPWAVEFORMAT is defined in mmeapi.h (included via windows.h) as WAVEFORMAT*
-// Only define it here if windows.h hasn't been included yet
-#if !defined(_MMEAPI_H_) && !defined(_WAVEFORMATEX_) && !defined(LPWAVEFORMAT)
-typedef void* LPWAVEFORMAT;
-#endif
+// LPWAVEFORMAT is defined in mmeapi.h (via windows.h) as WAVEFORMAT*
+// We don't redefine it here to avoid conflicts.
 
 #define DP_FILTER 0
 
@@ -143,4 +140,62 @@ static __inline void AIL_update_3D_position(HPROVIDER, F32) {}
 
 // Error string
 static __inline const char* AIL_last_error(void) { return ""; }
+
+// User data on samples/3D objects
+static __inline void AIL_set_sample_user_data(HSAMPLE, U32, S32) {}
+static __inline S32 AIL_sample_user_data(HSAMPLE, U32) { return 0; }
+static __inline void AIL_set_3D_object_user_data(H3DSAMPLE, U32, S32) {}
+static __inline S32 AIL_3D_object_user_data(H3DSAMPLE, U32) { return 0; }
+
+// 3D listener
+static __inline H3DPOBJECT AIL_3D_open_listener(HPROVIDER) { return 0; }
+static __inline void AIL_3D_close_listener(H3DPOBJECT) {}
+static __inline void AIL_set_3D_listener_position(HPROVIDER, F32, F32, F32, F32, F32, F32, F32, F32, F32) {}
+
+// Provider enumeration
+typedef unsigned long HPROENUM;
+#define HPROENUM_FIRST ((HPROENUM)0)
+static __inline S32 AIL_enumerate_3D_providers(HPROENUM*, HPROVIDER*, const char**) { return 0; }
+static __inline S32 AIL_enumerate_filters(HPROENUM*, HPROVIDER*, const char**) { return 0; }
+
+// 3D provider constants
+#define M3D_NOERR 0
+#define AIL_3D_2_SPEAKER 0
+#define AIL_3D_HEADPHONE 1
+#define AIL_3D_4_SPEAKER 2
+
+// File callbacks
+typedef void* (AILCALLBACK *AIL_file_open_callback)(const char*, U32*);
+typedef void (AILCALLBACK *AIL_file_close_callback)(void*);
+typedef S32 (AILCALLBACK *AIL_file_seek_callback)(void*, S32, U32);
+typedef U32 (AILCALLBACK *AIL_file_read_callback)(void*, void*, U32);
+static __inline void AIL_set_file_callbacks(AIL_file_open_callback, AIL_file_close_callback, AIL_file_seek_callback, AIL_file_read_callback) {}
+
+// File seek constants
+#define AIL_FILE_SEEK_BEGIN   0
+#define AIL_FILE_SEEK_CURRENT 1
+#define AIL_FILE_SEEK_END     2
+
+// Timer functions
+static __inline HTIMER AIL_register_timer(void*) { return 0; }
+static __inline void AIL_set_timer_period(HTIMER, U32) {}
+static __inline void AIL_start_timer(HTIMER) {}
+static __inline void AIL_stop_timer(HTIMER) {}
+static __inline void AIL_release_timer_handle(HTIMER) {}
+
+// Const char* provider name
+static __inline const char* AIL_3D_provider_attribute(HPROVIDER, const char*, void*) { return ""; }
+
+// Sample callback
+typedef void (AILCALLBACK *AILSAMPLECB)(HSAMPLE);
+static __inline void AIL_register_EOS_callback(HSAMPLE, AILSAMPLECB) {}
+static __inline void AIL_register_EOF_callback(HSTREAM, void*) {}
+
+// Stream callbacks
+typedef void (AILCALLBACK *AILSTREAMCB)(HSTREAM);
+static __inline void AIL_register_stream_callback(HSTREAM, AILSTREAMCB) {}
+
+// Miscellaneous
+static __inline void AIL_set_3D_provider_preference(HPROVIDER, const char*, void*) {}
+static __inline S32 AIL_3D_provider_attribute(HPROVIDER, const char*) { return 0; }
 

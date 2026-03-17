@@ -70,7 +70,15 @@ enum DrawableID;
 
 #include <algorithm>
 #include <bitset>
+#ifdef _MSC_VER
+#include <unordered_map>
+namespace std {
+  template<class K, class V, class H = std::hash<K>, class E = std::equal_to<K>, class A = std::allocator<std::pair<const K,V>>>
+  using hash_map = std::unordered_map<K, V, H, E, A>;
+}
+#else
 #include <hash_map>
+#endif
 #include <list>
 #include <map>
 #include <queue>
@@ -203,6 +211,10 @@ namespace rts
 
 	template<> struct equal_to<AsciiString>
 	{
+		typedef AsciiString value_type;
+		typedef AsciiString first_argument_type;
+		typedef AsciiString second_argument_type;
+		typedef Bool result_type;
 		Bool operator()(const AsciiString& __t1, const AsciiString& __t2) const
 		{
 			return (__t1 == __t2);
