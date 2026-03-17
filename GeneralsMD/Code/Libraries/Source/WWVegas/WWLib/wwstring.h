@@ -121,8 +121,13 @@ public:
 	bool			Is_Empty (void) const;
 
 	void			Erase (int start_index, int char_count);
+#ifdef _MSC_VER
 	int _cdecl  Format (const TCHAR *format, ...);
 	int _cdecl  Format_Args (const TCHAR *format, const va_list & arg_list );
+#else
+	int  Format (const TCHAR *format, ...);
+	int  Format_Args (const TCHAR *format, const va_list & arg_list );
+#endif
 
 	// Trim leading and trailing whitespace characters (values <= 32)
 	void Trim(void);

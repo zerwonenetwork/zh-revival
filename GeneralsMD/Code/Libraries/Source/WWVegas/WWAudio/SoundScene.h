@@ -161,22 +161,8 @@ class SoundSceneClass
 		//////////////////////////////////////////////////////////////////////		
 		bool						Is_Sound_In_Scene (AudibleSoundClass *sound_obj, bool all = true);
 
-	protected:
-		
 		//////////////////////////////////////////////////////////////////////
-		//	Protected methods
-		//////////////////////////////////////////////////////////////////////
-		virtual void			On_Frame_Update (unsigned int milliseconds = 0);
-		virtual void			Initialize (void);
-
-		virtual bool			Is_Logical_Sound_In_Scene (LogicalSoundClass *sound_obj, bool single_shot = false);
-
-		// Save/load methods
-		virtual void			Save_Static_Sounds (ChunkSaveClass &csave);
-		virtual void			Load_Static_Sounds (ChunkLoadClass &cload);
-
-		//////////////////////////////////////////////////////////////////////
-		//	Collection methods
+		//	Collection methods (public for DEFINE_AUTO_POOL access)
 		//////////////////////////////////////////////////////////////////////		
 		class AudibleInfoClass : public MultiListObjectClass, public AutoPoolClass<AudibleInfoClass, 64>
 		{
@@ -196,6 +182,20 @@ class SoundSceneClass
 		typedef MultiListClass<AudibleInfoClass>	COLLECTED_SOUNDS;
 
 		virtual void			Collect_Audible_Sounds (Listener3DClass *listener, COLLECTED_SOUNDS &list);
+
+	protected:
+
+		//////////////////////////////////////////////////////////////////////
+		//	Protected methods
+		//////////////////////////////////////////////////////////////////////
+		virtual void			On_Frame_Update (unsigned int milliseconds = 0);
+		virtual void			Initialize (void);
+
+		virtual bool			Is_Logical_Sound_In_Scene (LogicalSoundClass *sound_obj, bool single_shot = false);
+
+		// Save/load methods
+		virtual void			Save_Static_Sounds (ChunkSaveClass &csave);
+		virtual void			Load_Static_Sounds (ChunkLoadClass &cload);
 
 	private:
 

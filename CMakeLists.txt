@@ -18,6 +18,7 @@ add_compile_definitions(
     WIN32
     _WINDOWS
     _MBCS
+    _SILENCE_STDEXT_HASH_DEPRECATION_WARNINGS
 )
 
 if(MSVC)

@@ -42,6 +42,10 @@
 #include "mss.h"
 #pragma warning (pop)
 
+#ifndef _WINDOWS_
+#include <windows.h>
+#endif
+
 /////////////////////////////////////////////////////////////////////////////
 //
 // Macros
