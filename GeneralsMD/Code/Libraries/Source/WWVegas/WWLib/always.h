@@ -77,34 +77,30 @@
 
 	#define _OPERATOR_NEW_DEFINED_
 
-	extern void * __cdecl operator new		(size_t size);
-	extern void __cdecl operator delete		(void *p);
-
-	extern void * __cdecl operator new[]	(size_t size);
-	extern void __cdecl operator delete[]	(void *p);
-
-	// additional overloads to account for VC/MFC funky versions
-	extern void* __cdecl operator new			(size_t nSize, const char *, int);
+#if defined(__GNUC__) || (defined(_MSC_VER) && _MSC_VER >= 1900)
+	// Modern compilers: standard <new> provides base operators with correct exception specs.
+	// Only declare our custom debug overloads.
+	#include <new>
+	extern void* __cdecl operator new		(size_t nSize, const char *, int);
 	extern void __cdecl operator delete		(void *, const char *, int);
-
 	extern void* __cdecl operator new[]		(size_t nSize, const char *, int);
 	extern void __cdecl operator delete[]	(void *, const char *, int);
-
-	// additional overloads for 'placement new'
-	//inline void* __cdecl operator new							(size_t s, void *p) { return p; }
-	//inline void __cdecl operator delete						(void *, void *p)		{ }
-	// MSVC 2015+ (vcruntime_new.h) and C++11 standard <new> already provide
-	// placement new[]/delete[] for void*; only define here for older toolchains.
+#else
+	extern void * __cdecl operator new		(size_t size);
+	extern void __cdecl operator delete		(void *p);
+	extern void * __cdecl operator new[]	(size_t size);
+	extern void __cdecl operator delete[]	(void *p);
+	extern void* __cdecl operator new			(size_t nSize, const char *, int);
+	extern void __cdecl operator delete		(void *, const char *, int);
+	extern void* __cdecl operator new[]		(size_t nSize, const char *, int);
+	extern void __cdecl operator delete[]	(void *, const char *, int);
 #if defined(_MSC_VER) && (_MSC_VER < 1900)
 #ifndef __PLACEMENT_VEC_NEW_INLINE
 	#define __PLACEMENT_VEC_NEW_INLINE
 	inline void* __cdecl operator new[]						(size_t s, void *p) { return p; }
 	inline void __cdecl operator delete[]					(void *, void *p)		{ }
 #endif
-#else
-	#include <new> // Use standard placement new/delete
 #endif
-
 #endif
 
 #if (defined(_DEBUG) || defined(_INTERNAL)) 

@@ -90,8 +90,8 @@ Bool DecompressFile		(char *infile, char *outfile)
 
 		for (;;)
 		{
-			ok = LZHLDecompress( decompress, outBlock + rawSize - dstSz, &dstSz, 
-																			 inBlock + compressedSize - srcSz, &srcSz);
+			ok = LZHLDecompress( decompress, (char*)outBlock + rawSize - dstSz, &dstSz, 
+																			 (const char*)inBlock + compressedSize - srcSz, &srcSz);
 
 			if ( !ok )
 				break;
@@ -126,7 +126,7 @@ Bool DecompressFile		(char *infile, char *outfile)
 Bool CompressFile			(char *infile, char *outfile)
 {
 	UnsignedInt	rawSize = 0;
-	UnsignedInt compressedSize = 0, compressed = 0, i = 0;
+	UnsignedInt compressedSize = 0, i = 0;
 	FILE *inFilePtr = NULL;
 	FILE *outFilePtr= NULL;
 	char *inBlock		= NULL;
@@ -165,8 +165,9 @@ Bool CompressFile			(char *infile, char *outfile)
 		for ( i = 0; i < rawSize; i += BLOCKSIZE )
 		{
 			blocklen = min((UnsignedInt)BLOCKSIZE, rawSize - i);
-			compressed = LZHLCompress(compressor, outBlock + compressedSize, inBlock + i, blocklen);
-			compressedSize += compressed;
+			UnsignedInt compressed_block_size = LZHLCompressorCalcMaxBuf(blocklen);
+			LZHLCompress(compressor, outBlock + compressedSize, &compressed_block_size, inBlock + i, blocklen);
+			compressedSize += compressed_block_size;
 		}
 
 		LZHLDestroyCompressor(compressor);
@@ -244,10 +245,10 @@ Bool DecompressMemory		(void *inBufferVoid, Int inSize, void *outBufferVoid, Int
 	// Just Do it!
 	decompress = LZHLCreateDecompressor();
 
-	for (;;)
-	{
-		ok = LZHLDecompress( decompress, outBuffer + rawSize - dstSz, &dstSz, 
-																		 inBuffer + compressedSize - srcSz, &srcSz);
+		for (;;)
+		{
+			ok = LZHLDecompress( decompress, (char*)outBuffer + rawSize - dstSz, &dstSz, 
+																			 (const char*)inBuffer + compressedSize - srcSz, &srcSz);
 
 		if ( !ok )
 			break;
@@ -269,7 +270,7 @@ Bool CompressMemory			(void *inBufferVoid, Int inSize, void *outBufferVoid, Int&
 	UnsignedByte *inBuffer = (UnsignedByte *)inBufferVoid;
 	UnsignedByte *outBuffer = (UnsignedByte *)outBufferVoid;
 	UnsignedInt	rawSize = 0;
-	UnsignedInt compressedSize = 0, compressed = 0, i = 0;
+	UnsignedInt compressedSize = 0, i = 0;
 	LZHL_CHANDLE compressor;
 	UnsignedInt blocklen;
 
@@ -285,8 +286,9 @@ Bool CompressMemory			(void *inBufferVoid, Int inSize, void *outBufferVoid, Int&
 	for ( i = 0; i < rawSize; i += BLOCKSIZE )
 	{
 		blocklen = min((UnsignedInt)BLOCKSIZE, rawSize - i);
-		compressed = LZHLCompress(compressor, outBuffer + compressedSize, inBuffer + i, blocklen);
-		compressedSize += compressed;
+		UnsignedInt compressed_block_size = 0;
+		LZHLCompress(compressor, outBuffer + compressedSize, &compressed_block_size, inBuffer + i, blocklen);
+		compressedSize += compressed_block_size;
 	}
 
 	LZHLDestroyCompressor(compressor);

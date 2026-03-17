@@ -264,6 +264,7 @@ target_include_directories(compression PUBLIC
     ${ZH}/Libraries/Source/Compression
     ${ZH_COMMON_INCLUDES}
 )
+target_link_libraries(compression PUBLIC ZLIB::zlib)
 
 # ─── EABrowserDispatch ───────────────────────
 zh_glob_sources(EABROWSER_SRCS ${ZH}/Libraries/Source/EABrowserDispatch)

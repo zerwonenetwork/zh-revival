@@ -204,6 +204,9 @@ inline int BasicTimerClass<T>::operator () (void) const
 template<class T>
 class TTimerClass : public BasicTimerClass<T> {
  	public:
+		using BasicTimerClass<T>::Started;
+		using BasicTimerClass<T>::Timer;
+
 		// Constructor allows assignment as if class was integral 'long' type.
 		TTimerClass(int set=0);
 		TTimerClass(NoInitClass const & x);
