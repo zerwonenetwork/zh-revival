@@ -3,6 +3,12 @@
 
 // The open-source drop doesn't ship Miles SDK headers. Stub mode compiles without audio backend.
 
+// Pull in Windows types so LPWAVEFORMAT, CRITICAL_SECTION, etc. are available
+#ifndef _WINDOWS_
+#include <windows.h>
+#endif
+#include <mmsystem.h>
+
 typedef unsigned long HPROVIDER;
 typedef unsigned long HSAMPLE;
 typedef unsigned long HSTREAM;
@@ -150,13 +156,12 @@ static __inline S32 AIL_3D_object_user_data(H3DSAMPLE, U32) { return 0; }
 // 3D listener
 static __inline H3DPOBJECT AIL_3D_open_listener(HPROVIDER) { return 0; }
 static __inline void AIL_3D_close_listener(H3DPOBJECT) {}
-static __inline void AIL_set_3D_listener_position(HPROVIDER, F32, F32, F32, F32, F32, F32, F32, F32, F32) {}
 
 // Provider enumeration
 typedef unsigned long HPROENUM;
 #define HPROENUM_FIRST ((HPROENUM)0)
-static __inline S32 AIL_enumerate_3D_providers(HPROENUM*, HPROVIDER*, const char**) { return 0; }
-static __inline S32 AIL_enumerate_filters(HPROENUM*, HPROVIDER*, const char**) { return 0; }
+static __inline S32 AIL_enumerate_3D_providers(HPROENUM*, HPROVIDER*, char**) { return 0; }
+static __inline S32 AIL_enumerate_filters(HPROENUM*, HPROVIDER*, char**) { return 0; }
 
 // 3D provider constants
 #define M3D_NOERR 0
@@ -198,4 +203,31 @@ static __inline void AIL_register_stream_callback(HSTREAM, AILSTREAMCB) {}
 // Miscellaneous
 static __inline void AIL_set_3D_provider_preference(HPROVIDER, const char*, void*) {}
 static __inline S32 AIL_3D_provider_attribute(HPROVIDER, const char*) { return 0; }
+
+// Named sample file loading
+static __inline S32 AIL_set_named_sample_file(HSAMPLE, const char*, const void*, S32, S32) { return 0; }
+
+// Sample loop count getter
+static __inline S32 AIL_sample_loop_count(HSAMPLE) { return 0; }
+
+// Sample ms position
+static __inline void AIL_set_sample_ms_position(HSAMPLE, S32) {}
+static __inline void AIL_sample_ms_position(HSAMPLE, S32*, S32*) {}
+
+// Stream sample rate
+static __inline void AIL_set_stream_ms_position(HSTREAM, S32) {}
+static __inline S32 AIL_stream_ms_position(HSTREAM) { return 0; }
+
+// 3D sample file
+static __inline void AIL_set_3D_sample_file(H3DSAMPLE, const void*) {}
+static __inline void AIL_set_3D_sample_playback_rate(H3DSAMPLE, S32) {}
+static __inline S32 AIL_3D_sample_playback_rate(H3DSAMPLE) { return 0; }
+static __inline void AIL_set_3D_sample_loop_count(H3DSAMPLE, S32) {}
+static __inline S32 AIL_3D_sample_loop_count(H3DSAMPLE) { return 0; }
+static __inline void AIL_set_3D_sample_ms_position(H3DSAMPLE, S32) {}
+static __inline void AIL_3D_sample_ms_position(H3DSAMPLE, S32*, S32*) {}
+
+// Reverb
+static __inline void AIL_set_3D_room_type(HPROVIDER, S32) {}
+static __inline S32 AIL_3D_room_type(HPROVIDER) { return 0; }
 
