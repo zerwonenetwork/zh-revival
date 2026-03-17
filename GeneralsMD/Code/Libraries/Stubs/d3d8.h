@@ -191,27 +191,48 @@ typedef int D3DTEXTURESTAGESTATETYPE;
 // Adapter
 #define D3DADAPTER_DEFAULT 0
 
-// Dummy interface method sets (only signatures used by compilation)
+// Dummy interfaces (only signatures used by compilation)
+#ifdef __cplusplus
 struct IDirect3D8 {
-  HRESULT (/*STDMETHODCALLTYPE*/ *GetDeviceCaps)(IDirect3D8*, unsigned int, unsigned int, D3DCAPS8*);
-  HRESULT (*GetAdapterIdentifier)(IDirect3D8*, unsigned int, unsigned int, D3DADAPTER_IDENTIFIER8*);
-  unsigned int (*GetAdapterCount)(IDirect3D8*);
-  unsigned int (*GetAdapterModeCount)(IDirect3D8*, unsigned int);
-  HRESULT (*EnumAdapterModes)(IDirect3D8*, unsigned int, unsigned int, D3DDISPLAYMODE*);
-  HRESULT (*GetAdapterDisplayMode)(IDirect3D8*, unsigned int, D3DDISPLAYMODE*);
-  HRESULT (*CheckDeviceFormat)(IDirect3D8*, unsigned int, unsigned int, unsigned int, unsigned int, unsigned int, unsigned int);
-  HRESULT (*CheckDepthStencilMatch)(IDirect3D8*, unsigned int, unsigned int, unsigned int, unsigned int, unsigned int);
-  HRESULT (*CreateDevice)(IDirect3D8*, unsigned int, unsigned int, void*, unsigned long, D3DPRESENT_PARAMETERS*, IDirect3DDevice8**);
-  ULONG (*Release)(IDirect3D8*);
+  virtual HRESULT GetDeviceCaps(unsigned int, unsigned int, D3DCAPS8*) = 0;
+  virtual HRESULT GetAdapterIdentifier(unsigned int, unsigned int, D3DADAPTER_IDENTIFIER8*) = 0;
+  virtual unsigned int GetAdapterCount() = 0;
+  virtual unsigned int GetAdapterModeCount(unsigned int) = 0;
+  virtual HRESULT EnumAdapterModes(unsigned int, unsigned int, D3DDISPLAYMODE*) = 0;
+  virtual HRESULT GetAdapterDisplayMode(unsigned int, D3DDISPLAYMODE*) = 0;
+  virtual HRESULT CheckDeviceFormat(unsigned int, unsigned int, unsigned int, unsigned int, unsigned int, unsigned int) = 0;
+  virtual HRESULT CheckDepthStencilMatch(unsigned int, unsigned int, unsigned int, unsigned int, unsigned int) = 0;
+  virtual HRESULT CreateDevice(unsigned int, unsigned int, void*, unsigned long, D3DPRESENT_PARAMETERS*, IDirect3DDevice8**) = 0;
+  virtual ULONG Release() = 0;
 };
 
+typedef int BOOL;
+typedef DWORD D3DCOLOR;
+
+// Minimal render state ids used by wrapper code
+#define D3DRS_FOGSTART 0
+#define D3DRS_FOGEND   0
+#define D3DRS_AMBIENT  0
+
 struct IDirect3DDevice8 {
-  HRESULT (*TestCooperativeLevel)(IDirect3DDevice8*);
-  HRESULT (*Reset)(IDirect3DDevice8*, D3DPRESENT_PARAMETERS*);
-  HRESULT (*Present)(IDirect3DDevice8*, const void*, const void*, void*, const void*);
-  HRESULT (*SetVertexShader)(IDirect3DDevice8*, DWORD);
-  HRESULT (*SetPixelShader)(IDirect3DDevice8*, DWORD);
+  virtual HRESULT TestCooperativeLevel() = 0;
+  virtual HRESULT Reset(D3DPRESENT_PARAMETERS*) = 0;
+  virtual HRESULT Present(const void*, const void*, void*, const void*) = 0;
+  virtual HRESULT SetVertexShader(DWORD) = 0;
+  virtual HRESULT SetPixelShader(DWORD) = 0;
+  virtual HRESULT SetVertexShaderConstant(DWORD, const void*, DWORD) = 0;
+  virtual HRESULT SetPixelShaderConstant(DWORD, const void*, DWORD) = 0;
+  virtual HRESULT SetTransform(D3DTRANSFORMSTATETYPE, const D3DMATRIX*) = 0;
+  virtual HRESULT GetTransform(D3DTRANSFORMSTATETYPE, D3DMATRIX*) = 0;
+  virtual HRESULT SetMaterial(const D3DMATERIAL8*) = 0;
+  virtual HRESULT SetLight(DWORD, const D3DLIGHT8*) = 0;
+  virtual HRESULT LightEnable(DWORD, BOOL) = 0;
+  virtual HRESULT SetRenderState(D3DRENDERSTATETYPE, DWORD) = 0;
+  virtual HRESULT SetClipPlane(DWORD, const float*) = 0;
+  virtual HRESULT SetTextureStageState(DWORD, D3DTEXTURESTAGESTATETYPE, DWORD) = 0;
+  virtual HRESULT SetTexture(DWORD, IDirect3DBaseTexture8*) = 0;
 };
+#endif
 
 #ifdef __cplusplus
 } // extern "C"
