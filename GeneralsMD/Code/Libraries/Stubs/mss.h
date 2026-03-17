@@ -3,13 +3,13 @@
 
 // The open-source drop doesn't ship Miles SDK headers. Stub mode compiles without audio backend.
 
-typedef void* HPROVIDER;
-typedef void* HSAMPLE;
-typedef void* HSTREAM;
-typedef void* HDIGDRIVER;
-typedef void* HMDIDRIVER;
-typedef void* H3DSAMPLE;
-typedef void* H3DPOBJECT;
+typedef unsigned long HPROVIDER;
+typedef unsigned long HSAMPLE;
+typedef unsigned long HSTREAM;
+typedef unsigned long HDIGDRIVER;
+typedef unsigned long HMDIDRIVER;
+typedef unsigned long H3DSAMPLE;
+typedef unsigned long H3DPOBJECT;
 typedef unsigned int HTIMER;
 
 typedef int S32;
@@ -17,9 +17,6 @@ typedef unsigned int U32;
 typedef float F32;
 
 typedef void* LPWAVEFORMAT;
-
-typedef void* MILES_HANDLE;
-#define INVALID_MILES_HANDLE ((MILES_HANDLE)0)
 
 #define DP_FILTER 0
 
