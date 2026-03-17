@@ -15,7 +15,7 @@
 - [x] P1-05 — HKLM to HKCU registry migration — completed 2026-03-17
 - [x] P1-06 — Fix R4: particle accumulation crash (Win+L) — completed 2026-03-17
 - [x] P1-07 — Fix R2: Alt-Tab / fullscreen device loss crash — completed 2026-03-17
-- [ ] P1-08 — Fix R1: Startup Serious Error / DirectX init failure
+- [x] P1-08 — Fix R1: Startup Serious Error / DirectX init failure — completed 2026-03-17
 - [ ] P1-09 — Fix R5: Large-match pathfinder crash
 - [ ] P1-10 — Fix R3: Audio loss after minimize
 - [ ] P1-11 — Remove superfluous CD/DRM checks
@@ -75,3 +75,4 @@
 | 2026-03-17 | P1-05 HKLM→HKCU registry | task/P1-05-hkcu | done | registry.cpp reads HKCU-first; added missing SetStringInRegistry/SetUnsignedIntInRegistry writing to HKCU; fixed autorun.cpp + wolInit.cpp |
 | 2026-03-17 | P1-06 particle Win+L crash | task/P1-06-particle-crash | done | Added Display::isDeviceLost() virtual, W3DDisplay::isDeviceLost() via DX8Wrapper; ParticleSystemManager::update() skips when device lost |
 | 2026-03-17 | P1-07 Alt-Tab device loss crash | task/P1-07-alttab-crash | done | Fixed DX8Wrapper::Reset_Device() to check TestCooperativeLevel BEFORE releasing resources; early-exit on D3DERR_DEVICELOST prevents broken half-freed state that crashed on next draw |
+| 2026-03-17 | P1-08 DirectX init “Serious Error” | task/P1-07-alttab-crash | done | Improved DX8Wrapper startup robustness: added detailed logging for D3D8 load/Create8 failures and added CreateDevice retry/fallback strategy (software VP, D16 Z, default adapter) to reduce startup initialization failures on modern drivers |
