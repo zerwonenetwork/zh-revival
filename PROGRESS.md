@@ -9,7 +9,7 @@
 
 ## Phase 1 — Stability (Weeks 1–10)
 - [x] P1-01 — CMake build system migration — completed 2026-03-17
-- [ ] P1-02 — vcpkg dependency manifest
+- [x] P1-02 — vcpkg dependency manifest — completed 2026-03-17
 - [ ] P1-03 — Dependency stubs (Miles, Bink, SafeDisc, GameSpy)
 - [ ] P1-04 — GitHub Actions CI pipeline
 - [ ] P1-05 — HKLM to HKCU registry migration
@@ -69,3 +69,4 @@
 | Date | Task | Branch | Status | Notes |
 |------|------|--------|--------|-------|
 | 2026-03-17 | P1-01 CMake migration | task/P1-01-cmake | done | CMakeLists.txt at repo root, targets GeneralsMD (Zero Hour) |
+| 2026-03-17 | P1-02 vcpkg manifest | task/P1-02-vcpkg | done | vcpkg.json (zlib only vcpkg dep), DEPENDENCIES.md (full inventory) |
