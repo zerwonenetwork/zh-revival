@@ -23,6 +23,22 @@ typedef void* LPWAVEFORMAT;
 static __inline void AIL_set_sample_processor(HSAMPLE, int, HPROVIDER) {}
 static __inline void AIL_set_filter_sample_preference(HSAMPLE, const char*, const void*) {}
 
+static __inline void AIL_set_3D_position(H3DSAMPLE, F32, F32, F32) {}
+static __inline void AIL_set_3D_orientation(H3DSAMPLE, F32, F32, F32, F32, F32, F32) {}
+
+#ifndef WAVE_FORMAT_IMA_ADPCM
+#define WAVE_FORMAT_IMA_ADPCM 0x0011
+#endif
+
+typedef struct AILSOUNDINFO {
+  S32 format;
+  S32 rate;
+  S32 bits;
+  S32 channels;
+} AILSOUNDINFO;
+
+static __inline S32 AIL_WAV_info(void*, AILSOUNDINFO*) { return 0; }
+
 #ifndef AILCALLBACK
   #if defined(_MSC_VER)
     #define AILCALLBACK __cdecl

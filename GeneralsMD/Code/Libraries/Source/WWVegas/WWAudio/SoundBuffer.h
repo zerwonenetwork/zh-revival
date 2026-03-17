@@ -46,6 +46,7 @@
 #include "mss.h"
 #pragma warning (pop)
 
+#include "win.h"
 #include "RefCount.H"
 
 
