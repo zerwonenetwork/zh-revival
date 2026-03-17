@@ -1,0 +1,202 @@
+# ci-release.yml — zh-revival release pipeline
+#
+# Triggers on tag pushes matching v*.*.* (e.g. v0.1-stability, v1.0-revival).
+# Steps:
+#   1. Build Windows x86 Release binary (same process as ci-build.yml)
+#   2. Sign the binary with signtool using the certificate stored in
+#      ${{ secrets.SIGN_CERT }} (base64-encoded PFX) and the password in
+#      ${{ secrets.SIGN_CERT_PASSWORD }}.
+#      If the secret is absent (forks / unsigned builds) signing is skipped
+#      with a warning — the unsigned binary is still uploaded.
+#   3. Create a GitHub Release and attach the signed artifact.
+#
+# Required repository secrets (Settings → Secrets → Actions):
+#   SIGN_CERT          — base64-encoded PFX certificate file
+#   SIGN_CERT_PASSWORD — password for the PFX file
+#
+# Never put secret values inline in this file.
+#
+# This project is not affiliated with or endorsed by Electronic Arts.
+# Command & Conquer is a trademark of Electronic Arts.
+# You must own the original game to use this software.
+
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+# Only one release job should run at a time for a given tag.
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Build, Sign & Release
+    runs-on: windows-2022
+
+    permissions:
+      contents: write   # needed to create the GitHub Release
+
+    env:
+      VCPKG_ROOT: ${{ github.workspace }}/vcpkg
+      VCPKG_DEFAULT_BINARY_CACHE: ${{ github.workspace }}/.vcpkg-cache
+      # Tag name without the leading 'refs/tags/'
+      RELEASE_TAG: ${{ github.ref_name }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # ── vcpkg ─────────────────────────────────────────────────────────────
+      - name: Cache vcpkg binary cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.VCPKG_DEFAULT_BINARY_CACHE }}
+          key: vcpkg-release-win-x86-${{ hashFiles('vcpkg.json') }}
+          restore-keys: vcpkg-release-win-x86-
+
+      - name: Bootstrap vcpkg
+        shell: pwsh
+        run: |
+          git clone --depth=1 https://github.com/microsoft/vcpkg.git $env:VCPKG_ROOT
+          & "$env:VCPKG_ROOT/bootstrap-vcpkg.bat" -disableMetrics
+          New-Item -ItemType Directory -Force $env:VCPKG_DEFAULT_BINARY_CACHE | Out-Null
+
+      - name: Install vcpkg dependencies
+        shell: pwsh
+        run: |
+          & "$env:VCPKG_ROOT/vcpkg.exe" install --triplet x86-windows `
+            --vcpkg-root $env:VCPKG_ROOT
+
+      # ── CMake configure & build ───────────────────────────────────────────
+      - name: Configure (CMake Release)
+        shell: pwsh
+        run: |
+          cmake -B build -S . `
+            -G "Visual Studio 17 2022" -A Win32 `
+            --toolchain "$env:VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" `
+            -DVCPKG_TARGET_TRIPLET=x86-windows `
+            -DZH_USE_STUBS=ON `
+            -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build (Release)
+        shell: pwsh
+        run: |
+          cmake --build build --config Release --parallel
+
+      # ── Embed build hash ──────────────────────────────────────────────────
+      # Record the SHA of the binary in a companion file so downstream tools
+      # (P2-08 version CRC enforcement) can verify binary integrity.
+      - name: Record build hash
+        shell: pwsh
+        run: |
+          $exe = "GeneralsMD/Run/zh-revival.exe"
+          $hash = (Get-FileHash $exe -Algorithm SHA256).Hash.ToLower()
+          $tag  = $env:RELEASE_TAG
+          $out  = "GeneralsMD/Run/zh-revival-$tag.sha256"
+          "$hash  zh-revival.exe" | Set-Content -Encoding ASCII $out
+          Write-Host "Build hash: $hash"
+
+      # ── Code signing (optional) ───────────────────────────────────────────
+      # Signing uses the SIGN_CERT and SIGN_CERT_PASSWORD repository secrets.
+      # If those secrets are absent (e.g. in a fork) the step is skipped and
+      # a warning is printed.  The unsigned binary is still published.
+      - name: Sign binary (if certificate available)
+        shell: pwsh
+        env:
+          SIGN_CERT:          ${{ secrets.SIGN_CERT }}
+          SIGN_CERT_PASSWORD: ${{ secrets.SIGN_CERT_PASSWORD }}
+        run: |
+          if (-not $env:SIGN_CERT) {
+            Write-Warning "SIGN_CERT secret is not set — skipping code signing."
+            Write-Warning "The released binary will be unsigned."
+            exit 0
+          }
+
+          # Decode the base64-encoded PFX to a temp file
+          $pfxPath = [System.IO.Path]::GetTempFileName() + ".pfx"
+          [System.IO.File]::WriteAllBytes(
+            $pfxPath,
+            [System.Convert]::FromBase64String($env:SIGN_CERT)
+          )
+
+          # Locate signtool from the Windows SDK
+          $signtool = (Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\bin" `
+            -Recurse -Filter signtool.exe |
+            Sort-Object FullName -Descending |
+            Select-Object -First 1).FullName
+
+          if (-not $signtool) {
+            Write-Warning "signtool.exe not found — skipping code signing."
+            Remove-Item $pfxPath -Force
+            exit 0
+          }
+
+          $exe = "GeneralsMD/Run/zh-revival.exe"
+          & $signtool sign `
+            /f  $pfxPath `
+            /p  $env:SIGN_CERT_PASSWORD `
+            /fd SHA256 `
+            /tr http://timestamp.digicert.com `
+            /td SHA256 `
+            /d  "zh-revival" `
+            $exe
+
+          # Securely remove the temp PFX
+          Remove-Item $pfxPath -Force
+
+          Write-Host "Binary signed successfully."
+
+      # ── Package release archive ───────────────────────────────────────────
+      - name: Package release zip
+        shell: pwsh
+        run: |
+          $tag = $env:RELEASE_TAG
+          $dir = "release-staging"
+          New-Item -ItemType Directory -Force $dir | Out-Null
+
+          Copy-Item "GeneralsMD/Run/zh-revival.exe"      "$dir/"
+          Copy-Item "GeneralsMD/Run/zh-revival-$tag.sha256" "$dir/"
+          Copy-Item "README.md"   "$dir/" -ErrorAction SilentlyContinue
+          Copy-Item "BUILDING.md" "$dir/" -ErrorAction SilentlyContinue
+
+          $zipName = "zh-revival-$tag-windows-x86.zip"
+          Compress-Archive -Path "$dir/*" -DestinationPath $zipName
+          Write-Host "Created $zipName"
+
+      # ── Create GitHub Release ─────────────────────────────────────────────
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name:   ${{ env.RELEASE_TAG }}
+          name:       "zh-revival ${{ env.RELEASE_TAG }}"
+          draft:      false
+          prerelease: ${{ contains(env.RELEASE_TAG, '-') }}
+          body: |
+            ## zh-revival ${{ env.RELEASE_TAG }}
+
+            Windows x86 build of zh-revival — a community revival of Zero Hour.
+
+            **Requirements:**
+            - A legal installation of Command & Conquer: Generals — Zero Hour
+              (Steam, EA App, or retail)
+            - Windows 10 or later (x86 or x64)
+            - DirectX 8 / d3d8.dll (see BUILDING.md for details)
+
+            **SHA-256 of zh-revival.exe** is included in the `.sha256` file.
+
+            ---
+            > This project is not affiliated with or endorsed by Electronic Arts.
+            > Command & Conquer is a trademark of Electronic Arts.
+            > You must own the original game to use this software.
+            > Released under the GNU General Public License v3.
+          files: |
+            zh-revival-${{ env.RELEASE_TAG }}-windows-x86.zip
+            GeneralsMD/Run/zh-revival-${{ env.RELEASE_TAG }}.sha256
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

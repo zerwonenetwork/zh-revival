@@ -86,6 +86,10 @@ public:
 	virtual UnsignedInt getBitDepth( void ) { return m_bitDepth; }
 	virtual void setWindowed( Bool windowed ) { m_windowed = windowed; }  ///< set windowd/fullscreen flag
 	virtual Bool getWindowed( void ) { return m_windowed; }				///< return widowed/fullscreen flag
+	/// P1-06: Returns TRUE when the D3D device is non-cooperative (lost).
+	/// Default is FALSE; overridden by W3DDisplay to query DX8Wrapper.
+	/// Used by ParticleSystemManager to pause emission while screen is locked.
+	virtual Bool isDeviceLost( void ) const { return FALSE; }
 	virtual Bool setDisplayMode( UnsignedInt xres, UnsignedInt yres, UnsignedInt bitdepth, Bool windowed );	///<sets screen resolution/mode
 	virtual Int getDisplayModeCount(void) {return 0;}	///<return number of display modes/resolutions supported by video card.
 	virtual void getDisplayModeDescription(Int modeIndex, Int *xres, Int *yres, Int *bitDepth) {}	///<return description of mode

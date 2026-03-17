@@ -68,7 +68,7 @@ char g_generalsSerial[1024];
 
 void getPathsFromRegistry( void )
 {
-	HKEY handle;
+	HKEY handle = NULL;  // P1-05: initialise so HKCU-first fallback checks are safe
 	unsigned long type;
 	unsigned long size;
 	int returnValue;
@@ -76,7 +76,10 @@ void getPathsFromRegistry( void )
 	size = sizeof(g_generalsFilename);
 	strcpy(g_generalsFilename, "No install path in registry");
 
-	if (RegOpenKeyEx( HKEY_LOCAL_MACHINE, GENERALS_REG_KEY_PATH, 0, KEY_ALL_ACCESS, &handle ) == ERROR_SUCCESS) {
+	// P1-05: try HKCU first (digital installs), then fall back to HKLM.
+	if (RegOpenKeyEx( HKEY_CURRENT_USER, GENERALS_REG_KEY_PATH, 0, KEY_READ, &handle ) != ERROR_SUCCESS)
+		RegOpenKeyEx( HKEY_LOCAL_MACHINE, GENERALS_REG_KEY_PATH, 0, KEY_READ, &handle );
+	if (handle != NULL) {
 
 		returnValue = RegQueryValueEx(handle, GENERALS_REG_KEY_INSTALLPATH, NULL, &type, (unsigned char *) &g_generalsFilename, &size);
 
@@ -86,12 +89,16 @@ void getPathsFromRegistry( void )
 		}
 
 		RegCloseKey( handle );
+		handle = NULL;
 	}
 
 	size = sizeof(g_generalsSerial);
 	strcpy(g_generalsSerial, "0");
 
-	if (RegOpenKeyEx( HKEY_LOCAL_MACHINE, GENERALS_REG_KEY_PATH, 0, KEY_ALL_ACCESS, &handle ) == ERROR_SUCCESS) {
+	// P1-05: try HKCU first (digital installs), then fall back to HKLM.
+	if (RegOpenKeyEx( HKEY_CURRENT_USER, GENERALS_REG_KEY_PATH, 0, KEY_READ, &handle ) != ERROR_SUCCESS)
+		RegOpenKeyEx( HKEY_LOCAL_MACHINE, GENERALS_REG_KEY_PATH, 0, KEY_READ, &handle );
+	if (handle != NULL) {
 
 		returnValue = RegQueryValueEx(handle, GENERALS_REG_KEY_SERIAL, NULL, &type, (unsigned char *) &g_generalsSerial, &size);
 
@@ -101,13 +108,17 @@ void getPathsFromRegistry( void )
 		}
 
 		RegCloseKey( handle );
+		handle = NULL;
 	}
 
 	size = sizeof(g_wolapiRegFilename);
 	strcpy(g_wolapiRegFilename, "No install path in registry");
 	g_wolapiInstalled = true;
 
-	if (RegOpenKeyEx( HKEY_LOCAL_MACHINE, WOLAPI_REG_KEY_PATH, 0, KEY_ALL_ACCESS, &handle ) == ERROR_SUCCESS) {
+	// P1-05: try HKCU first, then fall back to HKLM.
+	if (RegOpenKeyEx( HKEY_CURRENT_USER, WOLAPI_REG_KEY_PATH, 0, KEY_READ, &handle ) != ERROR_SUCCESS)
+		RegOpenKeyEx( HKEY_LOCAL_MACHINE, WOLAPI_REG_KEY_PATH, 0, KEY_READ, &handle );
+	if (handle != NULL) {
 
 		returnValue = RegQueryValueEx(handle, WOLAPI_REG_KEY_INSTALLPATH, NULL, &type, (unsigned char *) &g_wolapiRegFilename, &size);
 
@@ -118,6 +129,7 @@ void getPathsFromRegistry( void )
 		}
 
 		RegCloseKey( handle );
+		handle = NULL;
 	}
 
 	size = sizeof(g_wolapiRealFilename);
@@ -144,7 +156,8 @@ void setupGenerals( const char *genPath, const char *genSerial )
 	unsigned long returnValue;
 	int size;
 
-	if (RegCreateKeyEx( HKEY_LOCAL_MACHINE, GENERALS_REG_KEY_PATH, 0, "REG_NONE", REG_OPTION_NON_VOLATILE, KEY_ALL_ACCESS, NULL, &handle, NULL ) == ERROR_SUCCESS) {
+	// P1-05: write to HKCU — no admin rights required on Windows 10+.
+	if (RegCreateKeyEx( HKEY_CURRENT_USER, GENERALS_REG_KEY_PATH, 0, "REG_NONE", REG_OPTION_NON_VOLATILE, KEY_ALL_ACCESS, NULL, &handle, NULL ) == ERROR_SUCCESS) {
 
 		type = REG_SZ;
 		size = strlen(genPath)+1;

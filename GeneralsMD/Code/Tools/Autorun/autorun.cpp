@@ -1269,7 +1269,11 @@ BOOL MainWindow::Is_Product_Registered( void )
 	//--------------------------------------------------------------------------
 	// Try to open the key.
 	//--------------------------------------------------------------------------
-	if ( RegOpenKeyEx( HKEY_LOCAL_MACHINE, key, 0, KEY_QUERY_VALUE, &phKey ) == ERROR_SUCCESS ) {
+	// P1-05: try HKCU first (Steam / EA App digital installs don't write to HKLM),
+	// then fall back to HKLM for existing physical / legacy installs.
+	if ( RegOpenKeyEx( HKEY_CURRENT_USER, key, 0, KEY_QUERY_VALUE, &phKey ) != ERROR_SUCCESS )
+		RegOpenKeyEx( HKEY_LOCAL_MACHINE, key, 0, KEY_QUERY_VALUE, &phKey );
+	if ( phKey != NULL ) {
 
 		//-----------------------------------------------------------------------
 		// Get Full path\filename of product to execute ("Play").
@@ -5290,14 +5294,14 @@ unsigned int LaunchObjectClass::Launch ( void )
 void Debug_Date_And_Time_Stamp ( void )
 {
 	//-------------------------------------------------------------------------
-	//	tm_sec	- Seconds after minute (0 – 59)
-	//	tm_min	- Minutes after hour (0 – 59)
-	//	tm_hour	- Hours after midnight (0 – 23)
-	//	tm_mday	- Day of month (1 – 31)
-	//	tm_mon	- Month (0 – 11; January = 0)
+	//	tm_sec	- Seconds after minute (0 ï¿½ 59)
+	//	tm_min	- Minutes after hour (0 ï¿½ 59)
+	//	tm_hour	- Hours after midnight (0 ï¿½ 23)
+	//	tm_mday	- Day of month (1 ï¿½ 31)
+	//	tm_mon	- Month (0 ï¿½ 11; January = 0)
 	//	tm_year	- Year (current year minus 1900)
-	//	tm_wday	- Day of week (0 – 6; Sunday = 0)
-	//	tm_yday	- Day of year (0 – 365; January 1 = 0)
+	//	tm_wday	- Day of week (0 ï¿½ 6; Sunday = 0)
+	//	tm_yday	- Day of year (0 ï¿½ 365; January 1 = 0)
 	//-------------------------------------------------------------------------
 	static char *Month_Strings[ 12 ] = {
 		"January",

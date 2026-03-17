@@ -10,10 +10,10 @@
 ## Phase 1 — Stability (Weeks 1–10)
 - [x] P1-01 — CMake build system migration — completed 2026-03-17
 - [x] P1-02 — vcpkg dependency manifest — completed 2026-03-17
-- [ ] P1-03 — Dependency stubs (Miles, Bink, SafeDisc, GameSpy)
-- [ ] P1-04 — GitHub Actions CI pipeline
-- [ ] P1-05 — HKLM to HKCU registry migration
-- [ ] P1-06 — Fix R4: particle accumulation crash (Win+L)
+- [x] P1-03 — Dependency stubs (Miles, Bink, SafeDisc, GameSpy) — completed 2026-03-17
+- [x] P1-04 — GitHub Actions CI pipeline — completed 2026-03-17
+- [x] P1-05 — HKLM to HKCU registry migration — completed 2026-03-17
+- [x] P1-06 — Fix R4: particle accumulation crash (Win+L) — completed 2026-03-17
 - [ ] P1-07 — Fix R2: Alt-Tab / fullscreen device loss crash
 - [ ] P1-08 — Fix R1: Startup Serious Error / DirectX init failure
 - [ ] P1-09 — Fix R5: Large-match pathfinder crash
@@ -70,3 +70,7 @@
 |------|------|--------|--------|-------|
 | 2026-03-17 | P1-01 CMake migration | task/P1-01-cmake | done | CMakeLists.txt at repo root, targets GeneralsMD (Zero Hour) |
 | 2026-03-17 | P1-02 vcpkg manifest | task/P1-02-vcpkg | done | vcpkg.json (zlib only vcpkg dep), DEPENDENCIES.md (full inventory) |
+| 2026-03-17 | P1-03 dependency stubs | task/P1-03-stubs | done | MilesSoundStub.h, BinkVideoStub.h, SafeDiscStub.h, GameSpyStub.h + forwarding headers + CMake ZH_USE_STUBS option |
+| 2026-03-17 | P1-04 CI pipeline | task/P1-04-ci | done | ci-build.yml (Windows MSVC + Linux GCC cross), ci-release.yml (sign + GitHub Release), mingw32.cmake toolchain |
+| 2026-03-17 | P1-05 HKLM→HKCU registry | task/P1-05-hkcu | done | registry.cpp reads HKCU-first; added missing SetStringInRegistry/SetUnsignedIntInRegistry writing to HKCU; fixed autorun.cpp + wolInit.cpp |
+| 2026-03-17 | P1-06 particle Win+L crash | task/P1-06-particle-crash | done | Added Display::isDeviceLost() virtual, W3DDisplay::isDeviceLost() via DX8Wrapper; ParticleSystemManager::update() skips when device lost |

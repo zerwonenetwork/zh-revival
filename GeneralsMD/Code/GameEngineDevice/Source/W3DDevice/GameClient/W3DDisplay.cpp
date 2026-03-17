@@ -576,6 +576,14 @@ void Reset_D3D_Device(bool active)
 	}
 }
 
+// P1-06: Expose D3D device-lost state to the engine layer so ParticleSystemManager
+// (and any other client-side system) can pause emission while the device is
+// non-cooperative (screen locked via Win+L, Alt-Tab in fullscreen, etc.).
+Bool W3DDisplay::isDeviceLost( void ) const
+{
+	return DX8Wrapper::Is_Device_Lost() ? TRUE : FALSE;
+}
+
 /** Set resolution of display */
 //=============================================================================
 Bool W3DDisplay::setDisplayMode( UnsignedInt xres, UnsignedInt yres, UnsignedInt bitdepth, Bool windowed )
