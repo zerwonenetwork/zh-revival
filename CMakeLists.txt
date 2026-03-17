@@ -258,13 +258,14 @@ else()
 endif()
 
 # ─── Compression ─────────────────────────────
+find_package(ZLIB REQUIRED)
 zh_glob_sources(COMPRESSION_SRCS ${ZH}/Libraries/Source/Compression)
 add_library(compression STATIC ${COMPRESSION_SRCS})
 target_include_directories(compression PUBLIC
     ${ZH}/Libraries/Source/Compression
     ${ZH_COMMON_INCLUDES}
 )
-target_link_libraries(compression PUBLIC ZLIB::zlib)
+target_link_libraries(compression PUBLIC ZLIB::ZLIB)
 
 # ─── EABrowserDispatch ───────────────────────
 zh_glob_sources(EABROWSER_SRCS ${ZH}/Libraries/Source/EABrowserDispatch)
