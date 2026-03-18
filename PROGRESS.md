@@ -86,5 +86,6 @@
 | 2026-03-17 | P1-10 audio loss after minimize    | task/P1-07-alttab-crash   | done   | On focus regain, AudioManager now pauses on focus loss then reopens the audio device + resumes playback to recover from legacy backend/device context loss after minimize/restore                                                              |
 | 2026-03-17 | P1-11 remove CD/DRM checks         | task/P1-07-alttab-crash   | done   | Removed hard-fail startup gating on legacy copy-protection launcher presence/notify; game now logs and continues on modern installs without SafeDisc wrapper                                                                                   |
 | 2026-03-17 | P1-12 BUILDING.md                  | task/P1-07-alttab-crash   | done   | Added BUILDING.md with modern CMake + vcpkg Windows build instructions, stub mode notes, and DXSDK_LIB_DIR guidance                                                                                                                            |
+| 2026-03-17 | CI stabilisation (multi-pass)      | main (direct)             | done   | 35+ CI-fix commits resolving MSVC/GCC errors: AIL stubs, D3D8 stubs, hash_map→unordered_map, template typename, for-loop scope, qualified-name C4596, BitTest redefinition, D3DTEXF/D3DTSS constants, D3dx8 stubs, point.h case rename for Linux |
 
 

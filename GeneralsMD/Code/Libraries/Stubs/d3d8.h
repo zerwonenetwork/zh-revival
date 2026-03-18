@@ -64,6 +64,9 @@ typedef struct _D3DCAPS8 {
   DWORD MaxVertexShaderConst;
   DWORD PixelShaderVersion;
   float MaxPixelShaderValue;
+  // Texture filter capabilities — used by TextureFilterClass
+  DWORD TextureFilterCaps;
+  DWORD MaxAnisotropy;
 } D3DCAPS8;
 
 typedef struct _D3DADAPTER_IDENTIFIER8 {
@@ -293,11 +296,38 @@ typedef DWORD D3DCOLOR;
 #define D3DTSS_BUMPENVMAT10         9
 #define D3DTSS_BUMPENVMAT11         10
 #define D3DTSS_TEXCOORDINDEX        11
+#define D3DTSS_ADDRESSU             13
+#define D3DTSS_ADDRESSV             14
+#define D3DTSS_BORDERCOLOR          15
+#define D3DTSS_MAGFILTER            16
+#define D3DTSS_MINFILTER            17
+#define D3DTSS_MIPFILTER            18
+#define D3DTSS_MIPMAPLODBIAS        19
+#define D3DTSS_MAXMIPLEVEL          20
+#define D3DTSS_MAXANISOTROPY        21
 #define D3DTSS_BUMPENVLSCALE        22
 #define D3DTSS_BUMPENVLOFFSET       23
 #define D3DTSS_TEXTURETRANSFORMFLAGS 24
 #define D3DTSS_RESULTARG            25
 #define D3DTSS_TCI_PASSTHRU         0
+
+// Texture filter types (D3DTEXTUREFILTERTYPE)
+#define D3DTEXF_NONE               0
+#define D3DTEXF_POINT              1
+#define D3DTEXF_LINEAR             2
+#define D3DTEXF_ANISOTROPIC        3
+#define D3DTEXF_FLATCUBIC          4
+#define D3DTEXF_GAUSSIANCUBIC      5
+
+// Texture filter capability flags (D3DCAPS8.TextureFilterCaps)
+#define D3DPTFILTERCAPS_MINFPOINT           0x00000100
+#define D3DPTFILTERCAPS_MINFLINEAR          0x00000200
+#define D3DPTFILTERCAPS_MINFANISOTROPIC     0x00000400
+#define D3DPTFILTERCAPS_MIPFPOINT           0x00010000
+#define D3DPTFILTERCAPS_MIPFLINEAR          0x00020000
+#define D3DPTFILTERCAPS_MAGFPOINT           0x01000000
+#define D3DPTFILTERCAPS_MAGFLINEAR          0x02000000
+#define D3DPTFILTERCAPS_MAGFANISOTROPIC     0x04000000
 
 // Texture transform flags
 #define D3DTTFF_DISABLE             0
