@@ -1395,7 +1395,7 @@ void MultiPlayerLoadScreen::init( GameInfo *game )
 
 	Int netSlot = 0;
 	// Loop through and make the loadscreen look all good.
-	for (i = 0; i < MAX_SLOTS; ++i)
+	for (Int i = 0; i < MAX_SLOTS; ++i)
 	{
 		// Load the Progress Bar
 		AsciiString winName;
@@ -1647,7 +1647,7 @@ GameSlot *lSlot = game->getSlot(game->getLocalSlotNum());
 
 	Int netSlot = 0;
 	// Loop through and make the loadscreen look all good.
-	for (i = 0; i < MAX_SLOTS; ++i)
+	for (Int i = 0; i < MAX_SLOTS; ++i)
 	{
 		// Load the Progress Bar
 		AsciiString winName;
@@ -1963,7 +1963,7 @@ void MapTransferLoadScreen::init( GameInfo *game )
 
 	Int netSlot = 0;
 	// Loop through and make the loadscreen look all good.
-	for (i = 0; i < MAX_SLOTS; ++i)
+	for (Int i = 0; i < MAX_SLOTS; ++i)
 	{
 		// Load the Progress Bar
 		winName.format( "MapTransferScreen.wnd:ProgressLoad%d",i);

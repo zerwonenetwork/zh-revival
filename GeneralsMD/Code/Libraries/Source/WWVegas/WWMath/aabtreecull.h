@@ -56,13 +56,13 @@ class ChunkLoadClass;
 class ChunkSaveClass;
 class SphereClass;
 
-// GCC/MinGW requires explicit specialization declarations BEFORE a class inherits
-// from AutoPoolClass<T,N>, otherwise the implicit instantiation triggered by the
-// base-class list prevents the explicit member specialization in the .cpp from
-// being well-formed (C++17 [temp.expl.spec]).
+// GCC/MinGW: suppress implicit instantiation of AutoPoolClass<T,N> so that the
+// explicit member-specialization definitions in the .cpp are well-formed.
+// We use `extern template` (C++11) which declares an explicit instantiation
+// suppression WITHOUT making the class incomplete, so inheriting from it is fine.
 #if defined(__GNUC__) && !defined(_MSC_VER)
-template<> class AutoPoolClass<AABTreeNodeClass,256>;
-template<> class AutoPoolClass<AABTreeLinkClass,256>;
+extern template class AutoPoolClass<AABTreeNodeClass,256>;
+extern template class AutoPoolClass<AABTreeLinkClass,256>;
 #endif
 
 /**

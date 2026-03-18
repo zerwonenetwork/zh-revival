@@ -163,18 +163,13 @@ private:
 // a helper explicit-specialization wrapper.
 // DEFINE_AUTO_POOL(T,BLOCKSIZE):
 // Defines the static Allocator member for AutoPoolClass<T,BLOCKSIZE>.
-// MSVC accepts  template<> directly.
-// GCC (MinGW cross-compiler) requires a full class-level template<> specialization
-// to appear before specializing individual members.  We emit a forward class specialization
-// declaration so the member specialization is well-formed in C++17 on both compilers.
-#if defined(__GNUC__) && !defined(_MSC_VER)
-#define DEFINE_AUTO_POOL(T,BLOCKSIZE) \
-template<> class AutoPoolClass<T,BLOCKSIZE>; \
-template<> ObjectPoolClass<T,BLOCKSIZE> AutoPoolClass<T,BLOCKSIZE>::Allocator;
-#else
+// Both MSVC and GCC accept explicit member specialization directly without
+// a preceding class-level explicit specialization declaration.
+// Using `template<> class AutoPoolClass<T,N>;` would make the class INCOMPLETE
+// and break inheritance (e.g. class Foo : public AutoPoolClass<Foo,256>).
+// Use the same form on all compilers.
 #define DEFINE_AUTO_POOL(T,BLOCKSIZE) \
 template<> ObjectPoolClass<T,BLOCKSIZE> AutoPoolClass<T,BLOCKSIZE>::Allocator;
-#endif
 
 
 /***********************************************************************************************

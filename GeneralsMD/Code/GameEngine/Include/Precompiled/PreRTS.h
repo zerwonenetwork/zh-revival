@@ -48,6 +48,11 @@ class STLSpecialAlloc;
 #undef BitTest
 #endif
 #define BitTest( x, i ) ( ( (x) & (i) ) != 0 )
+// winuser.h defines AnimateWindow as a Win32 API function-like macro; undefine it
+// so that the game's AnimateWindow class (AnimateWindowManager.h) compiles without conflict.
+#ifdef AnimateWindow
+#undef AnimateWindow
+#endif
 
 #include <assert.h>
 #include <ctype.h>

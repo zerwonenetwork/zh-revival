@@ -169,10 +169,24 @@ public:
 
 // ZH-REVIVAL: If _OPERATOR_NEW_DEFINED_ was already set before always.h was
 // included (e.g. by GameMemory.h), the #ifndef block above was skipped and
-// W3DMPO_GLUE was never #defined.  Provide a safe no-op fallback so that
-// class bodies using W3DMPO_GLUE(ClassName) still compile.
+// W3DMPO_GLUE / W3DNEW* were never #defined.
+// Provide safe fallbacks for all macros so all consumers compile regardless of
+// include order.
 #ifndef W3DMPO_GLUE
 #define W3DMPO_GLUE(ARGCLASS)
+#endif
+
+#ifndef W3DNEW
+#define W3DNEW new
+#endif
+#ifndef W3DNEWARRAY
+#define W3DNEWARRAY new
+#endif
+#ifndef MSGW3DNEW
+#define MSGW3DNEW(MSG) new
+#endif
+#ifndef MSGW3DNEWARRAY
+#define MSGW3DNEWARRAY(MSG) new
 #endif
 
 // ----------------------------------------------------------------------------

@@ -253,7 +253,7 @@ void ControlBar::populateBuildTooltipLayout( const CommandButton *commandButton,
 
 	Player *player = ThePlayerList->getLocalPlayer();
 	UnicodeString name, cost, descrip;
-	UnicodeString requires = UnicodeString::TheEmptyString, requiresList;
+	UnicodeString requiresStr = UnicodeString::TheEmptyString, requiresStrList;
 	Bool firstRequirement = true;
 	const ProductionPrerequisite *prereq;
 	Bool fireScienceButton = false;
@@ -417,25 +417,25 @@ void ControlBar::populateBuildTooltipLayout( const CommandButton *commandButton,
 			for( Int i=0; i<thingTemplate->getPrereqCount(); i++ ) 
 			{
 				prereq = thingTemplate->getNthPrereq(i);
-				requiresList = prereq->getRequiresList(player);
+				requiresStrList = prereq->getRequiresList(player);
 
-				if( requiresList != UnicodeString::TheEmptyString ) 
+				if( requiresStrList != UnicodeString::TheEmptyString ) 
 				{
 					// make sure to put in 'returns' to space things correctly
 					if (firstRequirement)
 						firstRequirement = false;
 					else
-						requires.concat(L", ");
+						requiresStr.concat(L", ");
 				}
-				requires.concat(requiresList);
+				requiresStr.concat(requiresStrList);
 			}
-			if( !requires.isEmpty() )
+			if( !requiresStr.isEmpty() )
 			{
 				UnicodeString requireFormat = TheGameText->fetch("CONTROLBAR:Requirements");
-				requires.format(requireFormat.str(), requires.str());
+				requiresStr.format(requireFormat.str(), requiresStr.str());
 				if(!descrip.isEmpty())
 					descrip.concat(L"\n");
-				descrip.concat(requires);
+				descrip.concat(requiresStr);
 
 			}
 		}
@@ -514,8 +514,8 @@ void ControlBar::populateBuildTooltipLayout( const CommandButton *commandButton,
 				{
 					if( !descrip.isEmpty() )
 						descrip.concat(L"\n");
-					requires.format( TheGameText->fetch( "CONTROLBAR:Requirements" ).str(), TheGameText->fetch( "CONTROLBAR:GeneralsPromotion" ).str() );
-					descrip.concat( requires );
+					requiresStr.format( TheGameText->fetch( "CONTROLBAR:Requirements" ).str(), TheGameText->fetch( "CONTROLBAR:GeneralsPromotion" ).str() );
+					descrip.concat( requiresStr );
 				}
 			}
 		}	
@@ -535,25 +535,25 @@ void ControlBar::populateBuildTooltipLayout( const CommandButton *commandButton,
 				for( Int i=0; i<thingTemplate->getPrereqCount(); i++ ) 
 				{
 					prereq = thingTemplate->getNthPrereq(i);
-					requiresList = prereq->getRequiresList(player);
+					requiresStrList = prereq->getRequiresList(player);
 
-					if( requiresList != UnicodeString::TheEmptyString ) 
+					if( requiresStrList != UnicodeString::TheEmptyString ) 
 					{
 						// make sure to put in 'returns' to space things correctly
 						if (firstRequirement)
 							firstRequirement = false;
 						else
-							requires.concat(L", ");
+							requiresStr.concat(L", ");
 					}
-					requires.concat(requiresList);
+					requiresStr.concat(requiresStrList);
 				}
-				if( !requires.isEmpty() )
+				if( !requiresStr.isEmpty() )
 				{
 					UnicodeString requireFormat = TheGameText->fetch("CONTROLBAR:Requirements");
-					requires.format(requireFormat.str(), requires.str());
+					requiresStr.format(requireFormat.str(), requiresStr.str());
 					if(!descrip.isEmpty())
 						descrip.concat(L"\n");
-					descrip.concat(requires);
+					descrip.concat(requiresStr);
 				}
 			}
 

@@ -1026,7 +1026,7 @@ void MeshBuilderClass::Compute_Bounding_Box(Vector3 * set_min,Vector3 * set_max)
 	set_max->Y = Verts[0].Position.Y;
 	set_max->Z = Verts[0].Position.Z;
 
-	for (i=0; i<VertCount; i++) {
+	for (int i=0; i<VertCount; i++) {
 		if (Verts[i].Position.X < set_min->X) set_min->X = Verts[i].Position.X;
 		if (Verts[i].Position.Y < set_min->Y) set_min->Y = Verts[i].Position.Y;
 		if (Verts[i].Position.Z < set_min->Z) set_min->Z = Verts[i].Position.Z;
@@ -1142,7 +1142,7 @@ void MeshBuilderClass::Compute_Bounding_Sphere(Vector3 * set_center,float * set_
 	
 	// SECOND PASS:
 	// Increment current sphere if any points fall outside of it.
-	for (i=0; i<VertCount; i++) {
+	for (int i=0; i<VertCount; i++) {
 
 		dx = Verts[i].Position.X - center.X;
 		dy = Verts[i].Position.Y - center.Y;
@@ -1345,17 +1345,17 @@ void MeshBuilderClass::Strip_Optimize_Mesh(void)
 	// init the tables
 	memset(edgehash,0,sizeof(WingedEdgeStruct *) * 512);
 	memset(edgetab,0,sizeof(WingedEdgeStruct) * FaceCount * 3);
-	for (i=0; i<FaceCount; i++) {
+	for (int i=0; i<FaceCount; i++) {
 		premap[i] = -1;
 	}
-	for (i=0; i<VertCount; i++) {
+	for (int i=0; i<VertCount; i++) {
 		vtimestamp[i] = -1;
 	}
 	
 	// Build the edge table for the mesh
 	// Oct 20,1998: modifying so that every place we were looking at the
 	// material index, we now use TextureIndex[PolyOrderPass][PolyOrderStage]
-	for (i=0; i<FaceCount; i++) {
+	for (int i=0; i<FaceCount; i++) {
 		
 		int mat = Faces[i].TextureIndex[PolyOrderPass][PolyOrderStage];
 
@@ -1433,7 +1433,7 @@ void MeshBuilderClass::Strip_Optimize_Mesh(void)
 		for (findpass = startpass; findpass < 2; findpass++)
 		{
 			// loop through all polygons
-			for (i = 0; i < FaceCount; i++) {
+			for (int i = 0; i < FaceCount; i++) {
 			
 				// if polygon not picked yet
 				if (premap[i]==-1) {
@@ -1530,7 +1530,7 @@ void MeshBuilderClass::Strip_Optimize_Mesh(void)
 		premap[startpoly]			= polysinserted;
 		polysinserted++;
 
-		for (i = 0; i < 3; i++) {
+		for (int i = 0; i < 3; i++) {
 			if (vtimestamp[Faces[startpoly].VertIdx[i]]==-1) {
 				vtimestamp[Faces[startpoly].VertIdx[i]] = vcount++;
 			}
@@ -1555,7 +1555,7 @@ void MeshBuilderClass::Strip_Optimize_Mesh(void)
 			startpoly	= nextpoly;
 			nextpoly		= -1;
 
-			for (i = 0; i < 3; i++) {
+			for (int i = 0; i < 3; i++) {
 				
 				// if edge 'i' of startpoly matches the vertices in the fifo
 				if	((pedges[startpoly].Edge[i]->Vertex[0] == vFIFO[0] && pedges[startpoly].Edge[i]->Vertex[1] == vFIFO[1]) ||
@@ -1582,7 +1582,7 @@ void MeshBuilderClass::Strip_Optimize_Mesh(void)
 	
 			// now, find the new vertex (two verts are on the edge, find the third)
 			int nw = -1;
-			for (i = 0; i < 3; i++) {
+			for (int i = 0; i < 3; i++) {
 				if (Faces[nextpoly].VertIdx[i] != vFIFO[0] && Faces[nextpoly].VertIdx[i] != vFIFO[1]) {
 					nw = i;
 					break;
@@ -1626,7 +1626,7 @@ void MeshBuilderClass::Strip_Optimize_Mesh(void)
 	}
 
 	// Use the premap array to get the rest of the info into the new face table, 
-	for (i=0; i<FaceCount; i++) {
+	for (int i=0; i<FaceCount; i++) {
 
 		int old_idx = i;
 		int new_idx = premap[i];

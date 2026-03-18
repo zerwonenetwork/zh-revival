@@ -140,7 +140,7 @@ void SendStatsToOtherPlayers(const GameInfo *game)
 // PRIVATE DATA ///////////////////////////////////////////////////////////////////////////////////
 static Bool isShuttingDown = false;
 static Bool buttonPushed = false;
-static char *nextScreen = NULL;
+static const char *nextScreen = NULL;
 static Bool raiseMessageBoxes = false;
 static Bool launchGameNext = FALSE;
 
@@ -898,7 +898,7 @@ static void StartPressed(void)
 	// Check for too few teams
 	int numRandom = 0;
 	std::set<Int> teams; 
-	for (i=0; i<MAX_SLOTS; ++i)
+	for (Int i=0; i<MAX_SLOTS; ++i)
 	{
 		GameSlot *slot = myGame->getSlot(i);
 		if (slot && slot->isOccupied() && slot->getPlayerTemplate() != PLAYERTEMPLATE_OBSERVER)
@@ -2011,7 +2011,7 @@ void WOLGameSetupMenuUpdate( WindowLayout * layout, void *userData)
 							UnsignedShort ports[MAX_SLOTS];
 							UnsignedInt ips[MAX_SLOTS];
 							Int i;
-							for (i=0; i<MAX_SLOTS; ++i)
+							for (Int i=0; i<MAX_SLOTS; ++i)
 							{
 								if (game && game->getConstSlot(i))
 								{
@@ -2027,7 +2027,7 @@ void WOLGameSetupMenuUpdate( WindowLayout * layout, void *userData)
 							Bool optionsOK = ParseAsciiStringToGameInfo(game, options.str());
 							if (TheNAT)
 							{
-								for (i=0; i<MAX_SLOTS; ++i)
+								for (Int i=0; i<MAX_SLOTS; ++i)
 								{
 									if (game && game->getSlot(i))
 									{

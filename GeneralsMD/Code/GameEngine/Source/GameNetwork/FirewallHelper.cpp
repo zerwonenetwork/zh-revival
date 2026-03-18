@@ -109,7 +109,7 @@ FirewallHelperClass::FirewallHelperClass(void)
 		m_sparePorts[i] = 0;
 	}
 
-	for (i = 0; i < MAX_NUM_MANGLERS; i++)
+	for (Int i = 0; i < MAX_NUM_MANGLERS; i++)
 	{
 		m_manglers[i] = 0;
 	}
@@ -351,7 +351,7 @@ Bool FirewallHelperClass::sendToManglerFromPort(UnsignedInt address, UnsignedSho
 	byteAdjust(&(packet.data));
 /*
 	DEBUG_LOG(("Pre-CRC Buffer = "));
-	for (i = 0; i < sizeof(ManglerData); ++i) {
+	for (Int i = 0; i < sizeof(ManglerData); ++i) {
 		DEBUG_LOG(("%02x", *(((unsigned char *)(&(packet.data))) + i)));
 	}
 	DEBUG_LOG(("\n"));
@@ -369,7 +369,7 @@ Bool FirewallHelperClass::sendToManglerFromPort(UnsignedInt address, UnsignedSho
 		(address & 0xFF), MANGLER_PORT));
 /*
 	DEBUG_LOG(("Buffer = "));
-	for (i = 0; i < sizeof(ManglerData); ++i) {
+	for (Int i = 0; i < sizeof(ManglerData); ++i) {
 		DEBUG_LOG(("%02x", *(((unsigned char *)(&(packet.data))) + i)));
 	}
 	DEBUG_LOG(("\n"));
@@ -480,7 +480,7 @@ UnsignedShort FirewallHelperClass::getManglerResponse(UnsignedShort packetID, In
 
 	// See if we have already received it and saved it.
 	if (msg == NULL) {
-		for (i = 0; i < MAX_SPARE_SOCKETS; ++i) {
+		for (Int i = 0; i < MAX_SPARE_SOCKETS; ++i) {
 			if ((m_messages[i].length != 0) && (m_messages[i].data.PacketID == packetID)) {
 				msg = &(m_messages[i]);
 				msg->length = 0;
@@ -937,7 +937,7 @@ Bool FirewallHelperClass::detectionTest3Update() {
 		m_timeoutLength = 12000;
 
 		DEBUG_LOG(("FirewallHelperClass::detectionTest3Update - Sending to %d manglers\n", NUM_TEST_PORTS));
-		for (i=0 ; i<NUM_TEST_PORTS ; i++) {
+		for (Int i=0 ; i<NUM_TEST_PORTS ; i++) {
 			if (m_mangledPorts[i] == 0) {
 				sendToManglerFromPort(m_manglers[0], m_sparePorts[i], m_packetID+i);
 			}

@@ -887,7 +887,7 @@ void SphereRenderObjClass::Scale(float scale)
 	// Loop over all keys in scale channel and scale values.
 	int i;
 	int count = ScaleChannel.Get_Key_Count();
-	for (i = 0; i < count; i++) {
+	for (int i = 0; i < count; i++) {
 		const PrimitiveAnimationChannelClass<Vector3>::KeyClass &key = ScaleChannel.Get_Key(i);
 		ScaleChannel.Set_Key_Value(i, key.Get_Value() * scale);
 	}
@@ -916,7 +916,7 @@ void SphereRenderObjClass::Scale(float scalex, float scaley, float scalez)
 	// Loop over all keys in scale channel and scale values.
 	int i;
 	int count = ScaleChannel.Get_Key_Count();
-	for (i = 0; i < count; i++) {
+	for (int i = 0; i < count; i++) {
 		const PrimitiveAnimationChannelClass<Vector3>::KeyClass &key = ScaleChannel.Get_Key(i);
 		Vector3 key_val = key.Get_Value();
 		key_val.X *= scalex;

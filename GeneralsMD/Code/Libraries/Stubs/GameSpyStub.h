@@ -196,16 +196,54 @@ typedef void* GPConnection; // opaque connection handle
 #define GP_AWAY      5
 
 // GP error codes (used in BuddyThread.h / BuddyThread.cpp)
+// These mirror the real GameSpy GP SDK error code enumeration.
 typedef int GPErrorCode;
-#define GP_GENERAL              0
-#define GP_PARSE                1
-#define GP_NOT_LOGGED_IN_ERR    2
-#define GP_BAD_SESSKEY          3
-#define GP_DATABASE             4
-#define GP_NETWORK_ERR          5
-#define GP_FORCED_DISCONNECT    6
-#define GP_CONNECTION_CLOSED_ERR 7
-#define GP_UDP_LAYER            8
+#define GP_GENERAL                      0
+#define GP_PARSE                        1
+#define GP_NOT_LOGGED_IN                2
+#define GP_BAD_SESSKEY                  3
+#define GP_DATABASE                     4
+#define GP_NETWORK                      5
+#define GP_FORCED_DISCONNECT            6
+#define GP_CONNECTION_CLOSED            7
+#define GP_UDP_LAYER                    8
+#define GP_LOGIN                       256
+#define GP_LOGIN_TIMEOUT               257
+#define GP_LOGIN_BAD_NICK              258
+#define GP_LOGIN_BAD_EMAIL             259
+#define GP_LOGIN_BAD_PASSWORD          260
+#define GP_LOGIN_BAD_PROFILE           261
+#define GP_LOGIN_PROFILE_DELETED       262
+#define GP_LOGIN_CONNECTION_FAILED     263
+#define GP_LOGIN_SERVER_AUTH_FAILED    264
+#define GP_NEWUSER                     512
+#define GP_NEWUSER_BAD_NICK            513
+#define GP_NEWUSER_BAD_PASSWORD        514
+#define GP_UPDATEUI                    768
+#define GP_UPDATEUI_BAD_EMAIL          769
+#define GP_NEWPROFILE                 1024
+#define GP_NEWPROFILE_BAD_NICK        1025
+#define GP_NEWPROFILE_BAD_OLD_NICK    1026
+#define GP_UPDATEPRO                  1280
+#define GP_UPDATEPRO_BAD_NICK         1281
+#define GP_ADDBUDDY                   1536
+#define GP_ADDBUDDY_BAD_FROM          1537
+#define GP_ADDBUDDY_BAD_NEW           1538
+#define GP_ADDBUDDY_ALREADY_BUDDY     1539
+#define GP_AUTHADD                    1792
+#define GP_AUTHADD_BAD_FROM           1793
+#define GP_AUTHADD_BAD_SIG            1794
+#define GP_STATUS                     2048
+#define GP_BM                         2304
+#define GP_BM_NOT_BUDDY               2305
+#define GP_GETPROFILE                 2560
+#define GP_GETPROFILE_BAD_PROFILE     2561
+#define GP_DELBUDDY                   2816
+#define GP_DELBUDDY_NOT_BUDDY         2817
+#define GP_DELPROFILE                 3072
+#define GP_DELPROFILE_LAST_PROFILE    3073
+#define GP_SEARCH                     3328
+#define GP_SEARCH_CONNECTION_FAILED   3329
 
 // GP buddy request / message / status argument structs
 typedef struct GPRecvBuddyRequestArg_s
@@ -271,16 +309,8 @@ typedef void (* GPRecvBuddyMessageCallbackFunc)(
     GPRecvBuddyMessageArg* arg,
     void*                  param);
 
-// GameSpy chat color enum (used by GameSpyChat.h)
-typedef enum
-{
-    GSCOLOR_DEFAULT     = 0,
-    GSCOLOR_SYSTEM      = 1,
-    GSCOLOR_PLAYER      = 2,
-    GSCOLOR_EMOTE       = 3,
-    GSCOLOR_ERROR       = 4,
-    GSCOLOR_NUM_COLORS
-} GameSpyColors;
+// NOTE: GameSpyColors enum is defined in GameNetwork/GameSpy/PeerDefs.h which is
+// always included alongside this stub.  Do NOT define it here to avoid redefinition.
 
 // --- GP stub functions ------------------------------------------------------
 
@@ -373,7 +403,8 @@ typedef enum
     PEERBadPassword     = 4,
     PEERAlreadyInRoom   = 5,
     PEERNoTitleRoom     = 6,
-    PEERJoinFailed      = 7
+    PEERJoinFailed      = 7,
+    PEERNoConnection    = 8   // No chat connection
 } PEERJoinResult;
 
 // Room types
@@ -393,6 +424,16 @@ typedef enum
     NoticeMessage  = 2,
     TeamMessage    = 3
 } MessageType;
+
+// Listing update type — used in room/game listing callbacks
+typedef enum
+{
+    PEER_CLEAR    = 0,  // Clear the entire list
+    PEER_ADD      = 1,  // Add an entry
+    PEER_UPDATE   = 2,  // Update an existing entry
+    PEER_REMOVE   = 3,  // Remove an entry
+    PEER_COMPLETE = 4   // Listing is complete
+} PEERUpdateType;
 
 // SBServer — server browser server handle (opaque pointer)
 typedef void* SBServer;
@@ -563,6 +604,47 @@ inline int gpPersistSaveData(GPersistConn conn, int localIndex,
     if (callback) callback(conn, localIndex, type, index, 0, param);
     return 0;
 }
+
+// ===========================================================================
+//  QR2 (Query & Reporting 2) stubs
+//  Used by PeerThread.cpp for server-key/player-key reporting callbacks.
+// ===========================================================================
+
+// Key types used by QR2 key registration
+typedef enum
+{
+    key_server     = 0,
+    key_player     = 1,
+    key_team       = 2
+} qr2_key_type;
+
+// QR2 error codes
+typedef enum
+{
+    e_qrnoerror            = 0,
+    e_qrwsockerror         = 1,
+    e_qrbinderror          = 2,
+    e_qrdnserror           = 3,
+    e_qrconnerror          = 4,
+    e_qrnochallengeerror   = 5,
+    e_qrsenderror          = 6,
+    e_qrnothinitializederror = 7
+} qr2_error_t;
+
+// QR2 buffer types (opaque in stub — callers only pass them through)
+typedef void* qr2_buffer_t;
+typedef void* qr2_keybuffer_t;
+
+// Registered key list (stub — always empty)
+static const char* qr2_registered_key_list[] = { "" };
+
+// QR2 buffer helpers — no-ops in the stub
+inline void qr2_buffer_add    (qr2_buffer_t    buf, const char* value) { (void)buf; (void)value; }
+inline void qr2_buffer_add_int(qr2_buffer_t    buf, int value)          { (void)buf; (void)value; }
+inline void qr2_keybuffer_add (qr2_keybuffer_t buf, int key_id)         { (void)buf; (void)key_id; }
+
+// QR2 key registration — no-op in stub
+inline void qr2_register_key(int key_id, const char* key_name) { (void)key_id; (void)key_name; }
 
 // Marker so callers can #ifdef around GameSpy-specific code paths
 #define GAMESPY_STUB  1   // defined when using stubs; absent with real SDK
