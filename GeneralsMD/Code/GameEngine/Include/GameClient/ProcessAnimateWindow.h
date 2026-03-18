@@ -64,6 +64,11 @@
 //-----------------------------------------------------------------------------
 // FORWARD REFERENCES /////////////////////////////////////////////////////////
 //-----------------------------------------------------------------------------
+// AnimateWindow is a Win32 API macro (winuser.h). Undefine it so that the
+// class forward declaration below compiles without conflict.
+#ifdef AnimateWindow
+#undef AnimateWindow
+#endif
 class AnimateWindow;
 class GameWindow;
 //-----------------------------------------------------------------------------

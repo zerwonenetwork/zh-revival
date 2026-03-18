@@ -1635,13 +1635,14 @@ void* MemoryPool::allocateBlockDoNotZeroImplementation(DECLARE_LITERALSTRING_ARG
 	{
 		// hmm... the current 'free' blob has nothing available. look and see if there
 		// are any other existing blobs with freespace.
-		for (MemoryPoolBlob *blob = m_firstBlob; blob != NULL; blob = blob->getNextInList()) 
+		MemoryPoolBlob *blob = m_firstBlob;
+		for (; blob != NULL; blob = blob->getNextInList())
 		{
 			if (blob->hasAnyFreeBlocks())
 			 	break;
 		}
 
-		// note that if we walk thru the list without finding anything, this will 
+		// note that if we walk thru the list without finding anything, this will
 		// reset m_firstBlobWithFreeBlocks to null and fall thru.
 	 	m_firstBlobWithFreeBlocks = blob;
 	}
@@ -3450,7 +3451,7 @@ void initMemoryManager()
 	linktest = new char[8];
 	delete [] linktest;
 
-	linktest = new char("",1);
+	linktest = new char('\0');
 	delete linktest;
 
 #ifdef MEMORYPOOL_OVERRIDE_MALLOC

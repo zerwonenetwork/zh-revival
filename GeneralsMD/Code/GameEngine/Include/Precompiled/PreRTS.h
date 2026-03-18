@@ -54,12 +54,12 @@ class STLSpecialAlloc;
 #include <direct.h>
 #include <EXCPT.H>
 #include <float.h>
-#include <fstream.h>
+#include <fstream>     // fstream.h is deprecated; use standard <fstream>
 #include <imagehlp.h>
 #include <io.h>
 #include <limits.h>
 #include <lmcons.h>
-#include <mapicode.h>
+// #include <mapicode.h>  // MAPI header — not in modern Windows SDK; MAPI codes unused by engine
 #include <math.h>
 #include <memory.h>
 #include <mmsystem.h>

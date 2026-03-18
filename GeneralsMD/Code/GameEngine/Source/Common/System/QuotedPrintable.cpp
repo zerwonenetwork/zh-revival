@@ -159,7 +159,7 @@ UnicodeString QuotedPrintableToUnicodeString(AsciiString original)
 
 	*c = 0;
 
-	UnicodeString out(dest);
+	UnicodeString out(reinterpret_cast<const wchar_t*>(dest));
 	return out;
 }
 

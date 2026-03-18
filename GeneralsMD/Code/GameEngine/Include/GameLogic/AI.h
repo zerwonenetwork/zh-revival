@@ -311,7 +311,12 @@ class Waypoint;
 class Team;
 class Weapon;
 
-// Note - written out in save/load xfer and .map files, don't change these numbers.  
+// Note - written out in save/load xfer and .map files, don't change these numbers.
+// ZH-REVIVAL: ws2def.h (via atlbase.h/winsock2.h) defines AI_PASSIVE as a
+// winsock flag; undefine it before our enum so the name is available.
+#ifdef AI_PASSIVE
+#undef AI_PASSIVE
+#endif
 enum AttitudeType { AI_SLEEP = -2, AI_PASSIVE=-1, AI_NORMAL=0, AI_ALERT=1, AI_AGGRESSIVE=2, AI_INVALID=3 };		///< AI "attitude" behavior modifiers
 
 enum CommandSourceType;

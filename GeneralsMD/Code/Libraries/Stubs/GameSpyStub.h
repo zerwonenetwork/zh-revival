@@ -48,6 +48,31 @@ typedef unsigned char gsi_u8;
 #define GS_FAILED   1
 
 // ===========================================================================
+//  GP string-length constants (used by BuddyThread.h, etc.)
+// ===========================================================================
+#ifndef GP_NICK_LEN
+#define GP_NICK_LEN              31
+#endif
+#ifndef GP_EMAIL_LEN
+#define GP_EMAIL_LEN             51
+#endif
+#ifndef GP_PASSWORD_LEN
+#define GP_PASSWORD_LEN          31
+#endif
+#ifndef GP_STATUS_STRING_LEN
+#define GP_STATUS_STRING_LEN     256
+#endif
+#ifndef GP_LOCATION_STRING_LEN
+#define GP_LOCATION_STRING_LEN   256
+#endif
+#ifndef GP_COUNTRYCODE_LEN
+#define GP_COUNTRYCODE_LEN       3
+#endif
+#ifndef GP_REASON_LEN
+#define GP_REASON_LEN            256
+#endif
+
+// ===========================================================================
 //  ghttp — HTTP client module
 // ===========================================================================
 
@@ -170,6 +195,55 @@ typedef void* GPConnection; // opaque connection handle
 #define GP_CHATTING  4
 #define GP_AWAY      5
 
+// GP error codes (used in BuddyThread.h / BuddyThread.cpp)
+typedef int GPErrorCode;
+#define GP_GENERAL              0
+#define GP_PARSE                1
+#define GP_NOT_LOGGED_IN_ERR    2
+#define GP_BAD_SESSKEY          3
+#define GP_DATABASE             4
+#define GP_NETWORK_ERR          5
+#define GP_FORCED_DISCONNECT    6
+#define GP_CONNECTION_CLOSED_ERR 7
+#define GP_UDP_LAYER            8
+
+// GP buddy request / message / status argument structs
+typedef struct GPRecvBuddyRequestArg_s
+{
+    GPProfile   profile;
+    unsigned    date;
+    char        nick[GP_NICK_LEN];
+    char        email[GP_EMAIL_LEN];
+    char        countrycode[GP_COUNTRYCODE_LEN];
+    wchar_t     reason[GP_REASON_LEN];
+} GPRecvBuddyRequestArg;
+
+typedef struct GPRecvBuddyMessageArg_s
+{
+    GPProfile   profile;
+    unsigned    date;
+    char        nick[GP_NICK_LEN];
+    wchar_t     message[256];
+} GPRecvBuddyMessageArg;
+
+typedef struct GPRecvBuddyStatusArg_s
+{
+    GPProfile   profile;
+    char        nick[GP_NICK_LEN];
+    GPEnum      status;
+    char        statusString[GP_STATUS_STRING_LEN];
+    char        locationString[GP_LOCATION_STRING_LEN];
+    char        countrycode[GP_COUNTRYCODE_LEN];
+} GPRecvBuddyStatusArg;
+
+typedef struct GPErrorArg_s
+{
+    GPResult    result;
+    GPErrorCode errorCode;
+    int         fatal;
+    char        errorString[256];
+} GPErrorArg;
+
 // GP connection state
 typedef struct GPConnectResponseArg_s
 {
@@ -182,16 +256,31 @@ typedef void (* GPConnectResponseCallback)(
     GPConnectResponseArg* arg,
     void*               param);
 
-typedef void (* GPErrorCallback)(
+// NOTE: GPErrorCallback and GPRecvBuddyMessageCallback are used as *function*
+// names by the game code (GameSpyGP.h declares them as regular C functions).
+// We must NOT typedef those names here — doing so causes C2365 redefinition.
+// The callback type names get a _Func suffix to avoid the clash.
+typedef void (* GPErrorCallbackFunc)(
     GPConnection connection,
-    GPResult     result,
+    GPErrorArg*  arg,
     void*        param);
 
 // Callback fired when a buddy message or status arrives
-typedef void (* GPRecvBuddyMessageCallback)(
-    GPConnection connection,
-    void*        arg,
-    void*        param);
+typedef void (* GPRecvBuddyMessageCallbackFunc)(
+    GPConnection           connection,
+    GPRecvBuddyMessageArg* arg,
+    void*                  param);
+
+// GameSpy chat color enum (used by GameSpyChat.h)
+typedef enum
+{
+    GSCOLOR_DEFAULT     = 0,
+    GSCOLOR_SYSTEM      = 1,
+    GSCOLOR_PLAYER      = 2,
+    GSCOLOR_EMOTE       = 3,
+    GSCOLOR_ERROR       = 4,
+    GSCOLOR_NUM_COLORS
+} GameSpyColors;
 
 // --- GP stub functions ------------------------------------------------------
 

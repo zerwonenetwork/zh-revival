@@ -95,6 +95,11 @@ enum AnimTypes
 } ;
 
 //-----------------------------------------------------------------------------
+// AnimateWindow is a Win32 API macro (winuser.h). Undefine it so that the
+// class definition below compiles without conflict.
+#ifdef AnimateWindow
+#undef AnimateWindow
+#endif
 class AnimateWindow : public MemoryPoolObject
 {
 	MEMORY_POOL_GLUE_WITH_USERLOOKUP_CREATE(AnimateWindow, "AnimateWindow")		

@@ -166,6 +166,15 @@ public:
 	virtual ~W3DMPO() { /* nothing */ }
 };
 #endif // W3DMPO_DEFINED
+
+// ZH-REVIVAL: If _OPERATOR_NEW_DEFINED_ was already set before always.h was
+// included (e.g. by GameMemory.h), the #ifndef block above was skipped and
+// W3DMPO_GLUE was never #defined.  Provide a safe no-op fallback so that
+// class bodies using W3DMPO_GLUE(ClassName) still compile.
+#ifndef W3DMPO_GLUE
+#define W3DMPO_GLUE(ARGCLASS)
+#endif
+
 // ----------------------------------------------------------------------------
 
 #else

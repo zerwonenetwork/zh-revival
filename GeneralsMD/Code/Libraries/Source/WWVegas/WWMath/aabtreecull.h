@@ -51,9 +51,19 @@
 #include <float.h>
 
 class AABTreeNodeClass;
+class AABTreeLinkClass;
 class ChunkLoadClass;
 class ChunkSaveClass;
 class SphereClass;
+
+// GCC/MinGW requires explicit specialization declarations BEFORE a class inherits
+// from AutoPoolClass<T,N>, otherwise the implicit instantiation triggered by the
+// base-class list prevents the explicit member specialization in the .cpp from
+// being well-formed (C++17 [temp.expl.spec]).
+#if defined(__GNUC__) && !defined(_MSC_VER)
+template<> class AutoPoolClass<AABTreeNodeClass,256>;
+template<> class AutoPoolClass<AABTreeLinkClass,256>;
+#endif
 
 /**
 ** AABTreeCullSystemClass

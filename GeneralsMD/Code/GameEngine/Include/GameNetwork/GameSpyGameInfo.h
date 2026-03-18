@@ -28,7 +28,9 @@
 
 #pragma once
 
-#error this file is obsolete
+// ZH-REVIVAL: original code had "#error this file is obsolete" here.
+// The file is still referenced transitively, so we suppress the error and
+// let the include guard below prevent duplicate definitions.
 
 #ifndef __GAMESPYGAMEINFO_H__
 #define __GAMESPYGAMEINFO_H__
@@ -39,6 +41,11 @@
 
 class Transport;
 class NAT;
+
+// GameSpyGameSlot and TheGameSpyGame are defined in StagingRoomGameInfo.h (the
+// authoritative version).  Only define them here if that header has not already
+// been included, to avoid C2011 / C2371 redefinition errors.
+#ifndef __STAGINGROOMGAMEINFO_H__
 
 class GameSpyGameSlot : public GameSlot
 {
@@ -74,7 +81,7 @@ public:
 
 	inline void setServer(SBServer server) { m_server = server; }
 	inline SBServer getServer( void ) { return m_server; }
-	
+
 	AsciiString generateGameResultsPacket( void );
 
 	virtual void init(void);
@@ -88,6 +95,8 @@ public:
 };
 
 extern GameSpyGameInfo *TheGameSpyGame;
+
+#endif // !__STAGINGROOMGAMEINFO_H__
 
 void WOLDisplayGameOptions( void );
 void WOLDisplaySlotList( void );

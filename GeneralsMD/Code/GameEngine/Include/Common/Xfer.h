@@ -31,12 +31,14 @@
 
 #pragma once
 
-#ifndef __XFER_H_
-#define __XFER_H_
+#ifndef ZH_COMMON_XFER_H
+#define ZH_COMMON_XFER_H
 
 // INCLUDES ///////////////////////////////////////////////////////////////////////////////////////
 #include "Common/STLTypedefs.h"
-#include "Common/ModelState.h"
+// ModelState.h removed — it was unused here and created a circular include:
+//   BitFlagsIO.h → Xfer.h → ModelState.h → BitFlagsIO.h (blocked, Xfer incomplete)
+// If xferModelConditionFlags() is ever added here, forward-declare ModelConditionFlags instead.
 #include "Common/Science.h"
 #include "Common/Upgrade.h"
 
@@ -186,5 +188,5 @@ protected:
 			
 };
 
-#endif // __XFER_H_
+#endif // ZH_COMMON_XFER_H
 

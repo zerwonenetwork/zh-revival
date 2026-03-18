@@ -159,11 +159,24 @@ template <size_t NUMBITS>
 void BitFlags<NUMBITS>::xfer(Xfer* xfer)
 {
 	// this deserves a version number
-	XferVersion currentVersion = 1;
-	XferVersion version = currentVersion;
+	//
+	// Newer toolchains sometimes fail to see the legacy Xfer typedef/enum names
+	// here even though the Xfer interface itself is visible. Use the underlying
+	// storage/integral values directly to keep the serialization logic intact.
+	//
+	UnsignedByte currentVersion = 1;
+	UnsignedByte version = currentVersion;
+	enum
+	{
+		BITFLAGS_XFER_SAVE = 1,
+		BITFLAGS_XFER_LOAD = 2,
+		BITFLAGS_XFER_CRC = 3,
+		BITFLAGS_XFER_READ_ERROR = 6,
+		BITFLAGS_XFER_MODE_UNKNOWN = 8
+	};
 	xfer->xferVersion( &version, currentVersion );
 
-	if( xfer->getXferMode() == XFER_SAVE )
+	if( xfer->getXferMode() == BITFLAGS_XFER_SAVE )
 	{
 		// save how many entries are to follow
 		Int c = count();
@@ -185,7 +198,7 @@ void BitFlags<NUMBITS>::xfer(Xfer* xfer)
 		}  // end for i
 
 	}  // end if, save
-	else if( xfer->getXferMode() == XFER_LOAD )
+	else if( xfer->getXferMode() == BITFLAGS_XFER_LOAD )
 	{
   	// clear the kind of mask data
 		clear();
@@ -207,13 +220,13 @@ void BitFlags<NUMBITS>::xfer(Xfer* xfer)
 			if (!valid)
 			{
 				DEBUG_CRASH(("invalid bit name %s",string.str()));
-				throw XFER_READ_ERROR;
+				throw BITFLAGS_XFER_READ_ERROR;
 			}
 
 		}  // end for, i
 
 	}  // end else if, load
-	else if( xfer->getXferMode() == XFER_CRC )
+	else if( xfer->getXferMode() == BITFLAGS_XFER_CRC )
 	{
 
 		// just call the xfer implementation on the data values
@@ -224,7 +237,7 @@ void BitFlags<NUMBITS>::xfer(Xfer* xfer)
 	{
 
 		DEBUG_CRASH(( "BitFlagsXfer - Unknown xfer mode '%d'\n", xfer->getXferMode() ));
-		throw XFER_MODE_UNKNOWN;
+		throw BITFLAGS_XFER_MODE_UNKNOWN;
 
 	}  // end else
 

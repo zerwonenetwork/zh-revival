@@ -39,7 +39,9 @@
 // ***********************************
 // Set this to 0 to remove all embedded browser code.
 //
-#define ENABLE_EMBEDDED_BROWSER		1
+// ZH-REVIVAL: Disabled — requires proprietary BrowserEngine.DLL and uses
+// #import which is incompatible with /MP (parallel compilation).
+#define ENABLE_EMBEDDED_BROWSER		0
 //
 // ***********************************
 
