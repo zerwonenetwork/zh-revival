@@ -40,6 +40,9 @@
 #include	"mpu.h"
 #include "math.h"
 #include <assert.h>
+#if defined(_MSC_VER)
+#include <intrin.h>
+#endif
 
 typedef union {
 	LARGE_INTEGER LargeInt;
@@ -49,13 +52,17 @@ typedef union {
 	} QuadPart;
 } QuadValue;
 
-#if defined(__GNUC__) || defined(__clang__)
+#if defined(_MSC_VER)
+static unsigned __int64 Read_Time_Stamp_Counter()
+{
+	return __rdtsc();
+}
+#define ASM_RDTSC _asm _emit 0x0f _asm _emit 0x31
+#elif defined(__GNUC__) || defined(__clang__)
 static unsigned __int64 Read_Time_Stamp_Counter()
 {
 	return __builtin_ia32_rdtsc();
 }
-#elif defined(_MSC_VER)
-#define ASM_RDTSC _asm _emit 0x0f _asm _emit 0x31
 #endif
 
 
