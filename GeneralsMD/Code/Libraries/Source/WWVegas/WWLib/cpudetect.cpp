@@ -25,6 +25,10 @@
 #include <windows.h>
 #include "systimer.h"
 
+#if defined(__GNUC__) || defined(__clang__)
+# include <cpuid.h>
+#endif
+
 #ifdef _UNIX
 # include <time.h>  // for time(), localtime() and timezone variable.
 #endif
@@ -123,48 +127,57 @@ const char* CPUDetectClass::Get_Processor_Manufacturer_Name()
 	return ManufacturerNames[ProcessorManufacturer];
 }
 
+#if !defined(__GNUC__) && !defined(__clang__)
 #define ASM_RDTSC _asm _emit 0x0f _asm _emit 0x31
+#endif
+
+#if defined(__GNUC__) || defined(__clang__)
+static unsigned __int64 Read_Time_Stamp_Counter()
+{
+    return __builtin_ia32_rdtsc();
+}
+#endif
 
 static unsigned Calculate_Processor_Speed(__int64& ticks_per_second)
 {
-	struct {
-		unsigned timer0_h;
-		unsigned timer0_l;
-		unsigned timer1_h;
-		unsigned timer1_l;
-	} Time;
+    unsigned __int64 timer0;
+    unsigned __int64 timer1=0;
 
-#ifdef WIN32
+#if defined(_MSC_VER)
    __asm {
       ASM_RDTSC;
-      mov Time.timer0_h, eax
-      mov Time.timer0_l, edx
+      mov dword ptr [timer0], eax
+      mov dword ptr [timer0 + 4], edx
    }
+#elif defined(__GNUC__) || defined(__clang__)
+    timer0=Read_Time_Stamp_Counter();
 #elif defined(_UNIX)
       __asm__("rdtsc");
       __asm__("mov %eax, __Time.timer1_h");
       __asm__("mov %edx, __Time.timer1_l");
 #endif
 
-	unsigned start=TIMEGETTIME();
-	unsigned elapsed;
-	while ((elapsed=TIMEGETTIME()-start)<200) {
-#ifdef WIN32
+    unsigned start=TIMEGETTIME();
+    unsigned elapsed;
+    while ((elapsed=TIMEGETTIME()-start)<200) {
+#if defined(_MSC_VER)
       __asm {
          ASM_RDTSC;
-         mov Time.timer1_h, eax
-         mov Time.timer1_l, edx
+         mov dword ptr [timer1], eax
+         mov dword ptr [timer1 + 4], edx
       }
+#elif defined(__GNUC__) || defined(__clang__)
+        timer1=Read_Time_Stamp_Counter();
 #elif defined(_UNIX)
       __asm__ ("rdtsc");
       __asm__("mov %eax, __Time.timer1_h");
       __asm__("mov %edx, __Time.timer1_l");
 #endif
-	}
+    }
 
-	__int64 t=*(__int64*)&Time.timer1_h-*(__int64*)&Time.timer0_h;
-	ticks_per_second=(__int64)((1000.0/(double)elapsed)*(double)t);	// Ticks per second
-	return unsigned((double)t/(double)(elapsed*1000));
+    __int64 t=(__int64)(timer1-timer0);
+    ticks_per_second=(__int64)((1000.0/(double)elapsed)*(double)t);   // Ticks per second
+    return unsigned((double)t/(double)(elapsed*1000));
 }
 
 void CPUDetectClass::Init_Processor_Speed()
@@ -820,16 +833,16 @@ void CPUDetectClass::Init_Processor_String()
 
 void CPUDetectClass::Init_CPUID_Instruction()
 {
-	unsigned long cpuid_available=0;
+    unsigned long cpuid_available=0;
 
    // The pushfd/popfd commands are done using emits
    // because CodeWarrior seems to have problems with
    // the command (huh?)
 
-#ifdef WIN32
+#if defined(_MSC_VER)
    __asm
    {
-      mov cpuid_available, 0	// clear flag
+      mov cpuid_available, 0   // clear flag
       push ebx
       pushfd
       pop eax
@@ -847,6 +860,8 @@ void CPUDetectClass::Init_CPUID_Instruction()
       popfd
       pop ebx
    }
+#elif defined(__GNUC__) || defined(__clang__)
+    cpuid_available=(__get_cpuid_max(0, 0) != 0);
 #elif defined(_UNIX)
      __asm__(" mov $0, __cpuid_available");  // clear flag
      __asm__(" push %ebx");
@@ -867,7 +882,7 @@ void CPUDetectClass::Init_CPUID_Instruction()
      __asm__(" popfd");
      __asm__(" pop %ebx");
 #endif
-	HasCPUIDInstruction=!!cpuid_available;
+    HasCPUIDInstruction=!!cpuid_available;
 }
 
 void CPUDetectClass::Init_Processor_Features()
@@ -933,54 +948,60 @@ void CPUDetectClass::Init_OS()
 }
 
 bool CPUDetectClass::CPUID(
-	unsigned& u_eax_,
-	unsigned& u_ebx_,
-	unsigned& u_ecx_,
-	unsigned& u_edx_,
-	unsigned cpuid_type)
+    unsigned& u_eax_,
+    unsigned& u_ebx_,
+    unsigned& u_ecx_,
+    unsigned& u_edx_,
+    unsigned cpuid_type)
 {
-	if (!Has_CPUID_Instruction()) return false;	// Most processors since 486 have CPUID...
+    if (!Has_CPUID_Instruction()) return false;   // Most processors since 486 have CPUID...
 
-	unsigned u_eax;
-	unsigned u_ebx;
-	unsigned u_ecx;
-	unsigned u_edx;
+    unsigned u_eax;
+    unsigned u_ebx;
+    unsigned u_ecx;
+    unsigned u_edx;
 
-#ifdef WIN32
+#if defined(_MSC_VER)
    __asm
    {
       pushad
-      mov	eax, [cpuid_type]
-      xor	ebx, ebx
-      xor	ecx, ecx
-      xor	edx, edx
+      mov    eax, [cpuid_type]
+      xor    ebx, ebx
+      xor    ecx, ecx
+      xor    edx, edx
       cpuid
-      mov	[u_eax], eax
-      mov	[u_ebx], ebx
-      mov	[u_ecx], ecx
-      mov	[u_edx], edx
+      mov    [u_eax], eax
+      mov    [u_ebx], ebx
+      mov    [u_ecx], ecx
+      mov    [u_edx], edx
       popad
    }
+#elif defined(__GNUC__) || defined(__clang__)
+    unsigned max_cpuid = (cpuid_type & 0x80000000U) ? __get_cpuid_max(0x80000000U, 0) : __get_cpuid_max(0, 0);
+    if (max_cpuid < cpuid_type) {
+        return false;
+    }
+    __cpuid_count(cpuid_type, 0, u_eax, u_ebx, u_ecx, u_edx);
 #elif defined(_UNIX)
    __asm__("pusha");
-   __asm__("mov	__cpuid_type, %eax");
-   __asm__("xor	%ebx, %ebx");
-   __asm__("xor	%ecx, %ecx");
-   __asm__("xor	%edx, %edx");
+   __asm__("mov    __cpuid_type, %eax");
+   __asm__("xor    %ebx, %ebx");
+   __asm__("xor    %ecx, %ecx");
+   __asm__("xor    %edx, %edx");
    __asm__("cpuid");
-   __asm__("mov	%eax, __u_eax");
-   __asm__("mov	%ebx, __u_ebx");
-   __asm__("mov	%ecx, __u_ecx");
-   __asm__("mov	%edx, __u_edx");
+   __asm__("mov    %eax, __u_eax");
+   __asm__("mov    %ebx, __u_ebx");
+   __asm__("mov    %ecx, __u_ecx");
+   __asm__("mov    %edx, __u_edx");
    __asm__("popa");
 #endif
 
-	u_eax_=u_eax;
-	u_ebx_=u_ebx;
-	u_ecx_=u_ecx;
-	u_edx_=u_edx;
+    u_eax_=u_eax;
+    u_ebx_=u_ebx;
+    u_ecx_=u_ecx;
+    u_edx_=u_edx;
 
-	return true;
+    return true;
 }
 
 #define SYSLOG(n) work.Format n ; CPUDetectClass::ProcessorLog+=work;

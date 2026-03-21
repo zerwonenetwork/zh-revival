@@ -81,7 +81,6 @@ Max4Hybrid
 /Code/Libraries/Lib/WWUtilProfile.lib
 
 # Generated files
-generatedVersion.h
 BrowserDispatch.tli
 BrowserDispatch.tlh
 BrowserDispatch_i.c

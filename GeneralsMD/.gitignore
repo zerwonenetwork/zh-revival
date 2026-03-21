@@ -91,7 +91,6 @@ Max4Hybrid
 BrowserDispatch_i.c
 BrowserDispatch.h
 BrowserDispatch.tlb
-generatedVersion.h
 
 # Generated shader headers
 *.vsh_code.h
