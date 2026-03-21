@@ -52,6 +52,7 @@
 
 #include	"always.h"
 #include	"bfiofile.h"
+#include	<errno.h>
 #include	<string.h>
 
 

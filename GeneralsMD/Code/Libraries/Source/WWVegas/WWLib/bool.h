@@ -45,7 +45,15 @@
 **      November of '94. Until the compiler supports this, use the following
 **      definition.
 */
-#ifdef _MSC_VER
+#if defined(__GNUC__) || defined(__clang__)
+
+/*
+** Modern GCC/Clang already provide the built-in bool/true/false keywords.
+** The legacy compatibility typedefs below are only for pre-standard
+** compilers and break MinGW cross-builds.
+*/
+
+#elif defined(_MSC_VER)
 
 #include        "yvals.h"
 #define bool    unsigned
