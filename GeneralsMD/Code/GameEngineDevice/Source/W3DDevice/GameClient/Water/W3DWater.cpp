@@ -911,8 +911,8 @@ void WaterRenderObjClass::ReAcquireResources(void)
 
 	if (W3DShaderManager::getChipset() >= DC_GENERIC_PIXEL_SHADER_1_1)
 	{
-		ID3DXBuffer *compiledShader;
-		char *shader = 
+		ID3DXBuffer *compiledShader = NULL;
+		const char *shader =
 			"ps.1.1\n \
 			tex t0 \n\
 			tex t1	\n\
@@ -928,7 +928,7 @@ void WaterRenderObjClass::ReAcquireResources(void)
 			hr = 	DX8Wrapper::_Get_D3D_Device8()->CreatePixelShader((DWORD*)compiledShader->GetBufferPointer(), &m_riverWaterPixelShader);
 			compiledShader->Release();
 		}
-		shader = 
+		shader =
 			"ps.1.1\n \
 			tex t0 \n\
 			tex t1	\n\
@@ -941,7 +941,7 @@ void WaterRenderObjClass::ReAcquireResources(void)
 			hr = 	DX8Wrapper::_Get_D3D_Device8()->CreatePixelShader((DWORD*)compiledShader->GetBufferPointer(), &m_waterPixelShader);
 			compiledShader->Release();
 		}
-		shader = 
+		shader =
 			"ps.1.1\n \
 			tex t0 ;get water texture\n\
 			tex t1 ;get white highlights on black background\n\

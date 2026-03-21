@@ -355,7 +355,7 @@ void BinkVideoStream::frameRender( VideoBuffer *buffer )
 	{
 		void *mem = buffer->lock();
 
-		u32 flags;
+		U32 flags;
 
 		switch ( buffer->format())
 		{

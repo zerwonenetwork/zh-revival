@@ -147,8 +147,9 @@ private:
 	static void *	operator new [] (size_t size);
 	static void		operator delete[] (void * memory);
 
-	// This must be staticly declared by user
-	static ObjectPoolClass<T,BLOCK_SIZE>	Allocator;
+	// C++20 inline variables let modern builds provide one shared allocator
+	// instance per specialization without relying on out-of-line definitions.
+	inline static ObjectPoolClass<T,BLOCK_SIZE>	Allocator;
 
 };
 
@@ -168,8 +169,7 @@ private:
 // Using `template<> class AutoPoolClass<T,N>;` would make the class INCOMPLETE
 // and break inheritance (e.g. class Foo : public AutoPoolClass<Foo,256>).
 // Use the same form on all compilers.
-#define DEFINE_AUTO_POOL(T,BLOCKSIZE) \
-template<> ObjectPoolClass<T,BLOCKSIZE> AutoPoolClass<T,BLOCKSIZE>::Allocator;
+#define DEFINE_AUTO_POOL(T,BLOCKSIZE)
 
 
 /***********************************************************************************************

@@ -118,7 +118,8 @@ Bool DockUpdate::isClearToApproach( Object const* docker ) const
 
 	ObjectID dockerID = docker->getID();
 
-	for( Int positionIndex = 0; positionIndex < m_approachPositionOwners.size(); ++positionIndex )
+	Int positionIndex = 0;
+	for( ; positionIndex < m_approachPositionOwners.size(); ++positionIndex )
 	{
 		if( m_approachPositionOwners[positionIndex] == INVALID_ID )
 		{
@@ -146,7 +147,8 @@ Bool DockUpdate::reserveApproachPosition( Object* docker, Coord3D *position, Int
 
 	ObjectID dockerID = docker->getID();
 
-	for( Int positionIndex = 0; positionIndex < m_approachPositionOwners.size(); ++positionIndex )
+	Int positionIndex = 0;
+	for( ; positionIndex < m_approachPositionOwners.size(); ++positionIndex )
 	{
 		if( m_approachPositionOwners[positionIndex] == dockerID )
 		{
@@ -245,7 +247,7 @@ void DockUpdate::getEnterPosition( Object* docker, Coord3D *position )
 	// If I don't have a bone, you are fine where you are, unless you fly, in which case I should recenter you
 	Coord3D zero;
 	zero.zero();
-	if( m_enterPosition == zero )
+	if( m_enterPosition.x == zero.x && m_enterPosition.y == zero.y && m_enterPosition.z == zero.z )
 	{
 		if( docker->isUsingAirborneLocomotor() )
 		{
@@ -275,7 +277,7 @@ void DockUpdate::getDockPosition( Object* docker, Coord3D *position )
 	// If I don't have a bone, you are fine where you are.
 	Coord3D zero;
 	zero.zero();
-	if( m_enterPosition == zero )
+	if( m_enterPosition.x == zero.x && m_enterPosition.y == zero.y && m_enterPosition.z == zero.z )
 	{
 		*position = *docker->getPosition();
 		return;
@@ -300,7 +302,7 @@ void DockUpdate::getExitPosition( Object* docker, Coord3D *position )
 	// If I don't have a bone, you are fine where you are.
 	Coord3D zero;
 	zero.zero();
-	if( m_enterPosition == zero )
+	if( m_enterPosition.x == zero.x && m_enterPosition.y == zero.y && m_enterPosition.z == zero.z )
 	{
 		*position = *docker->getPosition();
 		return;
@@ -595,7 +597,7 @@ void DockUpdate::xfer( Xfer *xfer )
 	vectorSize = m_approachPositionOwners.size();
 	xfer->xferInt( &vectorSize );
 	m_approachPositionOwners.resize(vectorSize);
-	for( vectorIndex = 0; vectorIndex < vectorSize; ++vectorIndex )
+	for( Int vectorIndex = 0; vectorIndex < vectorSize; ++vectorIndex )
 	{
 		xfer->xferObjectID( &m_approachPositionOwners[vectorIndex] );
 	}
@@ -604,7 +606,7 @@ void DockUpdate::xfer( Xfer *xfer )
 	vectorSize = m_approachPositionReached.size();
 	xfer->xferInt( &vectorSize );
 	m_approachPositionReached.resize(vectorSize);
-	for( vectorIndex = 0; vectorIndex < vectorSize; ++vectorIndex )
+	for( Int vectorIndex = 0; vectorIndex < vectorSize; ++vectorIndex )
 	{
 		// Vector of Bool gets packed as bitfield internally
 		Bool unpack = m_approachPositionReached[vectorIndex];
@@ -635,4 +637,3 @@ void DockUpdate::loadPostProcess( void )
 	UpdateModule::loadPostProcess();
 
 }  // end loadPostProcess
-

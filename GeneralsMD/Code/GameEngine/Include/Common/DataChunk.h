@@ -127,6 +127,7 @@ public:
 	~DataChunkOutput();
 
 	void openDataChunk( char *name, DataChunkVersionType ver );
+	void openDataChunk( const char *name, DataChunkVersionType ver ) { openDataChunk(const_cast<char*>(name), ver); }
 	void closeDataChunk( void );
 
 	void writeReal(Real r);

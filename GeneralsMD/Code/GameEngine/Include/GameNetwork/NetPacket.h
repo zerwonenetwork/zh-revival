@@ -219,7 +219,7 @@ protected:
 	static NetCommandMsg * readFrameResendRequestMessage(UnsignedByte *data, Int &i);
 
 	void writeGameMessageArgumentToPacket(GameMessageArgumentDataType type, GameMessageArgumentType arg);
-	static void readGameMessageArgumentFromPacket(GameMessageArgumentDataType type, NetGameCommandMsg *msg, UnsignedByte *data, Int &i);
+	static void readGameMessageArgumentFromPacket(GameMessageArgumentDataType argument_type, NetGameCommandMsg *command_msg, UnsignedByte *packet_data, Int &offset);
 
 	void dumpPacketToLog();
 

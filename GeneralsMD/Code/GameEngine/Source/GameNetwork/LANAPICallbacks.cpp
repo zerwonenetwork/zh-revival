@@ -116,7 +116,16 @@ void LANAPI::OnAccept( UnsignedInt playerIP, Bool status )
 				break;
 			}// if
 		}// for
-		if (i != MAX_SLOTS ) 
+		Bool foundSlot = FALSE;
+		for (Int i = 0; i < MAX_SLOTS; i++)
+		{
+			if (m_currentGame->getIP(i) == playerIP)
+			{
+				foundSlot = TRUE;
+				break;
+			}
+		}
+		if (foundSlot) 
 		{
 			RequestGameOptions( GenerateGameOptionsString(), false );
 			lanUpdateSlotList();
@@ -147,7 +156,16 @@ void LANAPI::OnHasMap( UnsignedInt playerIP, Bool status )
 				break;
 			}// if
 		}// for
-		if (i != MAX_SLOTS ) 
+		Int slotIndex = -1;
+		for (Int i = 0; i < MAX_SLOTS; i++)
+		{
+			if (m_currentGame->getIP(i) == playerIP)
+			{
+				slotIndex = i;
+				break;
+			}
+		}
+		if (slotIndex != -1) 
 		{
 			UnicodeString mapDisplayName;
 			const MapMetaData *mapData = TheMapCache->findMap( m_currentGame->getMap() );
@@ -167,9 +185,9 @@ void LANAPI::OnHasMap( UnsignedInt playerIP, Bool status )
 			{
 				UnicodeString text;
 				if (willTransfer)
-					text.format(TheGameText->fetch("GUI:PlayerNoMapWillTransfer"), m_currentGame->getLANSlot(i)->getName().str(), mapDisplayName.str());
+					text.format(TheGameText->fetch("GUI:PlayerNoMapWillTransfer"), m_currentGame->getLANSlot(slotIndex)->getName().str(), mapDisplayName.str());
 				else
-					text.format(TheGameText->fetch("GUI:PlayerNoMap"), m_currentGame->getLANSlot(i)->getName().str(), mapDisplayName.str());
+					text.format(TheGameText->fetch("GUI:PlayerNoMap"), m_currentGame->getLANSlot(slotIndex)->getName().str(), mapDisplayName.str());
 				OnChat(UnicodeString(L"SYSTEM"), m_localIP, text, LANCHAT_SYSTEM);
 			}
 			lanUpdateSlotList();

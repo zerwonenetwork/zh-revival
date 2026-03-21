@@ -184,7 +184,7 @@ public:
 		delete[] HashTable;
 	}
 
-	void VertexArrayClass::Set_Bounds(const Vector3 & minv,const Vector3 & maxv)
+	void Set_Bounds(const Vector3 & minv,const Vector3 & maxv)
 	{
 		Extent = (maxv - minv) / 2.0f;
 		Center = (maxv + minv) / 2.0f;
@@ -309,7 +309,7 @@ public:
 		// texcoords must match for all passes and stages
 		// Note: I'm checking them separately and last so that I can keep track
 		// of how many splits are caused solely by u-v discontinuities...
-		for (pass=0; pass<MeshBuilderClass::MAX_PASSES; pass++) {
+		for (int pass = 0; pass < MeshBuilderClass::MAX_PASSES; pass++) {
 			for (int stage=0; stage < MeshBuilderClass::MAX_STAGES; stage++) {
 				if (v0.TexCoord[pass][stage] != v1.TexCoord[pass][stage]) {
 					UVSplits++;
@@ -1358,6 +1358,7 @@ void MeshBuilderClass::Strip_Optimize_Mesh(void)
 	for (int i=0; i<FaceCount; i++) {
 		
 		int mat = Faces[i].TextureIndex[PolyOrderPass][PolyOrderStage];
+		int j;
 
 		for (j=0; j<3; j++) {
 
@@ -1420,6 +1421,7 @@ void MeshBuilderClass::Strip_Optimize_Mesh(void)
 		int		startpass	= 0;									// should we start from pass 0 or 1?
 		int		findpass;											// 0 = same material only, 1 = any polygon
 		int		c;														// c = number of shared edges
+		int		j;
 
 		// first attempt to minimize material switches by choosing a polygon with same material
 		// as the starting poly. Basically what we want is the poly with same material with
@@ -1562,7 +1564,7 @@ void MeshBuilderClass::Strip_Optimize_Mesh(void)
 					(pedges[startpoly].Edge[i]->Vertex[1] == vFIFO[0] && pedges[startpoly].Edge[i]->Vertex[0] == vFIFO[1]))
 				{
 
-					for (j = 0; j < 2; j++) {
+					for (int j = 0; j < 2; j++) {
 						
 						// if poly 'j' attached to this edge has not been used already, use it!
 						if (pedges[startpoly].Edge[i]->Poly[j] > -1 && 
@@ -1833,5 +1835,3 @@ int vertex_compare(const void *elem1, const void *elem2)
 
 	return 0;
 }
-
-

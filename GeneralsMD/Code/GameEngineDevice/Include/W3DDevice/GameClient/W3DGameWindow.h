@@ -54,6 +54,11 @@
 #include "GameClient/GameWindow.h"
 #include "WW3D2/Render2DSentence.h"
 
+#ifdef BitTest
+#undef BitTest
+#endif
+#define BitTest( x, i ) ( ( (x) & (i) ) != 0 )
+
 // FORWARD REFERENCES /////////////////////////////////////////////////////////
 
 // TYPE DEFINES ///////////////////////////////////////////////////////////////

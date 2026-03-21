@@ -1317,8 +1317,17 @@ void NAT::setConnectionState(Int nodeNumber, NATConnectionState state) {
 			}
 		}
 	}
-	if (i == MAX_SLOTS) {
-		DEBUG_ASSERTCRASH(i < MAX_SLOTS, ("Didn't find the node number in the slot list"));
+	Bool foundSlot = FALSE;
+	for (Int i = 0; i < MAX_SLOTS; ++i) {
+		if (m_slotList[i] != NULL && m_slotList[i]->isHuman()) {
+			if (i != m_connectionNodes[m_localNodeNumber].m_slotIndex && i == slotIndex) {
+				foundSlot = TRUE;
+				break;
+			}
+		}
+	}
+	if (!foundSlot) {
+		DEBUG_ASSERTCRASH(foundSlot, ("Didn't find the node number in the slot list"));
 		return;
 	}
 	TheEstablishConnectionsMenu->setPlayerStatus(slot, state);

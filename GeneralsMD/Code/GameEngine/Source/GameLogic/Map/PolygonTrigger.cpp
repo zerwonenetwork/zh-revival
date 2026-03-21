@@ -295,7 +295,8 @@ void PolygonTrigger::updateBounds(void)	const
 */
 void PolygonTrigger::addPolygonTrigger(PolygonTrigger *pTrigger)
 {	
-	for (PolygonTrigger *pTrig=getFirstPolygonTrigger(); pTrig; pTrig = pTrig->getNext()) {
+	PolygonTrigger *pTrig = NULL;
+	for (pTrig=getFirstPolygonTrigger(); pTrig; pTrig = pTrig->getNext()) {
 		DEBUG_ASSERTCRASH(pTrig != pTrigger, ("Attempting to add trigger already in list."));
 		if (pTrig==pTrigger) return;
 	}
@@ -310,7 +311,8 @@ void PolygonTrigger::addPolygonTrigger(PolygonTrigger *pTrigger)
 void PolygonTrigger::removePolygonTrigger(PolygonTrigger *pTrigger)
 {	
 	PolygonTrigger *pPrev = NULL;
-	for (PolygonTrigger *pTrig=getFirstPolygonTrigger(); pTrig; pTrig = pTrig->getNext()) {
+	PolygonTrigger *pTrig = NULL;
+	for (pTrig=getFirstPolygonTrigger(); pTrig; pTrig = pTrig->getNext()) {
 		if (pTrig==pTrigger) break;
 		pPrev = pTrig;
 	}

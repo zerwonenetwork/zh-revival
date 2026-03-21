@@ -90,6 +90,51 @@ private:
 	static				HWND						hWnd;
 };
 
+#else
+
+#ifndef BROWSEROPTION_SCROLLBARS
+#define BROWSEROPTION_SCROLLBARS		0x0001
+#endif
+#ifndef BROWSEROPTION_3DBORDER
+#define BROWSEROPTION_3DBORDER		0x0002
+#endif
+
+class DX8WebBrowser
+{
+public:
+	static bool Initialize(const char* badpageurl = 0,
+		const char* loadingpageurl = 0,
+		const char* mousefilename = 0,
+		const char* mousebusyfilename = 0)
+	{
+		(void)badpageurl;
+		(void)loadingpageurl;
+		(void)mousefilename;
+		(void)mousebusyfilename;
+		return false;
+	}
+
+	static void Shutdown(void) {}
+	static void Update(void) {}
+	static void Render(int backbufferindex) { (void)backbufferindex; }
+	static void CreateBrowser(const char* browsername, const char* url, int x, int y, int w, int h, int updateticks = 0, LONG options = BROWSEROPTION_SCROLLBARS | BROWSEROPTION_3DBORDER, LPDISPATCH gamedispatch = 0)
+	{
+		(void)browsername;
+		(void)url;
+		(void)x;
+		(void)y;
+		(void)w;
+		(void)h;
+		(void)updateticks;
+		(void)options;
+		(void)gamedispatch;
+	}
+
+	static void DestroyBrowser(const char* browsername) { (void)browsername; }
+	static bool Is_Browser_Open(const char* browsername) { (void)browsername; return false; }
+	static void Navigate(const char* browsername, const char* url) { (void)browsername; (void)url; }
+};
+
 #endif
 
 #endif

@@ -30,6 +30,7 @@
 
 #include "GameClient/GameText.h"
 #include "GameNetwork/GameSpy.h"
+#include "GameNetwork/GameSpyChat.h"
 #include "GameNetwork/GameSpyGP.h"
 #include "GameNetwork/GameSpyOverlay.h"
 

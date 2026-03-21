@@ -729,7 +729,7 @@ WindowMsgHandledType GadgetListBoxInput( GameWindow *window, UnsignedInt msg,
 								DisplayString *dString = (DisplayString *)cell->data;
 								if(!dString)
 									continue;
-								for(j = 0; j < TheKeyboard->MAX_KEY_STATES; ++j)
+								for (Int j = 0; j < TheKeyboard->MAX_KEY_STATES; ++j)
 								{								
 									if(dString->getText().getCharAt(0) == TheKeyboard->getPrintableKey(mData1, j))
 									{
@@ -1290,7 +1290,7 @@ WindowMsgHandledType GadgetListBoxSystem( GameWindow *window, UnsignedInt msg,
 			if(pos->x >= list->columns || pos->y >= list->listLength || 
 					list->listData[pos->y].cell[pos->x].cellType != LISTBOX_TEXT)
 			{
-				tAndC->string = UnicodeString.TheEmptyString;
+			tAndC->string = UnicodeString::TheEmptyString;
 				tAndC->color = 0;				
 			}
 			else
@@ -1633,23 +1633,24 @@ WindowMsgHandledType GadgetListBoxSystem( GameWindow *window, UnsignedInt msg,
 			if( list->multiSelect )
 			{
 				// forced selections override the entire selection list.
-				for (Int i=0; i<selectCount && i<list->endPos; ++i)
+				Int selectionIndex = 0;
+				for (; selectionIndex < selectCount && selectionIndex < list->endPos; ++selectionIndex)
 				{
 					// don't select off the end
-					if (list->listLength <= selectList[i])
+					if (list->listLength <= selectList[selectionIndex])
 					{
 						break;
 					}
 
 					// if there is no cells we shouldn't be selecting this entry
-					if( !list->listData[ selectList[i] ].cell )
+					if( !list->listData[ selectList[selectionIndex] ].cell )
 					{
 						break;
 					}
 
-					list->selections[i] = selectList[i];
+					list->selections[selectionIndex] = selectList[selectionIndex];
 				}
-				list->selections[i] = -1;
+				list->selections[selectionIndex] = -1;
 			}
 			else
 			{
@@ -1750,7 +1751,7 @@ WindowMsgHandledType GadgetListBoxSystem( GameWindow *window, UnsignedInt msg,
 			//
 			// remove the display or links to images after the shift
 			//
-			for(i = 0; i < (Int)mData1; i ++)
+			for (Int i = 0; i < (Int)mData1; i ++)
 			{
 				list->listData[list->endPos + i].cell = NULL;
 			}
@@ -2822,4 +2823,3 @@ Int GadgetListBoxGetColumnWidth( GameWindow *listbox, Int column )
 
 	return listboxData->columnWidth[column];
 }  // end GadgetListBoxGetNumColumns
-

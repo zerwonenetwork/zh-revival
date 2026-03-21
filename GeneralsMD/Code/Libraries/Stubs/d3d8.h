@@ -28,6 +28,42 @@
 #ifndef D3DERR_DEVICENOTRESET
 #define D3DERR_DEVICENOTRESET ((HRESULT)0x88760869L)
 #endif
+#ifndef D3DERR_CONFLICTINGTEXTUREFILTER
+#define D3DERR_CONFLICTINGTEXTUREFILTER ((HRESULT)0x8876081EL)
+#endif
+#ifndef D3DERR_CONFLICTINGTEXTUREPALETTE
+#define D3DERR_CONFLICTINGTEXTUREPALETTE ((HRESULT)0x8876081FL)
+#endif
+#ifndef D3DERR_TOOMANYOPERATIONS
+#define D3DERR_TOOMANYOPERATIONS ((HRESULT)0x88760882L)
+#endif
+#ifndef D3DERR_UNSUPPORTEDALPHAARG
+#define D3DERR_UNSUPPORTEDALPHAARG ((HRESULT)0x8876086BL)
+#endif
+#ifndef D3DERR_UNSUPPORTEDALPHAOPERATION
+#define D3DERR_UNSUPPORTEDALPHAOPERATION ((HRESULT)0x8876086CL)
+#endif
+#ifndef D3DERR_UNSUPPORTEDCOLORARG
+#define D3DERR_UNSUPPORTEDCOLORARG ((HRESULT)0x8876086DL)
+#endif
+#ifndef D3DERR_UNSUPPORTEDCOLOROPERATION
+#define D3DERR_UNSUPPORTEDCOLOROPERATION ((HRESULT)0x8876086EL)
+#endif
+#ifndef D3DERR_UNSUPPORTEDFACTORVALUE
+#define D3DERR_UNSUPPORTEDFACTORVALUE ((HRESULT)0x88760874L)
+#endif
+#ifndef D3DERR_UNSUPPORTEDTEXTUREFILTER
+#define D3DERR_UNSUPPORTEDTEXTUREFILTER ((HRESULT)0x88760870L)
+#endif
+#ifndef D3DERR_WRONGTEXTUREFORMAT
+#define D3DERR_WRONGTEXTUREFORMAT ((HRESULT)0x88760872L)
+#endif
+#ifndef D3DERR_NOTAVAILABLE
+#define D3DERR_NOTAVAILABLE ((HRESULT)0x8876086AL)
+#endif
+#ifndef D3DERR_OUTOFVIDEOMEMORY
+#define D3DERR_OUTOFVIDEOMEMORY ((HRESULT)0x8876017CL)
+#endif
 
 typedef unsigned int D3DFORMAT;
 typedef int D3DPOOL;
@@ -51,6 +87,7 @@ typedef struct _D3DCAPS8 {
   DWORD DevCaps;
   DWORD Caps2;
   DWORD RasterCaps;
+  DWORD PrimitiveMiscCaps;
   DWORD TextureCaps;
   DWORD TextureOpCaps;
   DWORD MaxTextureWidth;
@@ -129,6 +166,12 @@ typedef struct _D3DLOCKED_BOX {
   void* pBits;
 } D3DLOCKED_BOX;
 
+typedef struct _D3DGAMMARAMP {
+  WORD red[256];
+  WORD green[256];
+  WORD blue[256];
+} D3DGAMMARAMP;
+
 typedef struct _D3DVOLUME_DESC {
   D3DFORMAT Format;
   DWORD     Type;
@@ -152,6 +195,10 @@ typedef struct _D3DCOLORVALUE {
   float r, g, b, a;
 } D3DCOLORVALUE;
 
+typedef struct _D3DVECTOR {
+  float x, y, z;
+} D3DVECTOR;
+
 typedef struct _D3DMATERIAL8 {
   D3DCOLORVALUE Diffuse;
   D3DCOLORVALUE Ambient;
@@ -165,8 +212,8 @@ typedef struct _D3DLIGHT8 {
   D3DCOLORVALUE Diffuse;
   D3DCOLORVALUE Specular;
   D3DCOLORVALUE Ambient;
-  float Position[3];
-  float Direction[3];
+  D3DVECTOR Position;
+  D3DVECTOR Direction;
   float Range;
   float Falloff;
   float Attenuation0;
@@ -182,6 +229,10 @@ typedef int D3DTEXTURESTAGESTATETYPE;
 typedef int D3DTEXTUREOP;    // enum values: D3DTOP_*
 typedef int D3DBLEND;        // enum values: D3DBLEND_*
 typedef int D3DCUBEMAP_FACE; // enum values: D3DCUBEMAP_FACE_*
+typedef D3DCUBEMAP_FACE D3DCUBEMAP_FACES;
+typedef int D3DBACKBUFFER_TYPE;
+typedef int D3DCMPFUNC;
+typedef int D3DPRIMITIVETYPE;
 typedef DWORD D3DCOLOR;
 
 // Common transform state IDs
@@ -202,6 +253,7 @@ typedef DWORD D3DCOLOR;
 
 // Flexible Vertex Format (FVF) bits used by dx8fvf.h
 #define D3DFVF_XYZ            0x0002
+#define D3DFVF_XYZRHW         0x0004
 #define D3DFVF_XYZB4         0x000E
 #define D3DFVF_NORMAL        0x0010
 #define D3DFVF_DIFFUSE       0x0040
@@ -232,15 +284,20 @@ typedef DWORD D3DCOLOR;
 #define D3DPRASTERCAPS_ZBIAS                0x00004000
 #define D3DPRASTERCAPS_FOGRANGE             0x00010000
 
+// Primitive misc caps (D3DCAPS8.PrimitiveMiscCaps)
+#define D3DPMISCCAPS_COLORWRITEENABLE       0x00000080
+
 // Caps2 flags (D3DCAPS8.Caps2)
 #define D3DCAPS2_FULLSCREENGAMMA            0x00020000
 
 // Resource types (D3DRESOURCETYPE) used by IDirect3D8::CheckDeviceFormat
+#define D3DRTYPE_SURFACE                    1
 #define D3DRTYPE_TEXTURE                    3
 
 // Additional usage flags
 #define D3DUSAGE_RENDERTARGET               0x00000001
 #define D3DUSAGE_DEPTHSTENCIL               0x00000002
+#define D3DUSAGE_POINTS                     0x00000040
 
 // Texture operation capability flags (D3DCAPS8.TextureOpCaps)
 #define D3DTEXOPCAPS_SELECTARG1             0x00000002
@@ -268,8 +325,42 @@ typedef DWORD D3DCOLOR;
 #define D3DPTEXTURECAPS_CUBEMAP             0x00000800
 
 #define D3DSWAPEFFECT_DISCARD               1
+#define D3DSWAPEFFECT_COPY_VSYNC            3
+#define D3DMULTISAMPLE_NONE                 0
 #define D3DPRESENT_INTERVAL_DEFAULT         0
+#define D3DPRESENT_INTERVAL_IMMEDIATE       0x80000000u
+#define D3DPRESENT_INTERVAL_ONE             0x00000001u
+#define D3DPRESENT_INTERVAL_TWO             0x00000002u
+#define D3DPRESENT_INTERVAL_THREE           0x00000004u
 #define D3DPRESENT_RATE_DEFAULT             0
+
+#define D3DSGR_NO_CALIBRATION               0
+#define D3DSGR_CALIBRATE                    1
+
+#define D3DSTENCILOP_KEEP                   1
+#define D3DSTENCILOP_ZERO                   2
+#define D3DSTENCILOP_REPLACE                3
+#define D3DSTENCILOP_INCRSAT                4
+#define D3DSTENCILOP_DECRSAT                5
+#define D3DSTENCILOP_INVERT                 6
+#define D3DSTENCILOP_INCR                   7
+#define D3DSTENCILOP_DECR                   8
+
+#define D3DRS_LINEPATTERN                   10
+#define D3DRS_LASTPIXEL                     16
+#define D3DRS_DITHERENABLE                  26
+#define D3DRS_ZVISIBLE                      30
+#define D3DRS_EDGEANTIALIAS                 40
+#define D3DRS_WRAP0                         128
+#define D3DRS_WRAP1                         129
+#define D3DRS_WRAP2                         130
+#define D3DRS_WRAP3                         131
+#define D3DRS_WRAP4                         132
+#define D3DRS_WRAP5                         133
+#define D3DRS_WRAP6                         134
+#define D3DRS_WRAP7                         135
+#define D3DRS_LOCALVIEWER                   142
+#define D3DRS_CLIPPLANEENABLE               152
 
 // Formats referenced in code
 #define D3DFMT_UNKNOWN  0
@@ -334,10 +425,10 @@ typedef DWORD D3DCOLOR;
 #define D3DRS_FOGENABLE                 28
 #define D3DRS_SPECULARENABLE            29
 #define D3DRS_FOGCOLOR                  34
-#define D3DRS_FOGSTART                  34
 #define D3DRS_FOGTABLEMODE              35
-#define D3DRS_FOGEND                    36
-#define D3DRS_FOGDENSITY                37
+#define D3DRS_FOGSTART                  36
+#define D3DRS_FOGEND                    37
+#define D3DRS_FOGDENSITY                38
 #define D3DRS_RANGEFOGENABLE            48
 #define D3DRS_STENCILENABLE             52
 #define D3DRS_STENCILFAIL               53
@@ -350,11 +441,25 @@ typedef DWORD D3DCOLOR;
 #define D3DRS_CLIPPING                  136
 #define D3DRS_LIGHTING                  137
 #define D3DRS_AMBIENT                   139
-#define D3DRS_AMBIENTMATERIALSOURCE     145
 #define D3DRS_DIFFUSEMATERIALSOURCE     145
+#define D3DRS_SPECULARMATERIALSOURCE    146
+#define D3DRS_AMBIENTMATERIALSOURCE     147
 #define D3DRS_EMISSIVEMATERIALSOURCE    148
 #define D3DRS_VERTEXBLEND               151
 #define D3DRS_SOFTWAREVERTEXPROCESSING  153
+#define D3DRS_POINTSIZE                 154
+#define D3DRS_POINTSIZE_MIN             155
+#define D3DRS_POINTSPRITEENABLE         156
+#define D3DRS_POINTSCALEENABLE          157
+#define D3DRS_POINTSCALE_A              158
+#define D3DRS_POINTSCALE_B              159
+#define D3DRS_POINTSCALE_C              160
+#define D3DRS_MULTISAMPLEANTIALIAS      161
+#define D3DRS_MULTISAMPLEMASK           162
+#define D3DRS_PATCHEDGESTYLE            163
+#define D3DRS_PATCHSEGMENTS             164
+#define D3DRS_DEBUGMONITORTOKEN         165
+#define D3DRS_POINTSIZE_MAX             166
 #define D3DRS_INDEXEDVERTEXBLENDENABLE  167
 #define D3DRS_COLORWRITEENABLE          168
 #define D3DRS_TWEENFACTOR               170
@@ -364,8 +469,6 @@ typedef DWORD D3DCOLOR;
 #define D3DRS_NORMALIZENORMALS          143
 #define D3DRS_FOGVERTEXMODE             140
 #define D3DRS_COLORVERTEX               141
-#define D3DRS_SPECULARMATERIALSOURCE    147
-
 // Material color sources
 #define D3DMCS_MATERIAL  0
 #define D3DMCS_COLOR1    1
@@ -395,13 +498,28 @@ typedef DWORD D3DCOLOR;
 #define D3DTSS_BUMPENVLSCALE        22
 #define D3DTSS_BUMPENVLOFFSET       23
 #define D3DTSS_TEXTURETRANSFORMFLAGS 24
-#define D3DTSS_RESULTARG            25
+#define D3DTSS_ADDRESSW             25
 #define D3DTSS_TCI_PASSTHRU                     0
 #define D3DTSS_TCI_CAMERASPACENORMAL            0x00010000
 #define D3DTSS_TCI_CAMERASPACEPOSITION          0x00020000
 #define D3DTSS_TCI_CAMERASPACEREFLECTIONVECTOR  0x00030000
 // COLORARG0 is a third argument for the LERP texture op
 #define D3DTSS_COLORARG0            26
+#define D3DTSS_ALPHAARG0            27
+#define D3DTSS_RESULTARG            28
+
+#define D3DVBF_DISABLE              0
+#define D3DVBF_1WEIGHTS             1
+#define D3DVBF_2WEIGHTS             2
+#define D3DVBF_3WEIGHTS             3
+#define D3DVBF_TWEENING             255
+#define D3DVBF_0WEIGHTS             256
+
+#define D3DPATCHEDGE_DISCRETE       0
+#define D3DPATCHEDGE_CONTINUOUS     1
+
+#define D3DDMT_ENABLE               0
+#define D3DDMT_DISABLE              1
 
 // D3DTS_TEXTURE0..7 — texture transform state indices
 #define D3DTS_TEXTURE0   16
@@ -480,8 +598,18 @@ typedef DWORD D3DCOLOR;
 #define D3DTA_TEXTURE               2
 #define D3DTA_TFACTOR               3
 #define D3DTA_SPECULAR              4
+#define D3DTA_TEMP                  5
+#define D3DTA_SELECTMASK            0x0000000f
 #define D3DTA_COMPLEMENT            16
 #define D3DTA_ALPHAREPLICATE        32
+
+#define D3DWRAP_U                   0x00000001
+#define D3DWRAP_V                   0x00000002
+#define D3DWRAP_W                   0x00000004
+
+#define D3DZB_FALSE                 0
+#define D3DZB_TRUE                  1
+#define D3DZB_USEW                  2
 
 // Blend modes
 #define D3DBLEND_ZERO               1
@@ -495,6 +623,8 @@ typedef DWORD D3DCOLOR;
 #define D3DBLEND_DESTCOLOR          9
 #define D3DBLEND_INVDESTCOLOR       10
 #define D3DBLEND_SRCALPHASAT        11
+#define D3DBLEND_BOTHSRCALPHA       12
+#define D3DBLEND_BOTHINVSRCALPHA    13
 
 // Compare functions
 #define D3DCMP_NEVER                1
@@ -511,6 +641,17 @@ typedef DWORD D3DCOLOR;
 #define D3DCULL_CW                  2
 #define D3DCULL_CCW                 3
 
+// Primitive types
+#define D3DPT_POINTLIST             1
+#define D3DPT_LINELIST              2
+#define D3DPT_LINESTRIP             3
+#define D3DPT_TRIANGLELIST          4
+#define D3DPT_TRIANGLESTRIP         5
+#define D3DPT_TRIANGLEFAN           6
+#define D3DLIGHT_POINT              1
+#define D3DLIGHT_SPOT               2
+#define D3DLIGHT_DIRECTIONAL        3
+
 // Fill modes
 #define D3DFILL_POINT               1
 #define D3DFILL_WIREFRAME           2
@@ -520,6 +661,11 @@ typedef DWORD D3DCOLOR;
 #define D3DSHADE_FLAT               1
 #define D3DSHADE_GOURAUD            2
 #define D3DSHADE_PHONG              3
+
+// Clear flags
+#define D3DCLEAR_TARGET             0x00000001L
+#define D3DCLEAR_ZBUFFER            0x00000002L
+#define D3DCLEAR_STENCIL            0x00000004L
 
 // Fog modes
 #define D3DFOG_NONE                 0
@@ -540,6 +686,7 @@ typedef DWORD D3DCOLOR;
 #define D3DLOCK_NOSYSLOCK           0x00000800
 #define D3DLOCK_NOOVERWRITE         0x00001000
 #define D3DLOCK_DISCARD             0x00002000
+#define D3DLOCK_NO_DIRTY_UPDATE     0x00008000
 
 // Usage flags
 #define D3DUSAGE_WRITEONLY          0x00000008
@@ -552,7 +699,7 @@ typedef DWORD D3DCOLOR;
 #define D3DFMT_INDEX32 102
 
 // Cubemap face count
-#define D3DCUBEMAP_FACES 6
+#define D3DCUBEMAP_FACE_COUNT 6
 
 // Cubemap face enum values (used with IDirect3DCubeTexture8)
 #define D3DCUBEMAP_FACE_POSITIVE_X 0
@@ -564,6 +711,7 @@ typedef DWORD D3DCOLOR;
 
 // Backbuffer types
 #define D3DBACKBUFFER_TYPE_MONO     0
+#define D3DCURSOR_IMMEDIATE_UPDATE  0x00000001L
 
 // Color write enable flags
 #define D3DCOLORWRITEENABLE_RED     1
@@ -581,20 +729,54 @@ typedef DWORD D3DCOLOR;
 // Vertex blend
 #define D3DVBF_DISABLE              0
 
+// Vertex shader declaration tokens
+#define D3DVSDT_FLOAT1              0x00
+#define D3DVSDT_FLOAT2              0x01
+#define D3DVSDT_FLOAT3              0x02
+#define D3DVSDT_FLOAT4              0x03
+#define D3DVSDT_D3DCOLOR            0x04
+#define D3DVSDT_UBYTE4              0x05
+#define D3DVSDT_SHORT2              0x06
+#define D3DVSDT_SHORT4              0x07
+
+#define D3DVSD_STREAM(_StreamNumber) ((DWORD)(0x10000000u | ((_StreamNumber) & 0xF)))
+#define D3DVSD_REG(_VertexRegister, _Type) ((DWORD)((((_Type) & 0xF) << 16) | ((_VertexRegister) & 0xFF)))
+#define D3DVSD_END()                 0xFFFFFFFFu
+
 // C++ interface declarations (virtual method tables)
 #ifdef __cplusplus
 
+#ifndef D3DXMATH_H_ZH_STUB
+#include "D3DXMath.h"
+#endif
+
 // Forward declarations needed for cross-references
+struct D3DXVECTOR4;
 struct IDirect3DSurface8;
 struct IDirect3DTexture8;
 struct IDirect3DBaseTexture8;
+struct IDirect3DCubeTexture8;
+struct IDirect3DVolumeTexture8;
 struct IDirect3DVertexBuffer8;
 struct IDirect3DIndexBuffer8;
 struct IDirect3DSwapChain8;
+struct IDirect3DDevice8;
+struct IDirect3D8;
+typedef IDirect3DSurface8* LPDIRECT3DSURFACE8;
+typedef IDirect3DTexture8* LPDIRECT3DTEXTURE8;
+typedef IDirect3DBaseTexture8* LPDIRECT3DBASETEXTURE8;
+typedef IDirect3DCubeTexture8* LPDIRECT3DCUBETEXTURE8;
+typedef IDirect3DVolumeTexture8* LPDIRECT3DVOLUMETEXTURE8;
+typedef IDirect3DVertexBuffer8* LPDIRECT3DVERTEXBUFFER8;
+typedef IDirect3DIndexBuffer8* LPDIRECT3DINDEXBUFFER8;
+typedef IDirect3DSwapChain8* LPDIRECT3DSWAPCHAIN8;
+typedef IDirect3DDevice8* LPDIRECT3DDEVICE8;
+typedef IDirect3D8* LPDIRECT3D8;
 
 struct IDirect3DBaseTexture8 {
   virtual ULONG AddRef() = 0;
   virtual ULONG Release() = 0;
+  virtual DWORD SetLOD(DWORD LODNew) = 0;
   virtual DWORD GetLevelCount() = 0;
   virtual DWORD GetPriority() = 0;
   virtual DWORD SetPriority(DWORD Priority) = 0;
@@ -644,6 +826,7 @@ struct IDirect3DIndexBuffer8 {
 struct IDirect3DSwapChain8 {
   virtual ULONG AddRef() = 0;
   virtual ULONG Release() = 0;
+  virtual HRESULT GetBackBuffer(UINT, D3DBACKBUFFER_TYPE, IDirect3DSurface8**) = 0;
 };
 
 struct IDirect3DDevice8 {
@@ -654,6 +837,8 @@ struct IDirect3DDevice8 {
   virtual HRESULT SetPixelShader(DWORD) = 0;
   virtual HRESULT SetVertexShaderConstant(DWORD, const void*, DWORD) = 0;
   virtual HRESULT SetPixelShaderConstant(DWORD, const void*, DWORD) = 0;
+  HRESULT SetVertexShaderConstant(DWORD Register, const D3DXVECTOR4& Value, DWORD Count) { return SetVertexShaderConstant(Register, &Value, Count); }
+  HRESULT SetPixelShaderConstant(DWORD Register, const D3DXVECTOR4& Value, DWORD Count) { return SetPixelShaderConstant(Register, &Value, Count); }
   virtual HRESULT SetTransform(D3DTRANSFORMSTATETYPE, const D3DMATRIX*) = 0;
   virtual HRESULT GetTransform(D3DTRANSFORMSTATETYPE, D3DMATRIX*) = 0;
   virtual HRESULT SetMaterial(const D3DMATERIAL8*) = 0;
@@ -681,19 +866,27 @@ struct IDirect3DDevice8 {
   virtual HRESULT Clear(DWORD, const void*, DWORD, DWORD, float, DWORD) = 0;
   virtual HRESULT SetViewport(const D3DVIEWPORT8*) = 0;
   virtual HRESULT GetViewport(D3DVIEWPORT8*) = 0;
+  virtual HRESULT GetDisplayMode(D3DDISPLAYMODE*) = 0;
   virtual HRESULT GetDeviceCaps(D3DCAPS8*) = 0;
   virtual HRESULT GetBackBuffer(UINT, DWORD, IDirect3DSurface8**) = 0;
+  virtual HRESULT GetFrontBuffer(IDirect3DSurface8*) = 0;
   virtual HRESULT GetDepthStencilSurface(IDirect3DSurface8**) = 0;
   virtual HRESULT CreateAdditionalSwapChain(D3DPRESENT_PARAMETERS*, IDirect3DSwapChain8**) = 0;
   virtual HRESULT CreateDepthStencilSurface(UINT, UINT, D3DFORMAT, DWORD, IDirect3DSurface8**) = 0;
   virtual HRESULT CreateImageSurface(UINT, UINT, D3DFORMAT, IDirect3DSurface8**) = 0;
   virtual HRESULT SetRenderTarget(IDirect3DSurface8*, IDirect3DSurface8*) = 0;
   virtual HRESULT GetRenderTarget(IDirect3DSurface8**) = 0;
+  virtual HRESULT UpdateTexture(IDirect3DBaseTexture8*, IDirect3DBaseTexture8*) = 0;
   virtual HRESULT ValidateDevice(DWORD*) = 0;
   virtual HRESULT CreateVertexShader(const DWORD*, const DWORD*, DWORD*, DWORD) = 0;
   virtual HRESULT CreatePixelShader(const DWORD*, DWORD*) = 0;
   virtual HRESULT DeleteVertexShader(DWORD) = 0;
   virtual HRESULT DeletePixelShader(DWORD) = 0;
+  virtual HRESULT SetCursorProperties(UINT, UINT, IDirect3DSurface8*) = 0;
+  virtual void SetCursorPosition(int, int, DWORD) = 0;
+  virtual BOOL ShowCursor(BOOL) = 0;
+  virtual UINT GetAvailableTextureMem() = 0;
+  virtual void SetGammaRamp(DWORD, const D3DGAMMARAMP*) = 0;
   virtual HRESULT ResourceManagerDiscardBytes(DWORD Bytes) = 0;
   virtual ULONG Release() = 0;
 };
@@ -705,6 +898,7 @@ struct IDirect3D8 {
   virtual UINT GetAdapterModeCount(UINT) = 0;
   virtual HRESULT EnumAdapterModes(UINT, UINT, D3DDISPLAYMODE*) = 0;
   virtual HRESULT GetAdapterDisplayMode(UINT, D3DDISPLAYMODE*) = 0;
+  virtual HRESULT CheckDeviceType(UINT, UINT, UINT, UINT, BOOL) = 0;
   virtual HRESULT CheckDeviceFormat(UINT, UINT, UINT, UINT, UINT, UINT) = 0;
   virtual HRESULT CheckDepthStencilMatch(UINT, UINT, UINT, UINT, UINT) = 0;
   virtual HRESULT CreateDevice(UINT, UINT, HWND, DWORD, D3DPRESENT_PARAMETERS*, IDirect3DDevice8**) = 0;

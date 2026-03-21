@@ -13,4 +13,9 @@
 #define STUB_IMPL
 #include "GameSpyStub.h"
 
+extern "C" int getQR2HostingStatus(void)
+{
+    return 0;
+}
+
 static_assert(true, "GameSpyStub compiled successfully");

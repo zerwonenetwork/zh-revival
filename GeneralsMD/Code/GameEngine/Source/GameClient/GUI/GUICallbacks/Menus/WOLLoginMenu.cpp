@@ -83,7 +83,7 @@ static Bool useWebBrowserForTOS = FALSE;
 
 static Bool isShuttingDown = false;
 static Bool buttonPushed = false;
-static char *nextScreen = NULL;
+static const char *nextScreen = NULL;
 
 static const UnsignedInt loginTimeoutInMS = 10000;
 static UnsignedInt loginAttemptTime = 0;
@@ -117,20 +117,20 @@ static AsciiString obfuscate( AsciiString in )
 {
 	char *buf = NEW char[in.getLength() + 1];
 	strcpy(buf, in.str());
-	static const char *xor = "1337Munkee";
+	static const char *xorMask = "1337Munkee";
 	char *c = buf;
-	const char *c2 = xor;
+	const char *c2 = xorMask;
 	while (*c)
 	{
 		if (!*c2)
-			c2 = xor;
+			c2 = xorMask;
 		if (*c != *c2)
 			*c = *c++ ^ *c2++;
 		else
 			c++, c2++;
 	}
 	AsciiString out = buf;
-	delete buf;
+	delete[] buf;
 	return out;
 }
 
@@ -589,7 +589,7 @@ void WOLLoginMenuInit( WindowLayout *layout, void *userData )
 #endif // ALLOW_NON_PROFILED_LOGIN
 		// Read login names from registry...
 		GadgetComboBoxReset(comboBoxEmail);
-		GadgetTextEntrySetText(textEntryPassword, UnicodeString.TheEmptyString);
+	GadgetTextEntrySetText(textEntryPassword, UnicodeString::TheEmptyString);
 
 		// look for cached nicks to add
 		AsciiString lastName;
@@ -1421,7 +1421,7 @@ WindowMsgHandledType WOLLoginMenuSystem( GameWindow *window, UnsignedInt msg,
 					useWebBrowserForTOS = FALSE;//loginPref->getBool("UseTOSBrowser", TRUE);
 					if (useWebBrowserForTOS && (TheWebBrowser != NULL))
 					{
-						TheWebBrowser->createBrowserWindow("TermsOfService", listboxTOS);
+						TheWebBrowser->createBrowserWindow(const_cast<char *>("TermsOfService"), listboxTOS);
 						webBrowserActive = TRUE;
 					}
 					else

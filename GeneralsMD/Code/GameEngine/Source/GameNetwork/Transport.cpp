@@ -219,7 +219,6 @@ Bool Transport::doSend() {
 	}
 
 	// Send all messages
-	int i;
 	for (Int i=0; i<MAX_MESSAGES; ++i)
 	{
 		if (m_outBuffer[i].length != 0)
@@ -380,8 +379,6 @@ Bool Transport::doRecv()
 Bool Transport::queueSend(UnsignedInt addr, UnsignedShort port, const UnsignedByte *buf, Int len /*,
 						  NetMessageFlags flags, Int id */)
 {
-	int i;
-
 	if (len < 1 || len > MAX_PACKET_SIZE)
 	{
 		return false;
@@ -503,6 +500,5 @@ Real Transport::getUnknownPacketsPerSecond( void )
 	}
 	return val / (MAX_TRANSPORT_STATISTICS_SECONDS-1);
 }
-
 
 

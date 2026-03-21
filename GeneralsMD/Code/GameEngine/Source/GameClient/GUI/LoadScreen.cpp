@@ -428,7 +428,7 @@ void SinglePlayerLoadScreen::init( GameInfo *game )
 			m_unicodeObjectiveLines[i] = TheGameText->fetch(mission->m_missionObjectivesLabel[i]);
 	}
 
-	for(i = 0; i < MAX_DISPLAYED_UNITS; ++i)
+	for(Int i = 0; i < MAX_DISPLAYED_UNITS; ++i)
 	{
 		lineName.format("SinglePlayerLoadScreen.wnd:StaticTextCameoText%d",i);
 		m_unitDesc[i] = TheWindowManager->winGetWindowFromId( m_loadScreen,TheNameKeyGenerator->nameToKey( lineName ));
@@ -1462,7 +1462,7 @@ void MultiPlayerLoadScreen::init( GameInfo *game )
 		netSlot++;
 	}
 	
-	for(i = netSlot; i < MAX_SLOTS; ++i)
+	for(Int i = netSlot; i < MAX_SLOTS; ++i)
 	{
 		m_progressBars[i]->winHide(TRUE);
 		m_playerNames[i]->winHide(TRUE);
@@ -1833,7 +1833,7 @@ GameSlot *lSlot = game->getSlot(game->getLocalSlotNum());
 		netSlot++;
 	}
 	
-	for(i = netSlot; i < MAX_SLOTS; ++i)
+	for(Int i = netSlot; i < MAX_SLOTS; ++i)
 	{
 		m_playerWin[i]->winHide(TRUE);
 		//m_playerNames[i]->winHide(TRUE);
@@ -1949,8 +1949,6 @@ void MapTransferLoadScreen::init( GameInfo *game )
 	DEBUG_LOG(("NumPlayers %d\n", TheNetwork->getNumPlayers()));
 
 	AsciiString winName;
-	Int i;
-
 	// Load the Filename Text
 	winName.format( "MapTransferScreen.wnd:StaticTextCurrentFile");
 	m_fileNameText = TheWindowManager->winGetWindowFromId( m_loadScreen,TheNameKeyGenerator->nameToKey( winName ));
@@ -2004,7 +2002,7 @@ void MapTransferLoadScreen::init( GameInfo *game )
 		netSlot++;
 	}
 	
-	for(i = netSlot; i < MAX_SLOTS; ++i)
+	for(Int i = netSlot; i < MAX_SLOTS; ++i)
 	{
 		m_progressBars[i]->winHide(TRUE);
 		m_playerNames[i]->winHide(TRUE);
@@ -2083,4 +2081,3 @@ void MapTransferLoadScreen::setCurrentFilename(AsciiString filename)
 		GadgetStaticTextSetText(m_fileNameText, txt);
 	}
 }
-

@@ -449,7 +449,7 @@ static void remapTexture16Bit(Int dx, Int dy, Int pitch, SurfaceClass::SurfaceDe
 		Convert_Pixel((unsigned char *)&pal[y],*sd,rgb);
 	}
 
-	for (y=0; y<dy; y++)
+	for (Int y=0; y<dy; y++)
 	{	for (Int x=0; x<dx; x++)
 		{	//check if this pixel is part of team color palette
 			for (Int p=0; p<TEAM_COLOR_PALETTE_SIZE; p++)
@@ -552,7 +552,7 @@ static void remapTexture32Bit(Int dx, Int dy, Int pitch, SurfaceClass::SurfaceDe
 		Convert_Pixel((unsigned char *)&pal[y],*sd,rgb);
 	}
 
-	for (y=0; y<dy; y++)
+	for (Int y=0; y<dy; y++)
 	{	for (Int x=0; x<dx; x++)
 		{	//check if this pixel is part of team color palette
 			for (Int p=0; p<TEAM_COLOR_PALETTE_SIZE; p++)
@@ -796,7 +796,7 @@ RenderObjClass * W3DAssetManager::Create_Render_Obj(
 	{	
 		// If we didn't find one, try to load on demand
 		char filename [MAX_PATH];
-		char *mesh_name = ::strchr (name, '.');
+		const char *mesh_name = ::strchr (name, '.');
 		if (mesh_name != NULL) 
 		{
 			::lstrcpyn(filename, name, ((int)mesh_name) - ((int)name) + 1);

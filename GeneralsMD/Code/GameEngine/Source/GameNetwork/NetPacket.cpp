@@ -158,7 +158,7 @@ NetPacketList NetPacket::ConstructBigCommandPacketList(NetCommandRef *ref) {
 
 	if (!DoesCommandRequireACommandID(msg->getNetCommandType())) {
 		DEBUG_CRASH(("Trying to wrap a command that doesn't have a unique command ID"));
-		return NULL;
+		return NetPacketList();
 	}
 
 	UnsignedInt bufferSize = GetBufferSizeNeededForCommand(msg);  // need to implement.  I have a drinking problem.
@@ -5239,7 +5239,7 @@ NetCommandMsg * NetPacket::readGameMessage(UnsignedByte *data, Int &i)
 		lasttype = parserArgType->getType();
 		argsLeftForType = parserArgType->getArgCount();
 	}
-	for (j = 0; j < totalArgCount; ++j) {
+	for (Int j = 0; j < totalArgCount; ++j) {
 		readGameMessageArgumentFromPacket(lasttype, msg, data, i);
 
 		--argsLeftForType;
@@ -5264,84 +5264,84 @@ NetCommandMsg * NetPacket::readGameMessage(UnsignedByte *data, Int &i)
 	return (NetCommandMsg *)msg;
 }
 
-void NetPacket::readGameMessageArgumentFromPacket(GameMessageArgumentDataType type, NetGameCommandMsg *msg, UnsignedByte *data, Int &i) {
-	if (type == ARGUMENTDATATYPE_INTEGER) {
+void NetPacket::readGameMessageArgumentFromPacket(GameMessageArgumentDataType argument_type, NetGameCommandMsg *command_msg, UnsignedByte *packet_data, Int &offset) {
+	if (argument_type == ARGUMENTDATATYPE_INTEGER) {
 		GameMessageArgumentType arg;
 		Int theint;
-		memcpy(&theint, data + i, sizeof(theint));
-		i += sizeof(theint);
+		memcpy(&theint, packet_data + offset, sizeof(theint));
+		offset += sizeof(theint);
 		arg.integer = theint;
-		msg->addArgument(type, arg);
-	} else if (type == ARGUMENTDATATYPE_REAL) {
+		command_msg->addArgument(argument_type, arg);
+	} else if (argument_type == ARGUMENTDATATYPE_REAL) {
 		GameMessageArgumentType arg;
 		Real thereal;
-		memcpy(&thereal, data + i, sizeof(thereal));
-		i += sizeof(thereal);
+		memcpy(&thereal, packet_data + offset, sizeof(thereal));
+		offset += sizeof(thereal);
 		arg.real = thereal;
-		msg->addArgument(type, arg);
-	} else if (type == ARGUMENTDATATYPE_BOOLEAN) {
+		command_msg->addArgument(argument_type, arg);
+	} else if (argument_type == ARGUMENTDATATYPE_BOOLEAN) {
 		GameMessageArgumentType arg;
 		Bool thebool;
-		memcpy(&thebool, data + i, sizeof(thebool));
-		i += sizeof(thebool);
+		memcpy(&thebool, packet_data + offset, sizeof(thebool));
+		offset += sizeof(thebool);
 		arg.boolean = thebool;
-		msg->addArgument(type, arg);
-	} else if (type == ARGUMENTDATATYPE_OBJECTID) {
+		command_msg->addArgument(argument_type, arg);
+	} else if (argument_type == ARGUMENTDATATYPE_OBJECTID) {
 		GameMessageArgumentType arg;
 		ObjectID theint;
-		memcpy(&theint, data + i, sizeof(theint));
-		i += sizeof(theint);
+		memcpy(&theint, packet_data + offset, sizeof(theint));
+		offset += sizeof(theint);
 		arg.objectID = theint;
-		msg->addArgument(type, arg);
-	} else if (type == ARGUMENTDATATYPE_DRAWABLEID) {
+		command_msg->addArgument(argument_type, arg);
+	} else if (argument_type == ARGUMENTDATATYPE_DRAWABLEID) {
 		GameMessageArgumentType arg;
 		DrawableID theint;
-		memcpy(&theint, data + i, sizeof(theint));
-		i += sizeof(theint);
+		memcpy(&theint, packet_data + offset, sizeof(theint));
+		offset += sizeof(theint);
 		arg.drawableID = theint;
-		msg->addArgument(type, arg);
-	} else if (type == ARGUMENTDATATYPE_TEAMID) {
+		command_msg->addArgument(argument_type, arg);
+	} else if (argument_type == ARGUMENTDATATYPE_TEAMID) {
 		GameMessageArgumentType arg;
 		UnsignedInt theint;
-		memcpy(&theint, data + i, sizeof(theint));
-		i += sizeof(theint);
+		memcpy(&theint, packet_data + offset, sizeof(theint));
+		offset += sizeof(theint);
 		arg.teamID = theint;
-		msg->addArgument(type, arg);
-	} else if (type == ARGUMENTDATATYPE_LOCATION) {
+		command_msg->addArgument(argument_type, arg);
+	} else if (argument_type == ARGUMENTDATATYPE_LOCATION) {
 		GameMessageArgumentType arg;
 		Coord3D coord;
-		memcpy(&coord, data + i, sizeof(coord));
-		i += sizeof(coord);
+		memcpy(&coord, packet_data + offset, sizeof(coord));
+		offset += sizeof(coord);
 		arg.location = coord;
-		msg->addArgument(type, arg);
-	} else if (type == ARGUMENTDATATYPE_PIXEL) {
+		command_msg->addArgument(argument_type, arg);
+	} else if (argument_type == ARGUMENTDATATYPE_PIXEL) {
 		GameMessageArgumentType arg;
 		ICoord2D pixel;
-		memcpy(&pixel, data + i, sizeof(pixel));
-		i += sizeof(pixel);
+		memcpy(&pixel, packet_data + offset, sizeof(pixel));
+		offset += sizeof(pixel);
 		arg.pixel = pixel;
-		msg->addArgument(type, arg);
-	} else if (type == ARGUMENTDATATYPE_PIXELREGION) {
+		command_msg->addArgument(argument_type, arg);
+	} else if (argument_type == ARGUMENTDATATYPE_PIXELREGION) {
 		GameMessageArgumentType arg;
 		IRegion2D reg;
-		memcpy(&reg, data + i, sizeof(reg));
-		i += sizeof(reg);
+		memcpy(&reg, packet_data + offset, sizeof(reg));
+		offset += sizeof(reg);
 		arg.pixelRegion = reg;
-		msg->addArgument(type, arg);
-	} else if (type == ARGUMENTDATATYPE_TIMESTAMP) {
+		command_msg->addArgument(argument_type, arg);
+	} else if (argument_type == ARGUMENTDATATYPE_TIMESTAMP) {
 		GameMessageArgumentType arg;
 		UnsignedInt stamp;
-		memcpy(&stamp, data + i, sizeof(stamp));
-		i += sizeof(stamp);
+		memcpy(&stamp, packet_data + offset, sizeof(stamp));
+		offset += sizeof(stamp);
 		arg.timestamp = stamp;
-		msg->addArgument(type, arg);
-	} else if (type == ARGUMENTDATATYPE_WIDECHAR) {
+		command_msg->addArgument(argument_type, arg);
+	} else if (argument_type == ARGUMENTDATATYPE_WIDECHAR) {
 		GameMessageArgumentType arg;
 		WideChar c;
-		memcpy(&c, data + i, sizeof(c));
-		i += sizeof(c);
+		memcpy(&c, packet_data + offset, sizeof(c));
+		offset += sizeof(c);
 		arg.wChar = c;
-		msg->addArgument(type, arg);
+		command_msg->addArgument(argument_type, arg);
 	}
 }
 
@@ -5569,7 +5569,7 @@ NetCommandMsg * NetPacket::readDisconnectChatMessage(UnsignedByte *data, Int &i)
 	text[length] = 0;
 
 	UnicodeString unitext;
-	unitext.set(text);
+	unitext.set(reinterpret_cast<const WideChar *>(text));
 
 	//DEBUG_LOG(("NetPacket::readDisconnectChatMessage - read message, message is %ls\n", unitext.str()));
 
@@ -5596,7 +5596,7 @@ NetCommandMsg * NetPacket::readChatMessage(UnsignedByte *data, Int &i) {
 
 
 	UnicodeString unitext;
-	unitext.set(text);
+	unitext.set(reinterpret_cast<const WideChar *>(text));
 
 	//DEBUG_LOG(("NetPacket::readChatMessage - read message, message is %ls\n", unitext.str()));
 

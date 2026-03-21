@@ -57,6 +57,11 @@ class srMeshModel;
 class srCamera;
 class srGERD;
 class CameraClass;
+class Matrix4;
+struct srMatrix4;
+struct srMatrix4d;
+struct srMatrix3;
+struct srVector4;
 
 
 /*

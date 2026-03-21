@@ -32,6 +32,11 @@
 
 #include "Lib/BaseType.h"
 
+#ifdef BitTest
+#undef BitTest
+#endif
+#define BitTest( x, i ) ( ( (x) & (i) ) != 0 )
+
 #include "Common/Geometry.h"
 #include "Common/Snapshot.h"
 #include "Common/SpecialPowerMaskType.h"

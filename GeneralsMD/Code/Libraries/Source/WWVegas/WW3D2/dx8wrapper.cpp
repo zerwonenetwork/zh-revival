@@ -1504,7 +1504,8 @@ bool DX8Wrapper::Find_Color_And_Z_Mode(int resx,int resy,int bitdepth,D3DFORMAT 
 	bool found = false;
 	unsigned int mode = 0;
 
-	for (int format_index=0; format_index < format_count; format_index++) {
+	int format_index = 0;
+	for (; format_index < format_count; format_index++) {
 		found |= Find_Color_Mode(format_table[format_index],resx,resy,&mode);
 		if (found) break;
 	}
@@ -1735,7 +1736,9 @@ void DX8Wrapper::Begin_Scene(void)
 	
 	DX8CALL(BeginScene());
 
+#if ENABLE_EMBEDDED_BROWSER
 	DX8WebBrowser::Update();
+#endif
 }
 
 void DX8Wrapper::End_Scene(bool flip_frames)
@@ -1743,7 +1746,9 @@ void DX8Wrapper::End_Scene(bool flip_frames)
 	DX8_THREAD_ASSERT();
 	DX8CALL(EndScene());
 
+#if ENABLE_EMBEDDED_BROWSER
 	DX8WebBrowser::Render(0);
+#endif
 
 	if (flip_frames) {
 		DX8_Assert();
@@ -2328,7 +2333,7 @@ void DX8Wrapper::Apply_Render_State_Changes()
 #ifdef MESH_RENDER_SNAPSHOT_ENABLED		
 					if ( WW3D::Is_Snapshot_Activated() ) {
 						D3DLIGHT8 * light = &(render_state.Lights[index]);
-						static char * _light_types[] = { "Unknown", "Point","Spot", "Directional" };
+						static const char * _light_types[] = { "Unknown", "Point","Spot", "Directional" };
 						WWASSERT((light->Type >= 0) && (light->Type <= 3));					
 
 						SNAPSHOT_SAY((" type = %s amb = %4.2f,%4.2f,%4.2f  diff = %4.2f,%4.2f,%4.2f spec = %4.2f, %4.2f, %4.2f\n",
@@ -2362,7 +2367,7 @@ void DX8Wrapper::Apply_Render_State_Changes()
 	}
 	if (render_state_changed&VERTEX_BUFFER_CHANGED) {
 		SNAPSHOT_SAY(("DX8 - apply vb change\n"));
-		for (i=0;i<MAX_VERTEX_STREAMS;++i) {
+		for (unsigned i = 0; i < MAX_VERTEX_STREAMS; ++i) {
 			if (render_state.vertex_buffers[i]) {
 				switch (render_state.vertex_buffer_types[i]) {//->Type()) {
 				case BUFFER_TYPE_DX8:
@@ -3131,7 +3136,8 @@ void DX8Wrapper::Set_Light_Environment(LightEnvironmentClass* light_env)
 		}
 
 		D3DLIGHT8 light;		
-		for (int l=0;l<light_count;++l) {
+		int l = 0;
+		for (; l < light_count; ++l) {
 			
 			::ZeroMemory(&light, sizeof(D3DLIGHT8));
 			

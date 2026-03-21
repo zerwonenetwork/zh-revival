@@ -166,8 +166,8 @@ public:
 	TexProjectClass*				Peek_Texture_Projector() const { return Texture_Projector; }
 
 	// ShdMesh Accessors
-	int								Get_Sub_Mesh_Count(void) const;
-	ShdSubMeshClass *				Peek_Sub_Mesh(int i) const;
+	int								Get_Sub_Mesh_Count(void) const { return SubMeshes.Length(); }
+	ShdSubMeshClass *				Peek_Sub_Mesh(int i) const { return SubMeshes[i].Mesh; }
 
 protected:
 

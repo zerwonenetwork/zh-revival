@@ -99,7 +99,7 @@ enum
 struct LayoutScriptParse
 {
 
-	char *name;
+	const char *name;
 	Bool (*parse)( char *token, char *buffer, UnsignedInt version, WindowLayoutInfo *info );
 
 };
@@ -597,7 +597,7 @@ static Bool parseFont( char *token, WinInstanceData *instData,
 {
 	char *c, *ptr;
 	const char *seps = " ,\n\r\t";
-	char *stringSeps = ":,\n\r\t\"";
+	const char *stringSeps = ":,\n\r\t\"";
 	char fontName[ 256 ];
 	Int fontSize;
 	Int fontBold;
@@ -644,7 +644,7 @@ static Bool parseName( char *token, WinInstanceData *instData,
 {
 	char *c, *ptr;
 //	const char *seps = " ,\n\r\t";
-	char *stringSeps = "\"";
+	const char *stringSeps = "\"";
 
 	// scan to the first " mark
 	ptr = buffer;
@@ -699,7 +699,7 @@ static Bool parseSystemCallback( char *token, WinInstanceData *instData,
 {
 	char *c, *ptr;
 //	const char *seps = " ,\n\r\t";
-	char *stringSeps = "\"";
+	const char *stringSeps = "\"";
 
 	// scan to the first " mark
 	ptr = buffer;
@@ -726,7 +726,7 @@ static Bool parseInputCallback( char *token, WinInstanceData *instData,
 {
 	char *c, *ptr;
 //	const char *seps = " ,\n\r\t";
-	char *stringSeps = "\"";
+	const char *stringSeps = "\"";
 
 	// scan to the first " mark
 	ptr = buffer;
@@ -753,7 +753,7 @@ static Bool parseTooltipCallback( char *token, WinInstanceData *instData,
 {
 	char *c, *ptr;
 //	const char *seps = " ,\n\r\t";
-	char *stringSeps = "\"";
+	const char *stringSeps = "\"";
 
 	// scan to the first " mark
 	ptr = buffer;
@@ -780,7 +780,7 @@ static Bool parseDrawCallback( char *token, WinInstanceData *instData,
 {
 	char *c, *ptr;
 //	const char *seps = " ,\n\r\t";
-	char *stringSeps = "\"";
+	const char *stringSeps = "\"";
 
 	// scan to the first " mark
 	ptr = buffer;
@@ -807,7 +807,7 @@ static Bool parseHeaderTemplate( char *token, WinInstanceData *instData,
 {
 	char *c, *ptr;
 //	const char *seps = " ,\n\r\t";
-	char *stringSeps = "\"";
+	const char *stringSeps = "\"";
 
 	// scan to the first " mark
 	ptr = buffer;
@@ -987,7 +987,7 @@ static Bool parseTooltipText( char *token, WinInstanceData *instData,
 {
 	char *ptr = buffer;
 	char *c;
-	char *stringSeps = "\n\r\t\""; 
+	const char *stringSeps = "\n\r\t\""; 
 
 	// scan to the first " mark
 	while( *ptr != '"' )
@@ -1039,7 +1039,7 @@ static Bool parseText( char *token, WinInstanceData *instData,
 {
 	char *ptr = buffer;
 	char *c;
-	char *stringSeps = "\n\r\t\""; 
+	const char *stringSeps = "\n\r\t\""; 
 
 	// scan to the first " mark
 	while( *ptr != '"' )
@@ -1069,7 +1069,7 @@ static Bool parseTextColor( char *token, WinInstanceData *instData,
 														char *buffer, void *data )
 {
 	char *c;
-	char *seps       = " :,\n\r\t";
+	const char *seps       = " :,\n\r\t";
 	UnsignedInt r, g, b, a;
 	Int i, states = 3;
 	TextDrawData *textData;
@@ -1136,7 +1136,7 @@ static Bool parseStaticTextData( char *token, WinInstanceData *instData,
 {
 	TextData *textData = (TextData *)data;
 	char *c;
-	char *seps       = " :,\n\r\t";
+	const char *seps       = " :,\n\r\t";
 
 	// "CENTERED"
 	c = strtok( buffer, seps );  // label
@@ -1162,7 +1162,7 @@ static Bool parseTextEntryData( char *token, WinInstanceData *instData,
 {
 	EntryData *entryData = (EntryData *)data;
 	char *c;
-	char *seps       = " :,\n\r\t";
+	const char *seps       = " :,\n\r\t";
 
 	// "MAXLEN"
 	c = strtok( buffer, seps );  // label
@@ -1201,7 +1201,7 @@ static Bool parseTabControlData( char *token, WinInstanceData *instData,
 {
 	TabControlData *tabControlData = (TabControlData *)data;
 	char *c;
-	char *seps       = " :,\n\r\t";
+	const char *seps       = " :,\n\r\t";
 
 	//TABORIENTATION
 	c = strtok( buffer, seps );  // label
@@ -1259,7 +1259,7 @@ static Bool parseDrawData( char *token, WinInstanceData *instData,
 	WinDrawData *drawData;
 	Bool first = TRUE;
 	char *c;
-	char *seps       = " :,\n\r\t";
+	const char *seps       = " :,\n\r\t";
 
 	for( i = 0; i < MAX_DRAW_DATA; i++ )
 	{
@@ -2890,4 +2890,3 @@ GameWindow *GameWindowManager::winCreateFromScript( AsciiString filenameString,
 	return firstWindow;
 
 }  // end WinCreateFromScript
-

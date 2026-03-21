@@ -11,6 +11,7 @@
 #define D3DXMATH_H_ZH_STUB
 
 #include "d3d8.h"
+#include <math.h>
 
 #ifdef __cplusplus
 
@@ -73,7 +74,15 @@ typedef struct D3DXMATRIX {
             }
         return result;
     }
+    D3DXMATRIX& operator*=(const D3DXMATRIX& rhs) {
+        *this = *this * rhs;
+        return *this;
+    }
 } D3DXMATRIX;
+
+#ifndef D3DX_PI
+#define D3DX_PI 3.14159265358979323846f
+#endif
 
 // ---------------------------------------------------------------------------
 // D3DX math functions (stubs)
@@ -149,6 +158,77 @@ inline UINT D3DXGetFVFVertexSize(DWORD FVF)
     int numTex = (FVF & 0x0F00) >> 8;
     size += numTex * 2 * sizeof(float);
     return size;
+}
+
+inline D3DXMATRIX* D3DXMatrixRotationZ(D3DXMATRIX* pOut, float angle)
+{
+    if (!pOut) {
+        return pOut;
+    }
+
+    const float c = cosf(angle);
+    const float s = sinf(angle);
+    *pOut = D3DXMATRIX(
+        c,  s,  0.0f, 0.0f,
+       -s,  c,  0.0f, 0.0f,
+        0.0f, 0.0f, 1.0f, 0.0f,
+        0.0f, 0.0f, 0.0f, 1.0f);
+    return pOut;
+}
+
+inline D3DXMATRIX* D3DXMatrixScaling(D3DXMATRIX* pOut, float sx, float sy, float sz)
+{
+    if (!pOut) {
+        return pOut;
+    }
+
+    *pOut = D3DXMATRIX(
+        sx,   0.0f, 0.0f, 0.0f,
+        0.0f, sy,   0.0f, 0.0f,
+        0.0f, 0.0f, sz,   0.0f,
+        0.0f, 0.0f, 0.0f, 1.0f);
+    return pOut;
+}
+
+inline D3DXMATRIX* D3DXMatrixTranslation(D3DXMATRIX* pOut, float tx, float ty, float tz)
+{
+    if (!pOut) {
+        return pOut;
+    }
+
+    *pOut = D3DXMATRIX(
+        1.0f, 0.0f, 0.0f, 0.0f,
+        0.0f, 1.0f, 0.0f, 0.0f,
+        0.0f, 0.0f, 1.0f, 0.0f,
+        tx,   ty,   tz,   1.0f);
+    return pOut;
+}
+
+inline D3DXMATRIX* D3DXMatrixMultiply(D3DXMATRIX* pOut, const D3DXMATRIX* pM1, const D3DXMATRIX* pM2)
+{
+    if (!pOut || !pM1 || !pM2) {
+        return pOut;
+    }
+
+    *pOut = (*pM1) * (*pM2);
+    return pOut;
+}
+
+inline D3DXMATRIX* D3DXMatrixTranspose(D3DXMATRIX* pOut, const D3DXMATRIX* pM)
+{
+    if (!pOut || !pM) {
+        return pOut;
+    }
+
+    D3DXMATRIX result;
+    for (int r = 0; r < 4; ++r) {
+        for (int c = 0; c < 4; ++c) {
+            result.m[r][c] = pM->m[c][r];
+        }
+    }
+
+    *pOut = result;
+    return pOut;
 }
 
 #endif // __cplusplus

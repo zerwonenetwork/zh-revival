@@ -299,7 +299,7 @@ Particle::Particle( ParticleSystem *system, const ParticleInfo *info )
 	computeAlphaRate();
 
 	// set up colors
-	for( i=0; i<MAX_KEYFRAMES; i++ )
+	for( int i=0; i<MAX_KEYFRAMES; i++ )
 		m_colorKey[i] = info->m_colorKey[i];
 
 	m_color = m_colorKey[0].color;
@@ -1090,7 +1090,7 @@ ParticleSystem::ParticleSystem( const ParticleSystemTemplate *sysTemplate,
 	for( int i=0; i<MAX_KEYFRAMES; i++ )
 		m_alphaKey[i] = sysTemplate->m_alphaKey[i];
 
-	for( i=0; i<MAX_KEYFRAMES; i++ )
+	for( int i=0; i<MAX_KEYFRAMES; i++ )
 		m_colorKey[i] = sysTemplate->m_colorKey[i];
 
 	/// @todo It is confusing to do this conversion here...
@@ -2327,7 +2327,7 @@ ParticleInfo ParticleSystem::mergeRelatedParticleSystems( ParticleSystem *master
 	for( int i=0; i<MAX_KEYFRAMES; i++ )
 		mergeInfo.m_alphaKey[i] = info->m_alphaKey[i];
 
-	for( i=0; i<MAX_KEYFRAMES; i++ )
+	for( int i=0; i<MAX_KEYFRAMES; i++ )
 		mergeInfo.m_colorKey[i] = info->m_colorKey[i];
 
 	mergeInfo.m_colorScale = info->m_colorScale;
@@ -3376,9 +3376,9 @@ void ParticleSystemDebugDisplay( DebugDisplayInterface *dd, void *, FILE *fp )
 	dd->setCursorPos( 0, 0 );
 	dd->setRightMargin( 2 );
 	
-	dd->printf( "Total Particles: %d\n", TheParticleSystemManager->getParticleCount() );
-	dd->printf( "Total Particles (On Screen): %d\n", TheParticleSystemManager->getOnScreenParticleCount());
-	dd->printf( "Total Particle Systems: %d\n", TheParticleSystemManager->getParticleSystemCount() );
+	dd->printf( const_cast<char *>("Total Particles: %d\n"), TheParticleSystemManager->getParticleCount() );
+	dd->printf( const_cast<char *>("Total Particles (On Screen): %d\n"), TheParticleSystemManager->getOnScreenParticleCount());
+	dd->printf( const_cast<char *>("Total Particle Systems: %d\n"), TheParticleSystemManager->getParticleSystemCount() );
 
 	ParticleSystemManager::ParticleSystemList list = TheParticleSystemManager->getAllParticleSystems();
 	ParticleSystemManager::ParticleSystemList::iterator it;
@@ -3412,10 +3412,10 @@ void ParticleSystemDebugDisplay( DebugDisplayInterface *dd, void *, FILE *fp )
 	{
 		templateMapParticleCountIt = templateMapParticleCount.find(templateMapIt->first);
 
-		dd->printf("  %s: %d instances", templateMapIt->first.str(), templateMapIt->second);
+		dd->printf(const_cast<char *>("  %s: %d instances"), templateMapIt->first.str(), templateMapIt->second);
 		if (templateMapParticleCountIt != templateMapParticleCount.end())
-			dd->printf("  (Avg per system %.2f)", INT_TO_REAL(templateMapParticleCountIt->second) / templateMapIt->second);
-		dd->printf("\n");
+			dd->printf(const_cast<char *>("  (Avg per system %.2f)"), INT_TO_REAL(templateMapParticleCountIt->second) / templateMapIt->second);
+		dd->printf(const_cast<char *>("\n"));
 	}
 }
 

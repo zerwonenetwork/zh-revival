@@ -46,6 +46,20 @@ typedef struct CDA_PFN_tag
 // Pointer to the table (used in some SafeDisc call sites)
 typedef CDA_PFN* PCDA_PFN;
 
+// SafeDisc instrumentation macros become no-ops in stub builds.
+#ifndef CDAPFN_OVERHEAD_L5
+#define CDAPFN_OVERHEAD_L5 0
+#endif
+#ifndef CDAPFN_CONSTRAINT_NONE
+#define CDAPFN_CONSTRAINT_NONE 0
+#endif
+#ifndef CDAPFN_DECLARE_GLOBAL
+#define CDAPFN_DECLARE_GLOBAL(func, overhead, constraint)
+#endif
+#ifndef CDAPFN_ENDMARK
+#define CDAPFN_ENDMARK(func) ((void)0)
+#endif
+
 // ---------------------------------------------------------------------------
 //  SafeDisc validation entry points
 //  All return TRUE so the game boots as if a valid CD is present.

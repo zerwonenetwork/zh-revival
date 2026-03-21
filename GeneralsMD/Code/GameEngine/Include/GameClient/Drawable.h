@@ -38,6 +38,11 @@
 #include "Common/Geometry.h"
 #include "GameClient/Color.h"
 #include "WWMath/Matrix3D.h"
+
+#ifdef BitTest
+#undef BitTest
+#endif
+#define BitTest( x, i ) ( ( (x) & (i) ) != 0 )
 #include "GameClient/DrawableInfo.h"
 
 // FORWARD REFERENCES /////////////////////////////////////////////////////////////////////////////

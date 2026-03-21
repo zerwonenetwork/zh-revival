@@ -1788,6 +1788,7 @@ void GameLogic::logicMessageDispatcher( GameMessage *msg, void *userData )
 			if (msg->getArgument(0)->boolean)
 			{
 				// transfer control to any living ally
+				Bool foundAlly = FALSE;
 				for (Int i=0; i<ThePlayerList->getPlayerCount(); ++i)
 				{
 					if (i != msg->getPlayerIndex())
@@ -1802,11 +1803,12 @@ void GameLogic::logicMessageDispatcher( GameMessage *msg, void *userData )
 							// a living ally!  hooray!
 							otherPlayer->transferAssetsFromThat(thisPlayer);
 							thisPlayer->killPlayer(); // just to be safe (and to kill beacons etc that don't transfer)
+							foundAlly = TRUE;
 							break;
 						}
 					}
 				}
-				if (i == ThePlayerList->getPlayerCount())
+				if (!foundAlly)
 				{
 					// didn't find any allies.  die, loner!
 					thisPlayer->killPlayer();

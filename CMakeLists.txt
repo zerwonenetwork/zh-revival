@@ -263,12 +263,33 @@ if(BENCHMARK_SRCS)
 else()
     # Some source drops omit this optional library; keep the target name so
     # downstream link lines remain stable.
-    add_library(benchmark_lib INTERFACE)
-    target_include_directories(benchmark_lib INTERFACE
+    add_library(benchmark_lib STATIC
+        ${ZH}/Libraries/Stubs/BenchmarkStub.cpp
+    )
+    target_include_directories(benchmark_lib PUBLIC
         ${ZH}/Libraries/Source/Benchmark
         ${ZH_COMMON_INCLUDES}
     )
+    zh_target_defs(benchmark_lib)
 endif()
+
+# Legacy profiling headers auto-link one of several standalone profile*.lib
+# variants via `#pragma comment(lib, ...)`. The modern CMake build does not
+# ship those archives, but Release and non-_PROFILE paths only need the
+# library to exist so the linker can satisfy the pragma.
+set(ZH_PROFILE_STUB_SRC "${CMAKE_BINARY_DIR}/profile_stub.cpp")
+file(WRITE "${ZH_PROFILE_STUB_SRC}" "void zh_profile_stub(void) {}\n")
+add_library(profile STATIC "${ZH_PROFILE_STUB_SRC}")
+set_target_properties(profile PROPERTIES
+    ARCHIVE_OUTPUT_DIRECTORY_RELEASE  "${CMAKE_BINARY_DIR}"
+    ARCHIVE_OUTPUT_DIRECTORY_DEBUG    "${CMAKE_BINARY_DIR}"
+    ARCHIVE_OUTPUT_DIRECTORY_INTERNAL "${CMAKE_BINARY_DIR}"
+    ARCHIVE_OUTPUT_DIRECTORY_PROFILE  "${CMAKE_BINARY_DIR}"
+    OUTPUT_NAME_RELEASE               "profile"
+    OUTPUT_NAME_DEBUG                 "profiledebug"
+    OUTPUT_NAME_INTERNAL              "profileinternal"
+    OUTPUT_NAME_PROFILE               "profileprofile"
+)
 
 # ─── Compression ─────────────────────────────
 zh_glob_sources(COMPRESSION_SRCS ${ZH}/Libraries/Source/Compression)
@@ -346,6 +367,7 @@ list(REMOVE_ITEM GAMEENGINE_SRCS
     "${ZH}/GameEngine/Source/Common/Audio/GameSpeech.cpp"
     "${ZH}/GameEngine/Source/Common/Audio/simpleplayer.cpp"
     "${ZH}/GameEngine/Source/Common/Audio/urllaunch.cpp"
+    "${ZH}/GameEngine/Source/GameNetwork/GameSpyGameInfo.cpp"
 )
 add_library(gameengine STATIC ${GAMEENGINE_SRCS})
 target_include_directories(gameengine PUBLIC
@@ -400,6 +422,10 @@ target_include_directories(zh-revival PRIVATE
     ${ZH_COMMON_INCLUDES}
 )
 
+target_link_directories(zh-revival PRIVATE
+    ${CMAKE_BINARY_DIR}
+)
+
 zh_target_defs(zh-revival)
 if(ZH_USE_STUBS)
     # WinMain.cpp includes Common/SafeDisc/CdaPfn.h — resolved via stubs.
@@ -409,6 +435,7 @@ endif()
 # Link order mirrors the original LINK32 line in RTS.dsp
 target_link_libraries(zh-revival PRIVATE
     # WWVegas / engine libs
+    profile
     benchmark_lib
     ww3d2
     wwdebug
@@ -425,16 +452,16 @@ target_link_libraries(zh-revival PRIVATE
     gamespypatching
     wwdownload
     eabrowserdispatch
-    # DirectX 8 — only linked when DXSDK_LIB_DIR is set
+    # DirectX 8 — DInput/dxguid come from the Windows SDK, D3D8/D3DX8
+    # still require the legacy DXSDK path when building against the real SDK.
     $<$<BOOL:${DXSDK_LIB_DIR}>:d3d8>
     $<$<BOOL:${DXSDK_LIB_DIR}>:d3dx8>
-    $<$<BOOL:${DXSDK_LIB_DIR}>:dxguid>
-    $<$<BOOL:${DXSDK_LIB_DIR}>:dinput8>
     $<$<BOOL:${DXSDK_LIB_DIR}>:dsound>
     # Windows system libraries (always available in Windows SDK)
     kernel32 user32 gdi32 winspool comdlg32 advapi32 shell32
     ole32 oleaut32 uuid odbc32 odbccp32
     winmm vfw32 wsock32 imm32 wininet
+    dinput8 dxguid comsuppw
     # Proprietary audio/video .lib files
     # Present only when real SDKs are available (ZH_USE_STUBS=OFF + real libs).
     # When ZH_USE_STUBS=ON the stub headers provide inline no-ops so no .lib

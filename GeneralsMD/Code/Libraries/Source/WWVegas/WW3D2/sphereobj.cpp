@@ -1591,7 +1591,8 @@ void SphereMeshClass::Generate(float radius, int slices, int stacks)
 	fans = W3DNEWARRAY int[fan_size * fan_ct];
 	
 	// Do Fan #1
-	for (int ct = 0; ct < fan_size; ct++) {
+	int ct = 0;
+	for (; ct < fan_size; ct++) {
 		fans[ct] = ct;
 	}
 	//fans[ct] = 1;
@@ -1610,10 +1611,11 @@ void SphereMeshClass::Generate(float radius, int slices, int stacks)
 	strip_ct = Stacks - 1;
 	if (strip_ct) {
 		strips = W3DNEWARRAY int[strip_size * strip_ct];
-		for (stacks = 0; stacks < strip_ct; stacks++) {
+		int stack_index = 0;
+		for (; stack_index < strip_ct; stack_index++) {
 			// outer loop for each stack
-			int store_idx = stacks * strip_size;
-			int base_vtx  = 1 + (stacks * (Slices+1));
+			int store_idx = stack_index * strip_size;
+			int base_vtx  = 1 + (stack_index * (Slices+1));
 			int cur_vtx = base_vtx;
 
 			for(ct = 0; ct <= Slices; ct++) {
@@ -1639,9 +1641,10 @@ void SphereMeshClass::Generate(float radius, int slices, int stacks)
 	TriIndex *out = tri_poly;
 	int	   *in;
 
-	for (stacks = 0; stacks < strip_ct; stacks++) {
+	int stack_index = 0;
+	for (; stack_index < strip_ct; stack_index++) {
 
-		in  = &strips[strip_size * stacks];
+		in  = &strips[strip_size * stack_index];
 
 		// Strip to Poly Function
 		// IJK
@@ -1671,9 +1674,10 @@ void SphereMeshClass::Generate(float radius, int slices, int stacks)
 
 	// Fans to Poly Function
 
-	for(slices = 0; slices < fan_ct; slices++) {
+	int slice_index = 0;
+	for (; slice_index < fan_ct; slice_index++) {
 
-		in = &fans[fan_size * slices];
+		in = &fans[fan_size * slice_index];
 		int *base_idx = in;
 
 		for (int fidx=0; fidx < (fan_size - 2); fidx++) {
@@ -1750,4 +1754,3 @@ void SphereMeshClass::Free(void)
 }
 
 // EOF - sphereobj.cpp
-

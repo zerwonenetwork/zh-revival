@@ -31,8 +31,14 @@ typedef signed char    S8;
 typedef unsigned char  U8;
 typedef signed short   S16;
 typedef unsigned short U16;
+#ifndef ZH_STUB_S32_DEFINED
+#define ZH_STUB_S32_DEFINED
 typedef signed long    S32;
+#endif
+#ifndef ZH_STUB_U32_DEFINED
+#define ZH_STUB_U32_DEFINED
 typedef unsigned long  U32;
+#endif
 typedef float          F32;
 typedef double         F64;
 
@@ -54,6 +60,15 @@ typedef void* HMDIDRIVER;   // MIDI driver handle
 typedef void* HAUDIO;       // quick-play audio handle
 typedef void* H3DPOBJECT;   // 3-D listener / emitter object
 typedef U32   HPROVIDER;    // 3-D provider handle (index, not a pointer)
+typedef U32   HPROENUM;
+typedef void* AILLPDIRECTSOUND;
+
+#ifndef WAVE_FORMAT_IMA_ADPCM
+#define WAVE_FORMAT_IMA_ADPCM 0x0011
+#endif
+
+#define HPROENUM_FIRST 0
+#define DP_FILTER 0
 
 // ---------------------------------------------------------------------------
 //  AILSOUNDINFO — describes a PCM audio buffer
@@ -103,7 +118,9 @@ inline char const* AIL_MSS_version            (void)                            
 inline S32         AIL_startup                (void)                              { return 1; }
 inline void        AIL_shutdown               (void)                              {}
 inline S32         AIL_quick_startup          (void)                              { return 1; }
+inline S32         AIL_quick_startup          (S32, S32, U32, S32, S32)          { return 1; }
 inline void        AIL_quick_handles          (HDIGDRIVER* pdig, HMDIDRIVER* pmdi) { if(pdig) *pdig=nullptr; if(pmdi) *pmdi=nullptr; }
+inline void        AIL_quick_handles          (HDIGDRIVER* pdig, HMDIDRIVER* pmdi, HDIGDRIVER* pdig2) { if(pdig) *pdig=nullptr; if(pmdi) *pmdi=nullptr; if(pdig2) *pdig2=nullptr; }
 inline void        AIL_set_redist_directory   (char const*)                       {}
 inline U32         AIL_get_timer_highest_delay(void)                              { return 0; }
 
@@ -130,12 +147,14 @@ inline void    AIL_set_sample_processor    (HSAMPLE s, U32 which, HPROVIDER prov
 inline void    AIL_set_filter_sample_preference(HSAMPLE s, char const* name, void const* val) {}
 inline void*   AIL_sample_user_data        (HSAMPLE s, U32 index)                { return nullptr; }
 inline void    AIL_set_sample_user_data    (HSAMPLE s, U32 index, void* val)     {}
+inline void    AIL_set_sample_user_data    (HSAMPLE s, U32 index, int val)       {}
 inline void    AIL_register_EOS_callback   (HSAMPLE s, AILSAMPLECB cb)           {}
 
 // --- 3-D sample management --------------------------------------------------
 inline H3DSAMPLE AIL_allocate_3D_sample_handle  (HPROVIDER prov)                 { return nullptr; }
 inline void      AIL_release_3D_sample_handle   (H3DSAMPLE s)                   {}
 inline void      AIL_set_3D_sample_file         (H3DSAMPLE s, void const* data, AILSOUNDINFO* info) {}
+inline void      AIL_set_3D_sample_file         (H3DSAMPLE s, void const* data) {}
 inline void      AIL_start_3D_sample            (H3DSAMPLE s)                   {}
 inline void      AIL_stop_3D_sample             (H3DSAMPLE s)                   {}
 inline void      AIL_resume_3D_sample           (H3DSAMPLE s)                   {}
@@ -147,6 +166,7 @@ inline void      AIL_set_3D_sample_distances    (H3DSAMPLE s, F32 near_d, F32 fa
 inline void      AIL_set_3D_position            (H3DPOBJECT obj, F32 x, F32 y, F32 z) {}
 inline void*     AIL_3D_user_data               (H3DSAMPLE s, U32 index)        { return nullptr; }
 inline void      AIL_set_3D_user_data           (H3DSAMPLE s, U32 index, void* val) {}
+inline void      AIL_set_3D_user_data           (H3DSAMPLE s, U32 index, int val) {}
 inline void      AIL_register_3D_EOS_callback   (H3DSAMPLE s, AIL3DSAMPLECB cb) {}
 
 // --- Streaming audio --------------------------------------------------------
@@ -159,6 +179,7 @@ inline void    AIL_stream_volume_pan       (HSTREAM s, F32* vol, F32* pan)      
 inline S32     AIL_stream_loop_count       (HSTREAM s)                           { return 0; }
 inline void    AIL_set_stream_loop_count   (HSTREAM s, S32 count)                {}
 inline S32     AIL_stream_ms_position      (HSTREAM s)                           { return 0; }
+inline void    AIL_stream_ms_position      (HSTREAM s, long* cur, long* total)   { if(cur) *cur=0; if(total) *total=0; }
 inline void    AIL_register_stream_callback(HSTREAM s, AILSTREAMCB cb)           {}
 
 // --- 3-D provider / listener ------------------------------------------------
@@ -170,14 +191,20 @@ inline void      AIL_set_3D_speaker_type  (HPROVIDER prov, S32 type)            
 inline void      AIL_set_3D_orientation   (H3DPOBJECT obj,
                                            F32 fx, F32 fy, F32 fz,
                                            F32 ux, F32 uy, F32 uz)               {}
-inline S32       AIL_enumerate_3D_providers(HPROVIDER* last, char const** name)  { if(last) *last=0; return 0; }
+inline S32       AIL_enumerate_3D_providers(HPROVIDER* last, char const** name)  { if(last) *last=0; if(name) *name=nullptr; return 0; }
+inline S32       AIL_enumerate_3D_providers(HPROENUM* next, HPROVIDER* prov, char** name)  { if(next) *next=0; if(prov) *prov=0; if(name) *name=nullptr; return 0; }
 
 // --- Filter enumeration -----------------------------------------------------
-inline S32  AIL_enumerate_filters(void* last, HPROVIDER* prov, char const** name) { return 0; }
+inline S32  AIL_enumerate_filters(void* last, HPROVIDER* prov, char const** name) { if(prov) *prov=0; if(name) *name=nullptr; return 0; }
+inline S32  AIL_enumerate_filters(HPROENUM* next, HPROVIDER* prov, char** name) { if(next) *next=0; if(prov) *prov=0; if(name) *name=nullptr; return 0; }
 
 // --- Quick-play helpers -----------------------------------------------------
 inline HAUDIO AIL_quick_load_and_play(char const* path, U32 loop, S32 reserve)  { return nullptr; }
 inline void   AIL_quick_unload        (void* handle)                             {}
+inline void   AIL_quick_set_volume    (HAUDIO handle, F32 vol, F32 pan)          {}
+inline void   AIL_WAV_info            (void const* data, AILSOUNDINFO* info)     { if(info) ZeroMemory(info, sizeof(*info)); }
+inline void   AIL_decompress_ADPCM    (AILSOUNDINFO* info, void** out, U32* size) { if(out) *out=nullptr; if(size) *size=0; }
+inline void   AIL_mem_free_lock       (void* p)                                   {}
 
 #endif // STUB_IMPL
 #endif // ZH_MILES_SOUND_STUB_H

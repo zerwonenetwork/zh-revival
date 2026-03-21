@@ -122,17 +122,15 @@ typedef AllObjectTypes::iterator AllObjectTypesIt;
 typedef std::vector<NamedReveal> VecNamedReveal;
 typedef VecNamedReveal::iterator VecNamedRevealIt;
 
-class AttackPriorityInfo : public MemoryPoolObject, public Snapshot
+class AttackPriorityInfo : public Snapshot
 {
-	MEMORY_POOL_GLUE_WITH_USERLOOKUP_CREATE(AttackPriorityInfo, "AttackPriorityInfo")		
-
 // friend bad for MPOs. (srj)
 //friend class ScriptEngine;
 
 public:
 
 	AttackPriorityInfo();
-	//~AttackPriorityInfo();
+	~AttackPriorityInfo();
 
 public:
 

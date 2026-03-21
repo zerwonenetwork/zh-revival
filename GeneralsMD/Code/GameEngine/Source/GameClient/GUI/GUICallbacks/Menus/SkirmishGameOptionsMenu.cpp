@@ -777,7 +777,8 @@ void positionStartSpots( AsciiString mapName, GameWindow *buttonMapStartPosition
 		positionAdditionalImages(&mmd, mapWindow, TRUE);
 
 		AsciiString waypointName;				
-		for(Int i = 0; i < mmd.m_numPlayers && mmd.m_isMultiplayer; ++i )
+		Int i = 0;
+		for(; i < mmd.m_numPlayers && mmd.m_isMultiplayer; ++i )
 		{
 			waypointName.format("Player_%d_Start", i+1); // start pos waypoints are 1-based
 			WaypointMap::iterator wmIt = mmd.m_waypoints.find(waypointName);
@@ -854,7 +855,7 @@ void updateMapStartSpots( GameInfo *myGame, GameWindow *buttonMapStartPositions[
 		  }
     }
 	}
-	for( i = 0; i < MAX_SLOTS; ++i)
+	for(Int i = 0; i < MAX_SLOTS; ++i)
 	{
     if ( buttonMapStartPositions[i] == NULL )
       continue;

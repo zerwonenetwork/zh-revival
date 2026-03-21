@@ -33,9 +33,14 @@
 #include "GameClient/LanguageFilter.h"
 #include "GameNetwork/GameSpy.h"
 #include "GameNetwork/GameSpyChat.h"
+#include "GameNetwork/GameSpy/BuddyThread.h"
+#include "GameNetwork/GameSpy/PeerThread.h"
 #include "Common/QuotedPrintable.h"
 
-typedef set<AsciiString>::const_iterator AsciiSetIter;
+typedef std::set<AsciiString>::const_iterator AsciiSetIter;
+
+static GameSpyChatCompat s_gameSpyChatCompat;
+GameSpyChatCompat *TheGameSpyChat = &s_gameSpyChatCompat;
 
 /**
 	* handleSlashCommands looks for slash ccommands and handles them,
@@ -269,7 +274,7 @@ static Bool handleSlashCommands( UnicodeString message, Bool isAction, GameWindo
 	return false;
 }
 
-static handleUnicodeMessage( const char *nick, UnicodeString msg, Bool isPublic, Bool isAction );
+static void handleUnicodeMessage( const char *nick, UnicodeString msg, Bool isPublic, Bool isAction );
 
 Bool GameSpySendChat( UnicodeString message, Bool isAction, GameWindow *playerListbox )
 {
@@ -387,7 +392,7 @@ void PlayerMessageCallback(PEER peer,
 	handleUnicodeMessage(nick, QuotedPrintableToUnicodeString(message), false, (messageType == ActionMessage));
 }
 
-static handleUnicodeMessage( const char *nick, UnicodeString msg, Bool isPublic, Bool isAction )
+static void handleUnicodeMessage( const char *nick, UnicodeString msg, Bool isPublic, Bool isAction )
 {
 	GameSpyColors style;
 
@@ -435,6 +440,99 @@ static handleUnicodeMessage( const char *nick, UnicodeString msg, Bool isPublic,
 		fullMsg.format( L"[%ls] %ls", name.str(), msg.str() );
 	}
 	GameSpyAddText(fullMsg, style);
+}
+
+PEER GameSpyChatCompat::getPeer( void ) const
+{
+	return NULL;
+}
+
+Int GameSpyChatCompat::getCurrentGroupRoomID( void ) const
+{
+	return TheGameSpyInfo ? TheGameSpyInfo->getCurrentGroupRoom() : 0;
+}
+
+GroupRoomMap *GameSpyChatCompat::getGroupRooms( void ) const
+{
+	return TheGameSpyInfo ? TheGameSpyInfo->getGroupRoomList() : NULL;
+}
+
+AsciiString GameSpyChatCompat::getLoginName( void ) const
+{
+	return TheGameSpyInfo ? TheGameSpyInfo->getLocalName() : AsciiString::TheEmptyString;
+}
+
+AsciiString GameSpyChatCompat::getloginName( void ) const
+{
+	return getLoginName();
+}
+
+Bool GameSpyChatCompat::isConnected( void ) const
+{
+	return (TheGameSpyPeerMessageQueue != NULL) ? TheGameSpyPeerMessageQueue->isConnected() : FALSE;
+}
+
+void GameSpyChatCompat::reconnectProfile( void )
+{
+	if (TheGameSpyBuddyMessageQueue)
+	{
+		BuddyRequest req;
+		req.buddyRequestType = BuddyRequest::BUDDYREQUEST_RELOGIN;
+		TheGameSpyBuddyMessageQueue->addRequest(req);
+	}
+}
+
+void GameSpyChatCompat::disconnectFromChat( void )
+{
+	if (TheGameSpyPeerMessageQueue)
+	{
+		PeerRequest req;
+		req.peerRequestType = PeerRequest::PEERREQUEST_LOGOUT;
+		TheGameSpyPeerMessageQueue->addRequest(req);
+	}
+}
+
+void GameSpyChatCompat::clearGroupRoomList( void )
+{
+	if (TheGameSpyInfo)
+	{
+		TheGameSpyInfo->clearGroupRoomList();
+	}
+}
+
+void GameSpyChatCompat::joinGroupRoom( Int groupID )
+{
+	if (TheGameSpyInfo)
+	{
+		TheGameSpyInfo->joinGroupRoom(groupID);
+	}
+}
+
+void GameSpyChatCompat::leaveRoom( RoomType roomType )
+{
+	if (!TheGameSpyInfo)
+	{
+		return;
+	}
+
+	if (roomType == GroupRoom)
+	{
+		TheGameSpyInfo->leaveGroupRoom();
+	}
+	else if (roomType == StagingRoom)
+	{
+		TheGameSpyInfo->leaveStagingRoom();
+	}
+}
+
+void GameSpyChatCompat::stopListingGames( void )
+{
+	if (TheGameSpyPeerMessageQueue)
+	{
+		PeerRequest req;
+		req.peerRequestType = PeerRequest::PEERREQUEST_STOPGAMELIST;
+		TheGameSpyPeerMessageQueue->addRequest(req);
+	}
 }
 
 void GameSpyAddText( UnicodeString message, GameSpyColors color )

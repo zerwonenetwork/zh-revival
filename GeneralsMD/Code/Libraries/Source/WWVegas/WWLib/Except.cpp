@@ -168,6 +168,7 @@ static char const *ImagehelpFunctionNames[] =
  * HISTORY:                                                                                    *
  *   8/22/00 11:42AM ST : Created                                                              *
  *=============================================================================================*/
+#if _MSC_VER < 1900
 int __cdecl _purecall(void)
 {
 	int return_code = 0;
@@ -182,6 +183,7 @@ int __cdecl _purecall(void)
 
 	return(return_code);
 }
+#endif
 
 
 

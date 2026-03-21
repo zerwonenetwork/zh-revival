@@ -33,6 +33,8 @@ struct Smudge : public DLNodeClass<Smudge>
 {
 	W3DMPO_GLUE(Smudge)
 
+public:
+
 	Vector3 m_pos;	//position of smudge center
 	Vector2 m_offset; // difference in position between "texture" extraction and re-insertion for center vertex
 	Real m_size;		//size of smudge in world space.

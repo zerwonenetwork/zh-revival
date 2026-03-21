@@ -405,7 +405,7 @@ FlightDeckBehavior::FlightDeckInfo* FlightDeckBehavior::findPPI(ObjectID id)
 	for (std::vector<FlightDeckInfo>::iterator it = m_spaces.begin(); it != m_spaces.end(); ++it)
 	{
 		if (it->m_objectInSpace == id)
-			return it;
+			return &(*it);
 	}
 
 	return NULL; 
@@ -420,7 +420,7 @@ FlightDeckBehavior::FlightDeckInfo* FlightDeckBehavior::findEmptyPPI()
 	for (std::vector<FlightDeckInfo>::iterator it = m_spaces.begin(); it != m_spaces.end(); ++it)
 	{
 		if( it->m_objectInSpace == INVALID_ID )
-			return it;
+			return &(*it);
 	}
 
 	return NULL;
@@ -853,15 +853,17 @@ Bool FlightDeckBehavior::calcBestParkingAssignment( ObjectID id, Coord3D *pos, I
 	//Find the runway the object is assigned to.
 	Int runway = -1;
 	Int myIndex = 0;
-	for( std::vector<FlightDeckInfo>::iterator myIt = m_spaces.begin(); myIt != m_spaces.end(); myIt++, myIndex++ )
+	std::vector<FlightDeckInfo>::iterator myIt = m_spaces.end();
+	for( std::vector<FlightDeckInfo>::iterator it = m_spaces.begin(); it != m_spaces.end(); it++, myIndex++ )
 	{
-		if( myIt->m_objectInSpace == id )
+		if( it->m_objectInSpace == id )
 		{
-			runway = myIt->m_runway;
+			myIt = it;
+			runway = it->m_runway;
 
 			if( pos )
 			{
-				pos->set( &myIt->m_prep );
+				pos->set( &it->m_prep );
 			}
 			break;
 		}
@@ -879,7 +881,7 @@ Bool FlightDeckBehavior::calcBestParkingAssignment( ObjectID id, Coord3D *pos, I
 	//the back and keep looking at empty spaces until we find one with a plane blocking.
 
 	Bool checkForPlaneInWay = FALSE;
-	std::vector<FlightDeckInfo>::iterator bestIt = NULL;
+	std::vector<FlightDeckInfo>::iterator bestIt = m_spaces.end();
 	Object *bestJet = NULL;
 	Int bestIndex = 0, index = 0;
 	for( std::vector<FlightDeckInfo>::iterator thatIt = m_spaces.begin(); thatIt != m_spaces.end(); thatIt++, index++ )
@@ -888,7 +890,7 @@ Bool FlightDeckBehavior::calcBestParkingAssignment( ObjectID id, Coord3D *pos, I
 		if( myIt == thatIt )
 		{
 			//Done, don't look at my spot, nor spots behind me.
-			if( bestIt )
+			if( bestIt != m_spaces.end() )
 			{
 				myIt->m_objectInSpace = bestJet ? bestJet->getID() : INVALID_ID;
 				bestIt->m_objectInSpace = id;
@@ -940,7 +942,7 @@ Bool FlightDeckBehavior::calcBestParkingAssignment( ObjectID id, Coord3D *pos, I
 				if( pos )
 				{
 					pos->set( &myIt->m_prep ); //reset the original position.
-					bestIt = NULL;
+					bestIt = m_spaces.end();
 				}
 			}
 		}
@@ -1222,6 +1224,7 @@ UpdateSleepTime FlightDeckBehavior::update()
 
 	//If the carrier has at least one aircraft, then allow it to attack.
 	Bool hasAircraft = FALSE;
+	std::vector<FlightDeckInfo>::iterator it;
 	for( it = m_spaces.begin(); it != m_spaces.end(); it++ )
 	{
 		if( it->m_objectInSpace != INVALID_ID )
@@ -1354,7 +1357,7 @@ void FlightDeckBehavior::exitObjectViaDoor( Object *newObj, ExitDoorType exitDoo
 		return;
 	}
 
-	newObj->setPosition( pCreationLocations->begin() );
+	newObj->setPosition( &pCreationLocations->front() );
 	newObj->setOrientation( m_runways[ ppi->m_runway ].m_startOrient );
 	TheAI->pathfinder()->addObjectToPathfindMap( newObj );
 

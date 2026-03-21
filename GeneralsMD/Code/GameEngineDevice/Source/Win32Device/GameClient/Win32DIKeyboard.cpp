@@ -36,7 +36,7 @@
 #include "GameClient/KeyDefs.h"
 #include "GameClient/Keyboard.h"
 #include "Win32Device/GameClient/Win32DIKeyboard.h"
-#include "WinMain.h"
+#include "../../../../Main/WinMain.h"
 
 // DEFINES ////////////////////////////////////////////////////////////////////////////////////////
 enum { KEYBOARD_BUFFER_SIZE = 256 };
@@ -45,7 +45,7 @@ enum { KEYBOARD_BUFFER_SIZE = 256 };
 struct ErrorLookup
 {
 	HRESULT error;
-	char *string;
+	const char *string;
 };
 static ErrorLookup errorLookup[] = 
 {
@@ -91,7 +91,7 @@ static ErrorLookup errorLookup[] =
 //-------------------------------------------------------------------------------------------------
 /** For debugging, prints the return code using direct input errors */
 //-------------------------------------------------------------------------------------------------
-static void printReturnCode( char *label, HRESULT hr )
+static void printReturnCode( const char *label, HRESULT hr )
 {
 	ErrorLookup *error = errorLookup;
 
@@ -420,6 +420,6 @@ void DirectInputKeyboard::update( void )
 Bool DirectInputKeyboard::getCapsState( void )
 {
 
-	return BitTest( GetKeyState( VK_CAPITAL ), 0X01);
+	return (GetKeyState(VK_CAPITAL) & 0X01) != 0;
 
 }  // end getCapsState

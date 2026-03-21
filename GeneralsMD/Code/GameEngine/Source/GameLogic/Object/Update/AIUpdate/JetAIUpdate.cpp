@@ -549,7 +549,7 @@ public:
 					std::vector<Coord3D>::const_iterator it;
 					for( it = pTaxiLocations->begin(); it != pTaxiLocations->end(); it++ )
 					{
-						movePath->appendNode( it, LAYER_GROUND );
+						movePath->appendNode( &(*it), LAYER_GROUND );
 					}
 				}
 
@@ -573,10 +573,12 @@ public:
 		{
 			if( jet->testStatus( OBJECT_STATUS_DECK_HEIGHT_OFFSET ) )
 			{
-				if( !(ppinfo.runwayStart == ppinfo.runwayPrep) )	
-				{
-					movePath->appendNode( &ppinfo.runwayStart, LAYER_GROUND );
-				}
+					if( ppinfo.runwayStart.x != ppinfo.runwayPrep.x
+						|| ppinfo.runwayStart.y != ppinfo.runwayPrep.y
+						|| ppinfo.runwayStart.z != ppinfo.runwayPrep.z )	
+					{
+						movePath->appendNode( &ppinfo.runwayStart, LAYER_GROUND );
+					}
 			}
 			else
 			{
@@ -617,7 +619,7 @@ public:
 							firstNode = FALSE;
 							continue;
 						}
-						movePath->appendNode( it, LAYER_GROUND );
+						movePath->appendNode( &(*it), LAYER_GROUND );
 					}
 					movePath->appendNode( &ppinfo.runwayPrep, LAYER_GROUND );
 				}

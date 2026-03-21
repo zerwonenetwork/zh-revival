@@ -31,13 +31,33 @@
 #ifndef __GAMESPYCHAT_H__
 #define __GAMESPYCHAT_H__
 
-#include "GameSpy/Peer/Peer.h"
+#include "GameNetwork/GameSpy/PeerDefs.h"
 
 class GameWindow;
 class WindowLayout;
+class GameSpyChatCompat;
 
 Bool GameSpySendChat(UnicodeString message, Bool isEmote, GameWindow *playerListbox = NULL);
 void GameSpyAddText( UnicodeString message, GameSpyColors color = GSCOLOR_DEFAULT );
+
+class GameSpyChatCompat
+{
+public:
+	PEER getPeer( void ) const;
+	Int getCurrentGroupRoomID( void ) const;
+	GroupRoomMap *getGroupRooms( void ) const;
+	AsciiString getLoginName( void ) const;
+	AsciiString getloginName( void ) const;
+	Bool isConnected( void ) const;
+	void reconnectProfile( void );
+	void disconnectFromChat( void );
+	void clearGroupRoomList( void );
+	void joinGroupRoom( Int groupID );
+	void leaveRoom( RoomType roomType );
+	void stopListingGames( void );
+};
+
+extern GameSpyChatCompat *TheGameSpyChat;
 
 extern GameWindow *progressTextWindow;				///< Text box on the progress screen
 extern GameWindow *quickmatchTextWindow;			///< Text box on the quickmatch screen

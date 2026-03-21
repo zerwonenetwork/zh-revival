@@ -150,7 +150,7 @@ void LaserUpdate::updateStartPos()
 		m_startPos = *parentDrawable->getPosition();
 	}
 
-	if( !(m_startPos == oldStartPos) ) // No != operator.  Heh.
+	if( m_startPos.x != oldStartPos.x || m_startPos.y != oldStartPos.y || m_startPos.z != oldStartPos.z )
 		m_dirty = TRUE;
 }
 
@@ -190,7 +190,7 @@ void LaserUpdate::updateEndPos()
 		m_endPos = *targetDrawable->getPosition();
 	}
 
-	if( !(m_endPos == oldEndPos) ) // No != operator.  Heh.
+	if( m_endPos.x != oldEndPos.x || m_endPos.y != oldEndPos.y || m_endPos.z != oldEndPos.z )
 		m_dirty = TRUE;
 }
 

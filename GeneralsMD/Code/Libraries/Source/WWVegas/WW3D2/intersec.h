@@ -225,7 +225,7 @@ public:
 	// this will only set the result's range if intersection occurs; it is intended to be used as a first pass intersection test
 	// before intersecting the mesh polygons itself.
 	// Note: Does NOT do Max_Distance testing
-	inline bool IntersectionClass::Intersect_Sphere_Quick(SphereClass &Sphere, IntersectionResultClass *FinalResult) 
+	inline bool Intersect_Sphere_Quick(SphereClass &Sphere, IntersectionResultClass *FinalResult) 
 	{
 		// make a unit vector from the ray origin to the sphere center
 		Vector3 sphere_vector(Sphere.Center - *RayLocation);
@@ -243,7 +243,7 @@ public:
 
 
 	// this will find the intersection with the sphere and the intersection normal if needed.
-	inline bool IntersectionClass::Intersect_Sphere(SphereClass &Sphere, IntersectionResultClass *FinalResult) 
+	inline bool Intersect_Sphere(SphereClass &Sphere, IntersectionResultClass *FinalResult) 
 	{
 		if(!Intersect_Sphere_Quick(Sphere, FinalResult)) 
 			return false;
@@ -363,14 +363,14 @@ protected:
 	**	Designed for use with _Intersect_Triangles_Z.
 	*/
 	//static inline void _Intersect_Lines_Z(Vector3 &A, Vector3 &B, Vector2 &UVStart, Vector2 &UVEnd, Vector3 &C, Vector3 &D, Vector3 ClippedPoints[6], Vector2 ClippedUV[6], int &DestIndex);
-	static inline bool IntersectionClass::In_Front_Of_Line
+	static inline bool In_Front_Of_Line
 	(
 		const Vector3 & p,			// point to test
 		const Vector3 & e0,			// point on edge
 		const Vector3 & de			// direction of edge
 	);
 
-	static inline float IntersectionClass::Intersect_Lines
+	static inline float Intersect_Lines
 	(
 		const Vector3 & p0,			// start of line segment
 		const Vector3 & p1,			// end of line segment
@@ -378,7 +378,7 @@ protected:
 		const Vector3 & de			// direction of clipping edge
 	);
 
-	static inline int IntersectionClass::Clip_Triangle_To_LineXY(	
+	static inline int Clip_Triangle_To_LineXY(	
 		int incount,
 		Vector3 * InPoints,
 		Vector2 * InUVs,

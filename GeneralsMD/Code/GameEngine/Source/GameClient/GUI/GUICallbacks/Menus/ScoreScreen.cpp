@@ -1923,7 +1923,7 @@ winName.format("ScoreScreen.wnd:StaticTextScore%d", pos);
 					stats.lastGeneral = ptIdx;
 
 					Int gameSize = 0;
-					for (i=0; i<MAX_SLOTS; ++i)
+					for (Int i=0; i<MAX_SLOTS; ++i)
 					{
 						if (TheGameSpyGame->getConstSlot(i)->isOccupied() && TheGameSpyGame->getConstSlot(i)->getPlayerTemplate() != PLAYERTEMPLATE_OBSERVER)
 							++gameSize;

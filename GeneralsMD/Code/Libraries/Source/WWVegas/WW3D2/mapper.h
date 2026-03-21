@@ -62,6 +62,7 @@ class INIClass;
 class TextureMapperClass : public W3DMPO, public RefCountClass
 {
 	public:
+		virtual int glueEnforcer() const { return sizeof(this); }
 
 		enum {
 			MAPPER_ID_UNKNOWN,

@@ -2255,7 +2255,8 @@ void W3DProjectedShadow::update(void)
 
 			m_shadowProjector->Compute_Perspective_Projection(m_robj,objToLight);
 		}
-		setObjPosHistory(m_robj->Get_Position());
+		Vector3 objPos = m_robj->Get_Position();
+		setObjPosHistory(objPos);
 	}
 }
 

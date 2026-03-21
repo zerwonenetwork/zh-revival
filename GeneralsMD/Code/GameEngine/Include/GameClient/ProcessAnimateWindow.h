@@ -61,16 +61,14 @@
 // USER INCLUDES //////////////////////////////////////////////////////////////
 //-----------------------------------------------------------------------------
 #include "Lib/BaseType.h"
+#include "GameClient/AnimateWindowManager.h"
 //-----------------------------------------------------------------------------
 // FORWARD REFERENCES /////////////////////////////////////////////////////////
 //-----------------------------------------------------------------------------
 // AnimateWindow is a Win32 API macro (winuser.h). Undefine it so that the
 // class forward declaration below compiles without conflict.
-#ifdef AnimateWindow
-#undef AnimateWindow
-#endif
-class AnimateWindow;
 class GameWindow;
+class AnimatedWindow;
 //-----------------------------------------------------------------------------
 // TYPE DEFINES ///////////////////////////////////////////////////////////////
 //-----------------------------------------------------------------------------
@@ -82,10 +80,10 @@ public:
 	ProcessAnimateWindow( void ){};
 	virtual ~ProcessAnimateWindow( void ){};
 
-	virtual void initAnimateWindow( AnimateWindow *animWin ) = 0;
-	virtual void initReverseAnimateWindow( AnimateWindow *animWin, UnsignedInt maxDelay = 0 ) = 0;
-	virtual Bool updateAnimateWindow( AnimateWindow *animWin ) = 0;
-	virtual Bool reverseAnimateWindow( AnimateWindow *animWin ) = 0;
+	virtual void initAnimateWindow( AnimatedWindow *animWin ) = 0;
+	virtual void initReverseAnimateWindow( AnimatedWindow *animWin, UnsignedInt maxDelay = 0 ) = 0;
+	virtual Bool updateAnimateWindow( AnimatedWindow *animWin ) = 0;
+	virtual Bool reverseAnimateWindow( AnimatedWindow *animWin ) = 0;
 	virtual void setMaxDuration(UnsignedInt maxDuration) { }
 };
 
@@ -98,10 +96,10 @@ public:
 	ProcessAnimateWindowSlideFromRight( void );
 	virtual ~ProcessAnimateWindowSlideFromRight( void );
 
-	virtual void initAnimateWindow( AnimateWindow *animWin );
-	virtual void initReverseAnimateWindow( AnimateWindow *animWin, UnsignedInt maxDelay = 0 );
-	virtual Bool updateAnimateWindow( AnimateWindow *animWin );
-	virtual Bool reverseAnimateWindow( AnimateWindow *animWin );
+	virtual void initAnimateWindow( AnimatedWindow *animWin );
+	virtual void initReverseAnimateWindow( AnimatedWindow *animWin, UnsignedInt maxDelay = 0 );
+	virtual Bool updateAnimateWindow( AnimatedWindow *animWin );
+	virtual Bool reverseAnimateWindow( AnimatedWindow *animWin );
 private:
 Coord2D m_maxVel;  // top speed windows travel in x and y
 Int m_slowDownThreshold;  // when widnows get this close to their resting
@@ -121,10 +119,10 @@ public:
 	ProcessAnimateWindowSlideFromLeft( void );
 	virtual ~ProcessAnimateWindowSlideFromLeft( void );
 
-	virtual void initAnimateWindow( AnimateWindow *animWin );
-	virtual void initReverseAnimateWindow( AnimateWindow *animWin, UnsignedInt maxDelay = 0 );
-	virtual Bool updateAnimateWindow( AnimateWindow *animWin );
-	virtual Bool reverseAnimateWindow( AnimateWindow *animWin );
+	virtual void initAnimateWindow( AnimatedWindow *animWin );
+	virtual void initReverseAnimateWindow( AnimatedWindow *animWin, UnsignedInt maxDelay = 0 );
+	virtual Bool updateAnimateWindow( AnimatedWindow *animWin );
+	virtual Bool reverseAnimateWindow( AnimatedWindow *animWin );
 private:
 Coord2D m_maxVel;  // top speed windows travel in x and y
 Int m_slowDownThreshold;  // when widnows get this close to their resting
@@ -144,10 +142,10 @@ public:
 	ProcessAnimateWindowSlideFromTop( void );
 	virtual ~ProcessAnimateWindowSlideFromTop( void );
 
-	virtual void initAnimateWindow( AnimateWindow *animWin );
-	virtual void initReverseAnimateWindow( AnimateWindow *animWin, UnsignedInt maxDelay = 0 );
-	virtual Bool updateAnimateWindow( AnimateWindow *animWin );
-	virtual Bool reverseAnimateWindow( AnimateWindow *animWin );
+	virtual void initAnimateWindow( AnimatedWindow *animWin );
+	virtual void initReverseAnimateWindow( AnimatedWindow *animWin, UnsignedInt maxDelay = 0 );
+	virtual Bool updateAnimateWindow( AnimatedWindow *animWin );
+	virtual Bool reverseAnimateWindow( AnimatedWindow *animWin );
 private:
 Coord2D m_maxVel;  // top speed windows travel in x and y
 Int m_slowDownThreshold;  // when widnows get this close to their resting
@@ -165,10 +163,10 @@ public:
 	ProcessAnimateWindowSlideFromTopFast( void );
 	virtual ~ProcessAnimateWindowSlideFromTopFast( void );
 
-	virtual void initAnimateWindow( AnimateWindow *animWin );
-	virtual void initReverseAnimateWindow( AnimateWindow *animWin, UnsignedInt maxDelay = 0 );
-	virtual Bool updateAnimateWindow( AnimateWindow *animWin );
-	virtual Bool reverseAnimateWindow( AnimateWindow *animWin );
+	virtual void initAnimateWindow( AnimatedWindow *animWin );
+	virtual void initReverseAnimateWindow( AnimatedWindow *animWin, UnsignedInt maxDelay = 0 );
+	virtual Bool updateAnimateWindow( AnimatedWindow *animWin );
+	virtual Bool reverseAnimateWindow( AnimatedWindow *animWin );
 private:
 Coord2D m_maxVel;  // top speed windows travel in x and y
 Int m_slowDownThreshold;  // when widnows get this close to their resting
@@ -188,10 +186,10 @@ public:
 	ProcessAnimateWindowSlideFromBottom( void );
 	virtual ~ProcessAnimateWindowSlideFromBottom( void );
 
-	virtual void initAnimateWindow( AnimateWindow *animWin );
-	virtual void initReverseAnimateWindow( AnimateWindow *animWin, UnsignedInt maxDelay = 0 );
-	virtual Bool updateAnimateWindow( AnimateWindow *animWin );
-	virtual Bool reverseAnimateWindow( AnimateWindow *animWin );
+	virtual void initAnimateWindow( AnimatedWindow *animWin );
+	virtual void initReverseAnimateWindow( AnimatedWindow *animWin, UnsignedInt maxDelay = 0 );
+	virtual Bool updateAnimateWindow( AnimatedWindow *animWin );
+	virtual Bool reverseAnimateWindow( AnimatedWindow *animWin );
 private:
 Coord2D m_maxVel;  // top speed windows travel in x and y
 Int m_slowDownThreshold;  // when widnows get this close to their resting
@@ -210,10 +208,10 @@ public:
 	ProcessAnimateWindowSpiral( void );
 	virtual ~ProcessAnimateWindowSpiral( void );
 
-	virtual void initAnimateWindow( AnimateWindow *animWin );
-	virtual void initReverseAnimateWindow( AnimateWindow *animWin, UnsignedInt maxDelay = 0 );
-	virtual Bool updateAnimateWindow( AnimateWindow *animWin );
-	virtual Bool reverseAnimateWindow( AnimateWindow *animWin );
+	virtual void initAnimateWindow( AnimatedWindow *animWin );
+	virtual void initReverseAnimateWindow( AnimatedWindow *animWin, UnsignedInt maxDelay = 0 );
+	virtual Bool updateAnimateWindow( AnimatedWindow *animWin );
+	virtual Bool reverseAnimateWindow( AnimatedWindow *animWin );
 private:
 	Real m_deltaTheta;
 	Int m_maxR;
@@ -228,10 +226,10 @@ public:
 	ProcessAnimateWindowSlideFromBottomTimed( void );
 	virtual ~ProcessAnimateWindowSlideFromBottomTimed( void );
 
-	virtual void initAnimateWindow( AnimateWindow *animWin );
-	virtual void initReverseAnimateWindow( AnimateWindow *animWin, UnsignedInt maxDelay = 0 );
-	virtual Bool updateAnimateWindow( AnimateWindow *animWin );
-	virtual Bool reverseAnimateWindow( AnimateWindow *animWin );
+	virtual void initAnimateWindow( AnimatedWindow *animWin );
+	virtual void initReverseAnimateWindow( AnimatedWindow *animWin, UnsignedInt maxDelay = 0 );
+	virtual Bool updateAnimateWindow( AnimatedWindow *animWin );
+	virtual Bool reverseAnimateWindow( AnimatedWindow *animWin );
 	virtual void setMaxDuration(UnsignedInt maxDuration) { m_maxDuration = maxDuration; }
 
 private:
@@ -246,10 +244,10 @@ public:
 	ProcessAnimateWindowSlideFromRightFast( void );
 	virtual ~ProcessAnimateWindowSlideFromRightFast( void );
 
-	virtual void initAnimateWindow( AnimateWindow *animWin );
-	virtual void initReverseAnimateWindow( AnimateWindow *animWin, UnsignedInt maxDelay = 0 );
-	virtual Bool updateAnimateWindow( AnimateWindow *animWin );
-	virtual Bool reverseAnimateWindow( AnimateWindow *animWin );
+	virtual void initAnimateWindow( AnimatedWindow *animWin );
+	virtual void initReverseAnimateWindow( AnimatedWindow *animWin, UnsignedInt maxDelay = 0 );
+	virtual Bool updateAnimateWindow( AnimatedWindow *animWin );
+	virtual Bool reverseAnimateWindow( AnimatedWindow *animWin );
 private:
 Coord2D m_maxVel;  // top speed windows travel in x and y
 Int m_slowDownThreshold;  // when widnows get this close to their resting

@@ -72,7 +72,7 @@ void WOLLadderScreenInit( WindowLayout *layout, void *userData )
 	//TheWebBrowser->createBrowserWindow("Westwood", windowLadder);
 	if (TheWebBrowser != NULL)
 	{
-		TheWebBrowser->createBrowserWindow("MessageBoard", windowLadder);
+		TheWebBrowser->createBrowserWindow(const_cast<char *>("MessageBoard"), windowLadder);
 	}
 
 	// show menu

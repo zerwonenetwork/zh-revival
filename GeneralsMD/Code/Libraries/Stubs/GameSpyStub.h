@@ -150,8 +150,21 @@ inline GHTTPRequest ghttpHead(
     return -1;
 }
 
+inline GHTTPRequest ghttpHead(
+    const char*          url,
+    GHTTPBool            blocking,
+    GHTTPRequestCallback callback,
+    void*                param)
+{
+    (void)url; (void)blocking;
+    if (callback)
+        callback(-1, GHTTPNetworkError, nullptr, 0, param);
+    return -1;
+}
+
 // Process pending async HTTP requests.  Stub: nothing to process.
 inline void ghttpThink(void) {}
+inline void ghttpStartup(void) {}
 
 // Set a proxy server string.  Stub: ignored.
 inline void ghttpSetProxy(const char* server) { (void)server; }
@@ -173,9 +186,9 @@ inline void ghttpCleanup(void) {}
 //  GP — GameSpy Presence / profile service
 // ===========================================================================
 
-typedef int  GPProfile;   // numeric profile ID
-typedef int  GPEnum;      // status enum (online, away, playing, ...)
-typedef int  GPResult;    // GP_NO_ERROR = 0, ...
+typedef int   GPProfile;    // numeric profile ID
+typedef int   GPEnum;       // status enum (online, away, playing, ...)
+typedef int   GPResult;     // GP_NO_ERROR = 0, ...
 typedef void* GPConnection; // opaque connection handle
 
 // GPResult codes
@@ -186,6 +199,21 @@ typedef void* GPConnection; // opaque connection handle
 #define GP_SERVER_ERROR          4
 #define GP_NOT_LOGGED_IN         5
 #define GP_CONNECTION_CLOSED     6
+#define GP_CONNECTED             7
+
+#define GP_BLOCKING              1
+#define GP_CHECK_CACHE           1
+#define GP_DONT_CHECK_CACHE      0
+#define GP_FATAL                 1
+#define GP_MASK_NONE             0
+#define GP_FIREWALL              1
+#define GP_NO_FIREWALL           0
+
+#define GP_ERROR                 1
+#define GP_RECV_BUDDY_MESSAGE    2
+#define GP_RECV_BUDDY_REQUEST    3
+#define GP_RECV_BUDDY_STATUS     4
+#define GP_RECV_GAME_INVITE      5
 
 // GP buddy status values
 #define GP_OFFLINE   0
@@ -200,12 +228,15 @@ typedef void* GPConnection; // opaque connection handle
 typedef int GPErrorCode;
 #define GP_GENERAL                      0
 #define GP_PARSE                        1
+#ifndef GP_NOT_LOGGED_IN
 #define GP_NOT_LOGGED_IN                2
+#endif
 #define GP_BAD_SESSKEY                  3
 #define GP_DATABASE                     4
-#define GP_NETWORK                      5
-#define GP_FORCED_DISCONNECT            6
-#define GP_CONNECTION_CLOSED            7
+#define GP_NETWORK                      7
+#define GP_FORCED_DISCONNECT            8
+#undef GP_CONNECTION_CLOSED
+#define GP_CONNECTION_CLOSED            9
 #define GP_UDP_LAYER                    8
 #define GP_LOGIN                       256
 #define GP_LOGIN_TIMEOUT               257
@@ -253,7 +284,7 @@ typedef struct GPRecvBuddyRequestArg_s
     char        nick[GP_NICK_LEN];
     char        email[GP_EMAIL_LEN];
     char        countrycode[GP_COUNTRYCODE_LEN];
-    wchar_t     reason[GP_REASON_LEN];
+    char        reason[GP_REASON_LEN];
 } GPRecvBuddyRequestArg;
 
 typedef struct GPRecvBuddyMessageArg_s
@@ -261,18 +292,36 @@ typedef struct GPRecvBuddyMessageArg_s
     GPProfile   profile;
     unsigned    date;
     char        nick[GP_NICK_LEN];
-    wchar_t     message[256];
+    char        message[256];
 } GPRecvBuddyMessageArg;
 
 typedef struct GPRecvBuddyStatusArg_s
 {
     GPProfile   profile;
+    int         index;
     char        nick[GP_NICK_LEN];
     GPEnum      status;
     char        statusString[GP_STATUS_STRING_LEN];
     char        locationString[GP_LOCATION_STRING_LEN];
     char        countrycode[GP_COUNTRYCODE_LEN];
 } GPRecvBuddyStatusArg;
+
+typedef struct GPGetInfoResponseArg_s
+{
+    GPResult    result;
+    GPProfile   profile;
+    char        nick[GP_NICK_LEN];
+    char        email[GP_EMAIL_LEN];
+    char        countrycode[GP_COUNTRYCODE_LEN];
+} GPGetInfoResponseArg;
+
+typedef struct GPBuddyStatus_s
+{
+    GPProfile   profile;
+    GPEnum      status;
+    char        statusString[GP_STATUS_STRING_LEN];
+    char        locationString[GP_LOCATION_STRING_LEN];
+} GPBuddyStatus;
 
 typedef struct GPErrorArg_s
 {
@@ -290,7 +339,7 @@ typedef struct GPConnectResponseArg_s
 } GPConnectResponseArg;
 
 typedef void (* GPConnectResponseCallback)(
-    GPConnection        connection,
+    GPConnection*       connection,
     GPConnectResponseArg* arg,
     void*               param);
 
@@ -299,15 +348,20 @@ typedef void (* GPConnectResponseCallback)(
 // We must NOT typedef those names here — doing so causes C2365 redefinition.
 // The callback type names get a _Func suffix to avoid the clash.
 typedef void (* GPErrorCallbackFunc)(
-    GPConnection connection,
+    GPConnection* connection,
     GPErrorArg*  arg,
     void*        param);
 
 // Callback fired when a buddy message or status arrives
 typedef void (* GPRecvBuddyMessageCallbackFunc)(
-    GPConnection           connection,
+    GPConnection*          connection,
     GPRecvBuddyMessageArg* arg,
     void*                  param);
+
+typedef void (* GPCallback)(
+    GPConnection* connection,
+    void*         arg,
+    void*         param);
 
 // NOTE: GameSpyColors enum is defined in GameNetwork/GameSpy/PeerDefs.h which is
 // always included alongside this stub.  Do NOT define it here to avoid redefinition.
@@ -326,17 +380,23 @@ inline GPResult gpInitialize(GPConnection* connection,
     return GP_NO_ERROR;
 }
 
-// Connect to GameSpy presence service.  Always returns network error.
-inline GPResult gpConnect(GPConnection              connection,
-                           const char*               email,
-                           const char*               nick,
-                           const char*               password,
-                           int                       firewalled,
-                           GPConnectResponseCallback callback,
-                           void*                     param)
+inline GPResult gpInitialize(GPConnection* connection, int productId)
 {
-    (void)connection; (void)email; (void)nick;
-    (void)password; (void)firewalled;
+    return gpInitialize(connection, productId, 0, 0);
+}
+
+// Connect to GameSpy presence service.  Always returns network error.
+inline GPResult gpConnect(GPConnection*             connection,
+                          const char*               nick,
+                          const char*               email,
+                          const char*               password,
+                          int                       firewalled,
+                          int                       blocking,
+                          GPConnectResponseCallback callback,
+                          void*                     param)
+{
+    (void)connection; (void)nick; (void)email;
+    (void)password; (void)firewalled; (void)blocking;
     if (callback)
     {
         GPConnectResponseArg arg = {};
@@ -348,18 +408,17 @@ inline GPResult gpConnect(GPConnection              connection,
 }
 
 // Create a new GameSpy user account.  Always returns network error.
-inline GPResult gpConnectNewUser(GPConnection              connection,
-                                  const char*               nick,
-                                  const char*               uniquenick,
-                                  const char*               email,
-                                  const char*               password,
-                                  const char*               cdkey,
-                                  int                       firewalled,
-                                  GPConnectResponseCallback callback,
-                                  void*                     param)
+inline GPResult gpConnectNewUser(GPConnection*             connection,
+                                 const char*               nick,
+                                 const char*               email,
+                                 const char*               password,
+                                 int                       firewalled,
+                                 int                       blocking,
+                                 GPConnectResponseCallback callback,
+                                 void*                     param)
 {
-    (void)connection; (void)nick; (void)uniquenick; (void)email;
-    (void)password; (void)cdkey; (void)firewalled;
+    (void)connection; (void)nick; (void)email;
+    (void)password; (void)firewalled; (void)blocking;
     if (callback)
     {
         GPConnectResponseArg arg = {};
@@ -371,16 +430,156 @@ inline GPResult gpConnectNewUser(GPConnection              connection,
 }
 
 // Disconnect and clean up.
-inline void gpDisconnect(GPConnection connection) { (void)connection; }
+inline void gpDisconnect(GPConnection* connection) { (void)connection; }
 
 // Destroy the GP connection object.
 inline void gpDestroy(GPConnection* connection) { if(connection) *connection = nullptr; }
 
 // Process pending GP callbacks.  Stub: nothing to process.
-inline GPResult gpProcess(GPConnection connection)
+inline GPResult gpProcess(GPConnection* connection)
 {
     (void)connection;
     return GP_NO_ERROR;
+}
+
+inline GPResult gpSetCallback(GPConnection* connection, GPEnum callbackType, GPCallback callback, void* param)
+{
+    (void)connection; (void)callbackType; (void)callback; (void)param;
+    return GP_NO_ERROR;
+}
+
+inline GPResult gpDeleteProfile(GPConnection* connection)
+{
+    (void)connection;
+    return GP_NO_ERROR;
+}
+
+inline GPResult gpSendBuddyMessage(GPConnection* connection, GPProfile profile, const char* message)
+{
+    (void)connection; (void)profile; (void)message;
+    return GP_NETWORK_ERROR;
+}
+
+inline GPResult gpDeleteBuddy(GPConnection* connection, GPProfile profile)
+{
+    (void)connection; (void)profile;
+    return GP_NO_ERROR;
+}
+
+inline GPResult gpAuthBuddyRequest(GPConnection* connection, GPProfile profile)
+{
+    (void)connection; (void)profile;
+    return GP_NO_ERROR;
+}
+
+inline GPResult gpDenyBuddyRequest(GPConnection* connection, GPProfile profile)
+{
+    (void)connection; (void)profile;
+    return GP_NO_ERROR;
+}
+
+inline GPResult gpSendBuddyRequest(GPConnection* connection, GPProfile profile, const char* reason)
+{
+    (void)connection; (void)profile; (void)reason;
+    return GP_NETWORK_ERROR;
+}
+
+inline GPResult gpSetStatus(GPConnection* connection, GPEnum status, const char* statusString, const char* locationString)
+{
+    (void)connection; (void)status; (void)statusString; (void)locationString;
+    return GP_NO_ERROR;
+}
+
+inline GPResult gpSetInfoMask(GPConnection* connection, GPEnum mask)
+{
+    (void)connection; (void)mask;
+    return GP_NO_ERROR;
+}
+
+inline GPResult gpGetInfo(GPConnection* connection, GPProfile profile, int checkCache, int blocking, GPCallback callback, void* param)
+{
+    (void)checkCache; (void)blocking;
+    if (callback) {
+        GPGetInfoResponseArg arg = {};
+        arg.result = GP_NETWORK_ERROR;
+        arg.profile = profile;
+        callback(connection, &arg, param);
+    }
+    return GP_NETWORK_ERROR;
+}
+
+inline GPResult gpConnectNewUser(GPConnection* connection,
+                                 const char*   nick,
+                                 const char*   email,
+                                 const char*   password,
+                                 int           firewalled,
+                                 int           blocking,
+                                 GPCallback    callback,
+                                 void*         param)
+{
+    (void)connection; (void)nick; (void)email;
+    (void)password; (void)firewalled; (void)blocking;
+    if (callback)
+    {
+        GPConnectResponseArg arg = {};
+        arg.result  = GP_NETWORK_ERROR;
+        arg.profile = 0;
+        callback(connection, &arg, param);
+    }
+    return GP_NETWORK_ERROR;
+}
+
+inline GPResult gpConnect(GPConnection* connection,
+                          const char*   nick,
+                          const char*   email,
+                          const char*   password,
+                          int           firewalled,
+                          int           blocking,
+                          GPCallback    callback,
+                          void*         param)
+{
+    (void)connection; (void)nick; (void)email;
+    (void)password; (void)firewalled; (void)blocking;
+    if (callback)
+    {
+        GPConnectResponseArg arg = {};
+        arg.result  = GP_NETWORK_ERROR;
+        arg.profile = 0;
+        callback(connection, &arg, param);
+    }
+    return GP_NETWORK_ERROR;
+}
+
+inline int gpGetBuddyIndex(GPConnection* connection, GPProfile profile)
+{
+    (void)connection; (void)profile;
+    return -1;
+}
+
+inline GPResult gpGetBuddyStatus(GPConnection* connection, int index, GPBuddyStatus* status)
+{
+    (void)connection; (void)index;
+    if (status) {
+        status->profile = 0;
+        status->status = GP_OFFLINE;
+        status->statusString[0] = '\0';
+        status->locationString[0] = '\0';
+    }
+    return GP_NO_ERROR;
+}
+
+inline GPResult gpIsConnected(GPConnection* connection)
+{
+    (void)connection;
+    return GP_NOT_LOGGED_IN;
+}
+
+inline GPResult gpIsConnected(GPConnection* connection, GPEnum* isConnected)
+{
+    (void)connection;
+    if (isConnected)
+        *isConnected = GP_OFFLINE;
+    return GP_NOT_LOGGED_IN;
 }
 
 // ===========================================================================
@@ -392,6 +591,9 @@ typedef int   PEERBool;// 0 = false, non-zero = true
 
 #define PEER_TRUE  1
 #define PEER_FALSE 0
+#define PEERTrue   PEER_TRUE
+#define PEERFalse  PEER_FALSE
+#define PEER_FLAG_OP 0x00000001
 
 // PEERJoinResult — returned in joinRoomCallback
 typedef enum
@@ -435,8 +637,11 @@ typedef enum
     PEER_COMPLETE = 4   // Listing is complete
 } PEERUpdateType;
 
-// SBServer — server browser server handle (opaque pointer)
-typedef void* SBServer;
+// SBServer — server browser server handle.
+typedef struct SBServer_s
+{
+    void* keyvals;
+} *SBServer;
 
 // Common Peer callback pointer types
 typedef void (* PeerConnectCallback)       (PEER peer, PEERBool success, void* param);
@@ -456,6 +661,16 @@ typedef void (* PeerGetKeysCallback)       (PEER peer, PEERBool success, RoomTyp
                                              char** keys, char** values, void* param);
 typedef void (* PeerListingGamesCallback)  (PEER peer, PEERBool success, PEERBool staging,
                                              SBServer server, PEERBool staging2, void* param);
+typedef void (* PeerJoinRoomCallback)      (PEER peer, PEERBool success, PEERJoinResult result,
+                                             RoomType roomType, void* param);
+typedef void (* PeerGetProfileIDCallback)  (PEER peer, PEERBool success, const char* nick,
+                                             int profileID, void* param);
+typedef void (* PeerListGroupRoomsCallback)(PEER peer, PEERBool success, int groupID, SBServer server,
+                                             const char* name, int numWaiting, int maxWaiting,
+                                             int numGames, int numPlaying, void* param);
+typedef void (* PeerAuthenticateCDKeyCallback)(PEER peer, int result, const char* message, void* param);
+typedef void (* PeerListingGamesCallbackEx)(PEER peer, PEERBool success, const char* name, SBServer server,
+                                             PEERBool staging, int msg, int percentListed, void* param);
 
 // Peer callback table — callers fill this in and pass it to peerConnect
 typedef struct PEERCallbacks_s
@@ -466,14 +681,57 @@ typedef struct PEERCallbacks_s
     PeerPlayerJoinedCallback playerJoined;
     PeerPlayerLeftCallback   playerLeft;
     void*                    playerChangedNick;  // unused in stub
+    void*                    playerFlagsChanged;
     void*                    playerInfo;
+    void*                    roomUTM;
+    void*                    playerUTM;
+    void*                    globalKeyChanged;
+    void*                    roomKeyChanged;
     void*                    ready;
     void*                    gameStarted;
     void*                    autoMatch;
     void*                    autoMatchStatus;
+    void*                    qrServerKey;
+    void*                    qrPlayerKey;
+    void*                    qrTeamKey;
+    void*                    qrKeyList;
+    void*                    qrCount;
+    void*                    qrAddError;
+    void*                    qrNatNegotiateCallback;
+    void*                    kicked;
+    void*                    newPlayerList;
+    void*                    param;
 } PEERCallbacks;
 
 // --- Peer stub functions ----------------------------------------------------
+
+#ifndef NUM_RESERVED_KEYS
+#define NUM_RESERVED_KEYS 50
+#endif
+#ifndef HOSTNAME_KEY
+#define HOSTNAME_KEY 1
+#endif
+#ifndef GAMENAME_KEY
+#define GAMENAME_KEY 2
+#endif
+#ifndef GAMEVER_KEY
+#define GAMEVER_KEY 3
+#endif
+#ifndef MAPNAME_KEY
+#define MAPNAME_KEY 4
+#endif
+#ifndef PEER_STOP_REPORTING
+#define PEER_STOP_REPORTING 1
+#endif
+#ifndef PEER_IN_USE
+#define PEER_IN_USE 1
+#endif
+
+inline PEER peerInitialize(PEERCallbacks* callbacks)
+{
+    (void)callbacks;
+    return reinterpret_cast<PEER>(1);
+}
 
 // Connect to the Peer service.  Returns NULL (no connection).
 inline PEER peerConnect(PEERCallbacks*     callbacks,
@@ -489,11 +747,147 @@ inline PEER peerConnect(PEERCallbacks*     callbacks,
     return nullptr;
 }
 
+inline PEERBool peerConnect(PEER              peer,
+                            const char*       nick,
+                            int               profileID,
+                            PeerNickErrorCallback nickErrorCallback,
+                            PeerConnectCallback   connectCallback,
+                            void*             param,
+                            PEERBool          blocking)
+{
+    (void)peer; (void)nick; (void)profileID; (void)nickErrorCallback; (void)blocking;
+    if (connectCallback)
+        connectCallback(peer, PEER_FALSE, param);
+    return PEER_FALSE;
+}
+
 // Disconnect and destroy a Peer connection.
 inline void peerDisconnect(PEER peer) { (void)peer; }
+inline void peerShutdown(PEER peer) { (void)peer; }
 
 // Process pending callbacks.  Stub: nothing to process.
 inline void peerThink(PEER peer) { (void)peer; }
+inline PEERBool peerSetTitle(PEER peer, const char* gameName, const char* secretKey,
+                              const char* gameName2, const char* secretKey2,
+                              const char* version, int maxUpdates, PEERBool blocking,
+                              const PEERBool* pingRooms, const PEERBool* crossPingRooms)
+{
+    (void)peer; (void)gameName; (void)secretKey; (void)gameName2; (void)secretKey2;
+    (void)version; (void)maxUpdates; (void)blocking; (void)pingRooms; (void)crossPingRooms;
+    return PEER_TRUE;
+}
+inline PEERBool peerSetTitle(PEER peer, const char* gameName, const char* secretKey,
+                              const char* gameName2, const char* secretKey2,
+                              unsigned int version, int maxUpdates, PEERBool blocking,
+                              const PEERBool* pingRooms, const PEERBool* crossPingRooms)
+{
+    (void)peer; (void)gameName; (void)secretKey; (void)gameName2; (void)secretKey2;
+    (void)version; (void)maxUpdates; (void)blocking; (void)pingRooms; (void)crossPingRooms;
+    return PEER_TRUE;
+}
+inline void peerSetRoomWatchKeys(PEER peer, RoomType room, int numKeys, const char** keys, PEERBool addKeys)
+{
+    (void)peer; (void)room; (void)numKeys; (void)keys; (void)addKeys;
+}
+inline void peerSetRoomKeys(PEER peer, RoomType room, const char* nick, int numKeys, char** keys, char** values)
+{
+    (void)peer; (void)room; (void)nick; (void)numKeys; (void)keys; (void)values;
+}
+inline void peerSetRoomKeys(PEER peer, RoomType room, const char* nick, int numKeys, const char** keys, const char** values)
+{
+    (void)peer; (void)room; (void)nick; (void)numKeys; (void)keys; (void)values;
+}
+inline void peerStopGame(PEER peer) { (void)peer; }
+inline void peerLeaveRoom(PEER peer, RoomType room, void* callback)
+{
+    (void)peer; (void)room; (void)callback;
+}
+inline void peerLeaveRoom(PEER peer, RoomType room, int callback)
+{
+    (void)peer; (void)room; (void)callback;
+}
+inline void peerLeaveRoom(PEER peer, RoomType room, const char* reason)
+{
+    (void)peer; (void)room; (void)reason;
+}
+inline void peerJoinGroupRoom(PEER peer, int roomID, PeerJoinRoomCallback callback, void* param, PEERBool blocking)
+{
+    (void)roomID; (void)blocking;
+    if (callback)
+        callback(peer, PEER_FALSE, PEERJoinFailed, GroupRoom, param);
+}
+inline void peerJoinStagingRoom(PEER peer, SBServer server, const char* password, PeerJoinRoomCallback callback, void* param, PEERBool blocking)
+{
+    (void)server; (void)password; (void)blocking;
+    if (callback)
+        callback(peer, PEER_FALSE, PEERJoinFailed, StagingRoom, param);
+}
+inline void peerCreateStagingRoomWithSocket(PEER peer, const char* roomName, int maxPlayers,
+                                            const char* password, int socketHandle, int port,
+                                            PeerJoinRoomCallback callback, void* param, PEERBool blocking)
+{
+    (void)roomName; (void)maxPlayers; (void)password; (void)socketHandle; (void)port; (void)blocking;
+    if (callback)
+        callback(peer, PEER_FALSE, PEERJoinFailed, StagingRoom, param);
+}
+inline void peerStartListingGames(PEER peer, const unsigned char* keys, int numKeys,
+                                  const char* filter, PeerListingGamesCallback callback, void* param)
+{
+    (void)keys; (void)numKeys; (void)filter;
+    if (callback)
+        callback(peer, PEER_FALSE, PEER_FALSE, nullptr, PEER_FALSE, param);
+}
+inline void peerStartListingGames(PEER peer, const unsigned char* keys, int numKeys,
+                                  const char* filter, PeerListingGamesCallbackEx callback, void* param)
+{
+    (void)keys; (void)numKeys; (void)filter;
+    if (callback)
+        callback(peer, PEER_FALSE, nullptr, nullptr, PEER_FALSE, PEER_COMPLETE, 0, param);
+}
+inline void peerStopListingGames(PEER peer) { (void)peer; }
+inline PEERBool peerStartGame(PEER peer, void* reportingData, int reportMode)
+{
+    (void)peer; (void)reportingData; (void)reportMode;
+    return PEER_FALSE;
+}
+inline void peerUTMPlayer(PEER peer, const char* nick, const char* command, const char* message, PEERBool reliable)
+{
+    (void)peer; (void)nick; (void)command; (void)message; (void)reliable;
+}
+inline void peerUTMRoom(PEER peer, RoomType room, const char* command, const char* message, PEERBool reliable)
+{
+    (void)peer; (void)room; (void)command; (void)message; (void)reliable;
+}
+inline void peerUpdateGame(PEER peer, SBServer server, PEERBool broadcast)
+{
+    (void)peer; (void)server; (void)broadcast;
+}
+inline void peerStateChanged(PEER peer) { (void)peer; }
+inline PEERBool peerIsConnected(PEER peer)
+{
+    (void)peer;
+    return PEER_FALSE;
+}
+inline void peerGetPlayerProfileID(PEER peer, const char* nick, PeerGetProfileIDCallback callback, void* param, PEERBool blocking)
+{
+    (void)nick; (void)blocking;
+    if (callback)
+        callback(peer, PEER_FALSE, nick, 0, param);
+}
+inline void peerGetPlayerFlags(PEER peer, const char* nick, RoomType room, int* flags)
+{
+    (void)peer; (void)nick; (void)room;
+    if (flags)
+        *flags = 0;
+}
+inline void peerMessagePlayer(PEER peer, const char* nick, const char* message, MessageType type)
+{
+    (void)peer; (void)nick; (void)message; (void)type;
+}
+inline void peerMessageRoom(PEER peer, RoomType room, const char* message, MessageType type)
+{
+    (void)peer; (void)room; (void)message; (void)type;
+}
 
 // Enumerate players in a room.
 inline void peerEnumPlayers(PEER peer, RoomType room,
@@ -513,6 +907,54 @@ inline void peerGetRoomKeys(PEER peer, RoomType room, const char* nick,
     (void)peer; (void)room; (void)nick; (void)numKeys; (void)keys;
     if (callback)
         callback(peer, PEER_FALSE, room, nick, 0, nullptr, nullptr, param);
+}
+
+inline void peerGetRoomKeys(PEER peer, RoomType room, const char* nick,
+                              int numKeys, const char** keys,
+                              PeerGetKeysCallback callback, void* param, PEERBool blocking)
+{
+    (void)peer; (void)room; (void)nick; (void)numKeys; (void)keys; (void)blocking;
+    if (callback)
+        callback(peer, PEER_FALSE, room, nick, 0, nullptr, nullptr, param);
+}
+
+inline void peerAuthenticateCDKey(PEER peer, const char* cdkey, PeerAuthenticateCDKeyCallback callback, void* param, PEERBool blocking)
+{
+    (void)peer; (void)cdkey; (void)blocking;
+    if (callback)
+        callback(peer, 0, "offline", param);
+}
+
+inline void peerParseQuery(PEER peer, char* query, int len, void* from)
+{
+    (void)peer; (void)query; (void)len; (void)from;
+}
+
+inline unsigned int peerGetLocalIP(PEER peer)
+{
+    (void)peer;
+    return 0;
+}
+
+inline void peerListGroupRooms(PEER peer, void* filter, PeerListGroupRoomsCallback callback, void* param, PEERBool blocking)
+{
+    (void)peer; (void)filter; (void)blocking;
+    if (callback)
+        callback(peer, PEER_FALSE, 0, nullptr, nullptr, 0, 0, 0, 0, param);
+}
+
+inline void peerRetryWithNick(PEER peer, const char* nick)
+{
+    (void)peer; (void)nick;
+}
+
+inline void peerGetPlayerInfoNoWait(PEER peer, const char* nick, unsigned int* IP, int* profileID)
+{
+    (void)peer; (void)nick;
+    if (IP)
+        *IP = 0;
+    if (profileID)
+        *profileID = 0;
 }
 
 // --- SBServer property accessors (server browser) ---------------------------
@@ -554,6 +996,8 @@ inline unsigned int SBServerGetPublicInetAddress (SBServer server) { (void)serve
 inline unsigned int SBServerGetPrivateInetAddress(SBServer server) { (void)server; return 0; }
 inline unsigned short SBServerGetPublicQueryPort (SBServer server) { (void)server; return 0; }
 inline unsigned short SBServerGetPrivateQueryPort(SBServer server) { (void)server; return 0; }
+inline int SBServerHasBasicKeys(SBServer server) { (void)server; return 0; }
+inline int SBServerHasFullKeys(SBServer server) { (void)server; return 0; }
 
 // ===========================================================================
 //  gpersist / gstats — statistics and persistent storage
@@ -562,8 +1006,12 @@ inline unsigned short SBServerGetPrivateQueryPort(SBServer server) { (void)serve
 typedef void* GPersistConn;   // opaque persistence connection
 
 typedef int PersistType;
+typedef int persisttype_t;
 #define PERSIST_PRIVATE  0
 #define PERSIST_PUBLIC   1
+#define GE_NOERROR       0
+#define pd_public_ro     0
+#define pd_public_rw     1
 
 typedef void (* PersistGetDataCallback)(GPersistConn conn, int localIndex,
                                          PersistType type, int index,
@@ -603,6 +1051,106 @@ inline int gpPersistSaveData(GPersistConn conn, int localIndex,
     (void)data; (void)len;
     if (callback) callback(conn, localIndex, type, index, 0, param);
     return 0;
+}
+
+inline int InitStatsConnection(int localProfileId)
+{
+    (void)localProfileId;
+    return 0;
+}
+
+inline void chatSetLocalIP(unsigned int localIP)
+{
+    (void)localIP;
+}
+
+inline char gcd_gamename[32] = {0};
+inline char gcd_secret_key[32] = {0};
+
+#ifndef SNAP_FINAL
+#define SNAP_FINAL 1
+#endif
+
+inline void NewGame(int gameID)
+{
+    (void)gameID;
+}
+
+inline int SendGameSnapShot(void* gameHandle, const char* results, int snapshotType)
+{
+    (void)gameHandle; (void)results; (void)snapshotType;
+    return 0;
+}
+
+inline void FreeGame(void* gameHandle)
+{
+    (void)gameHandle;
+}
+
+inline int IsStatsConnected()
+{
+    return 0;
+}
+
+inline void PersistThink()
+{
+}
+
+inline void CloseStatsConnection()
+{
+}
+
+inline const char* GetChallenge(const char* unused)
+{
+    (void)unused;
+    return "";
+}
+
+inline void GenerateAuth(const char* challenge, char* input, char* output)
+{
+    (void)challenge; (void)input;
+    if (output) {
+        output[0] = '\0';
+    }
+}
+
+typedef void (* PersistAuthCallback)(int localid, int profileid, int authenticated, char* errmsg, void* instance);
+typedef void (* PersistSetDataCallback)(int localid, int profileid, persisttype_t type, int index, int success, void* instance);
+typedef void (* PersistGetValuesCallback)(int localid, int profileid, persisttype_t type, int index, int success, char* data, int len, void* instance);
+
+inline void PreAuthenticatePlayerPM(int localid, int profileid, const char* validate, PersistAuthCallback callback, void* instance)
+{
+    (void)localid; (void)profileid; (void)validate;
+    if (callback) {
+        char errmsg[] = "";
+        callback(localid, profileid, 0, errmsg, instance);
+    }
+}
+
+inline void PreAuthenticatePlayerCD(int localid, const char* keyType, const char* cdkeyHash, const char* validationToken, PersistAuthCallback callback, void* instance)
+{
+    (void)localid; (void)keyType; (void)cdkeyHash; (void)validationToken;
+    if (callback) {
+        char errmsg[] = "";
+        callback(localid, 0, 0, errmsg, instance);
+    }
+}
+
+inline void GetPersistDataValues(int localid, int profileid, persisttype_t type, int index, const char* keyFilter, PersistGetValuesCallback callback, void* instance)
+{
+    (void)keyFilter;
+    if (callback) {
+        char emptyData[] = "";
+        callback(localid, profileid, type, index, 0, emptyData, 0, instance);
+    }
+}
+
+inline void SetPersistDataValues(int localid, int profileid, persisttype_t type, int index, char* data, PersistSetDataCallback callback, void* instance)
+{
+    (void)data;
+    if (callback) {
+        callback(localid, profileid, type, index, 0, instance);
+    }
 }
 
 // ===========================================================================

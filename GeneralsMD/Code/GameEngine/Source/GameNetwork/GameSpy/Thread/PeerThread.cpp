@@ -111,6 +111,7 @@ enum
 	MAXPLAYER_KEY,
 	NUMOBS_KEY,
 	NAME__KEY,
+	PID__KEY,
 	FACTION__KEY,
 	COLOR__KEY,
 	WINS__KEY,
@@ -1842,7 +1843,7 @@ void PeerThreadClass::handleQMMatch(PEER peer, Int mapIndex, Int seed,
 		PeerResponse resp;
 		resp.peerResponseType = PeerResponse::PEERRESPONSE_QUICKMATCHSTATUS;
 		resp.qmStatus.status = QM_MATCHED;
-		for (i=0; i<MAX_SLOTS; ++i)
+		for (Int i = 0; i < MAX_SLOTS; ++i)
 		{
 			if (playerName[i])
 			{

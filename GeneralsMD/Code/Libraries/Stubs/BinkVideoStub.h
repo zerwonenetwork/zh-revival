@@ -32,8 +32,14 @@
 
 // RAD's public headers typically define these basic types; define them here
 // so stub consumers don't need the proprietary type headers.
+#ifndef ZH_STUB_S32_DEFINED
+#define ZH_STUB_S32_DEFINED
 typedef int32_t  S32;
+#endif
+#ifndef ZH_STUB_U32_DEFINED
+#define ZH_STUB_U32_DEFINED
 typedef uint32_t U32;
+#endif
 
 // ---------------------------------------------------------------------------
 //  BINK open flags (used by callers: BinkOpen(path, BINKPRELOADALL))
@@ -67,6 +73,8 @@ typedef BINK* HBINK;
 #define BINKSURFACE32     3   // 32-bit RGBX
 #define BINKSURFACE24     4   // 24-bit RGB
 #define BINKSURFACE16     5   // 16-bit RGB565
+#define BINKSURFACE565    BINKSURFACE16
+#define BINKSURFACE555    6
 
 // ---------------------------------------------------------------------------
 //  Stub function implementations — all are inline no-ops.
@@ -147,6 +155,19 @@ inline void BinkPause(HBINK bink, int pause)
 // Set Miles audio driver for Bink audio sync.
 inline void BinkSetSoundSystem(void* /*open_func*/, DWORD /*driver*/)
 {
+}
+
+inline void BinkSetVolume(HBINK /*bink*/, U32 /*track*/, S32 /*volume*/)
+{
+}
+
+inline void BinkSetSoundTrack(U32 /*count*/, U32* /*tracks*/)
+{
+}
+
+inline int BinkSoundUseDirectSound(void* /*driver*/)
+{
+    return 1;
 }
 
 #endif // STUB_IMPL

@@ -13,6 +13,15 @@ typedef struct ID3DXBuffer ID3DXBuffer;
 typedef ID3DXBuffer* LPD3DXBUFFER;
 #endif
 
+#ifdef __cplusplus
+struct ID3DXBuffer {
+    virtual ULONG AddRef() = 0;
+    virtual ULONG Release() = 0;
+    virtual void* GetBufferPointer() = 0;
+    virtual DWORD GetBufferSize() = 0;
+};
+#endif
+
 // D3DX filter / default constants
 #ifndef D3DX_DEFAULT
 #define D3DX_DEFAULT        ((UINT)-1)
@@ -65,6 +74,17 @@ inline HRESULT D3DXCreateCubeTexture(
     return (HRESULT)0x887A0001L;
 }
 
+inline HRESULT D3DXCreateVolumeTexture(
+    IDirect3DDevice8* pDevice, UINT Width, UINT Height, UINT Depth,
+    UINT MipLevels, DWORD Usage, D3DFORMAT Format, D3DPOOL Pool,
+    IDirect3DVolumeTexture8** ppVolumeTexture)
+{
+    (void)pDevice; (void)Width; (void)Height; (void)Depth;
+    (void)MipLevels; (void)Usage; (void)Format; (void)Pool;
+    if (ppVolumeTexture) *ppVolumeTexture = nullptr;
+    return D3DERR_NOTAVAILABLE;
+}
+
 // D3DXCreateTextureFromFileExA — returns failure so caller uses MissingTexture
 inline HRESULT D3DXCreateTextureFromFileExA(
     IDirect3DDevice8* pDevice, const char* pSrcFile,
@@ -104,4 +124,26 @@ inline HRESULT D3DXLoadSurfaceFromSurface(
     (void)Filter; (void)ColorKey;
     return D3D_OK;
 }
+
+inline HRESULT D3DXAssembleShader(
+    const char* pSrcData, UINT SrcDataLen, const void* pDefines,
+    void* pInclude, LPD3DXBUFFER* ppShader, LPD3DXBUFFER* ppErrorMsgs)
+{
+    (void)pSrcData; (void)SrcDataLen; (void)pDefines; (void)pInclude;
+    if (ppShader) *ppShader = nullptr;
+    if (ppErrorMsgs) *ppErrorMsgs = nullptr;
+    return D3DERR_NOTAVAILABLE;
+}
+
+inline HRESULT D3DXAssembleShaderFromFileA(
+    const char* pSrcFile, const void* pDefines, void* pInclude,
+    LPD3DXBUFFER* ppShader, LPD3DXBUFFER* ppErrorMsgs)
+{
+    (void)pSrcFile; (void)pDefines; (void)pInclude;
+    if (ppShader) *ppShader = nullptr;
+    if (ppErrorMsgs) *ppErrorMsgs = nullptr;
+    return D3DERR_NOTAVAILABLE;
+}
+
+#define D3DXAssembleShaderFromFile D3DXAssembleShaderFromFileA
 

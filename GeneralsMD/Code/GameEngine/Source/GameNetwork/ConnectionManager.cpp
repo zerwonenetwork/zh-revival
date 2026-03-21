@@ -1857,7 +1857,6 @@ void ConnectionManager::parseUserList(const GameInfo *game)
 	if (!game)
 		return;
 
-	Int i;
 	Int numUsers = 0;
 	m_localSlot = -1;
 	DEBUG_LOG(("Local slot is %d\n", game->getLocalSlotNum()));

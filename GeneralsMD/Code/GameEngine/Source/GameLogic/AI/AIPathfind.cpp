@@ -1201,7 +1201,7 @@ PathfindCell::~PathfindCell( void )
 { 	
 	if (m_info) PathfindCellInfo::releaseACellInfo(m_info);
 	m_info = NULL;
-	static warn = true;
+	static bool warn = true;
 	if (warn) {
 		warn = false;
 		DEBUG_LOG( ("PathfindCell::~PathfindCell m_info Allocated."));
@@ -10250,7 +10250,7 @@ Path *Pathfinder::getMoveAwayFromPath(Object* obj, Object *otherObj,
 	}
 
 	if (!parentCell->allocateInfo(startCellNdx)) {
-		return false;
+		return NULL;
 	}
 	parentCell->startPathfind(NULL);
 

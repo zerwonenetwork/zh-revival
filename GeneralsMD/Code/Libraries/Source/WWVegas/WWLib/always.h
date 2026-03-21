@@ -173,7 +173,9 @@ public:
 // Provide safe fallbacks for all macros so all consumers compile regardless of
 // include order.
 #ifndef W3DMPO_GLUE
-#define W3DMPO_GLUE(ARGCLASS)
+#define W3DMPO_GLUE(ARGCLASS) \
+protected: \
+	virtual int glueEnforcer() const { return sizeof(this); }
 #endif
 
 #ifndef W3DNEW

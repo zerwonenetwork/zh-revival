@@ -970,7 +970,7 @@ Bool FirewallHelperClass::detectionTest3WaitForResponsesUpdate() {
 			/*
 			** Close down those sockets - we are finished with them.
 			*/
-			for (Int j=0 ; j<i ; j++) {
+			for (Int j = 0; j < NUM_TEST_PORTS; ++j) {
 				if (m_spareSockets[j].port != 0) {
 					closeSpareSocket(m_spareSockets[j].port);
 				}
@@ -985,7 +985,7 @@ Bool FirewallHelperClass::detectionTest3WaitForResponsesUpdate() {
 	/*
 	** Close down those sockets - we are finished with them.
 	*/
-	for (Int j=0 ; j<i ; j++) {
+	for (Int j = 0; j < NUM_TEST_PORTS; ++j) {
 		if (m_spareSockets[j].port != 0) {
 			closeSpareSocket(m_spareSockets[j].port);
 		}
@@ -1525,7 +1525,8 @@ Int FirewallHelperClass::getFirewallRetries(FirewallBehaviorType behavior)
  *  returns TRUE if successful, FALSE otherwise.
  */
 Bool FirewallHelperClass::openSpareSocket(UnsignedShort port) {
-	for (Int i = 0; i < MAX_SPARE_SOCKETS; ++i) {
+	Int i = 0;
+	for (; i < MAX_SPARE_SOCKETS; ++i) {
 		if (m_spareSockets[i].port == 0) {
 			break;
 		}

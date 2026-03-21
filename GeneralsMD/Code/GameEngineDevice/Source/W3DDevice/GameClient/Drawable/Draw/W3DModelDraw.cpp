@@ -272,7 +272,7 @@ inline Bool isCommonMaintainFrameFlagSet(Int a, Int b)
 // Note: these values are saved in save files, so you MUST NOT REMOVE OR CHANGE
 // existing values!
 //
-static char *TerrainDecalTextureName[TERRAIN_DECAL_MAX]=
+static const char *TerrainDecalTextureName[TERRAIN_DECAL_MAX]=
 {
 #ifdef ALLOW_DEMORALIZE
 	"DM_RING",//demoralized
@@ -1091,6 +1091,7 @@ void W3DModelDrawModuleData::validateStuffForTimeAndWeather(const Drawable* draw
 
 		Bool a = false;
 		Bool b = false;
+		ModelConditionVector::iterator c_it;
 		for (c_it = m_conditionStates.begin(); c_it != m_conditionStates.end(); ++c_it)
 		{
 
@@ -3488,7 +3489,7 @@ Int W3DModelDraw::getPristineBonePositionsForConditionState(
 	
 	if (positions && transforms)
 	{
-		for (i = 0; i < posCount; ++i)
+		for (Int i = 0; i < posCount; ++i)
 		{
 			Vector3 pos = transforms[i].Get_Translation();
 			positions[i].x = pos.X;
@@ -3628,7 +3629,7 @@ Int W3DModelDraw::getCurrentBonePositions(
 	
 	if (positions && transforms)
 	{
-		for (i = 0; i < posCount; ++i)
+		for (Int i = 0; i < posCount; ++i)
 		{
 			Vector3 pos = transforms[i].Get_Translation();
 			positions[i].x = pos.X;
@@ -4308,7 +4309,7 @@ void W3DModelDrawModuleData::xfer( Xfer *x )
 				x->xferInt(&(info->m_turrets[i].m_turretAngleBone));
 				x->xferInt(&(info->m_turrets[i].m_turretPitchBone));
 			}
-			for (i=0; i<WEAPONSLOT_COUNT; ++i)
+			for (Int i=0; i<WEAPONSLOT_COUNT; ++i)
 			{
 				for (ModelConditionInfo::WeaponBarrelInfoVec::iterator wit = info->m_weaponBarrelInfoVec[i].begin(); wit != info->m_weaponBarrelInfoVec[i].end(); ++wit)
 				{
