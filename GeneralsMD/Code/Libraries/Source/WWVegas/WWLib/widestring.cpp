@@ -243,7 +243,11 @@ WideStringClass::Free_String (void)
 //	Format
 //
 ///////////////////////////////////////////////////////////////////
-int _cdecl
+#if defined(_MSC_VER) || (defined(__GNUC__) && defined(_WIN32))
+int __cdecl
+#else
+int
+#endif
 WideStringClass::Format_Args (const WCHAR *format, const va_list & arg_list )
 {
 	if (format == NULL) {
@@ -274,7 +278,11 @@ WideStringClass::Format_Args (const WCHAR *format, const va_list & arg_list )
 //	Format
 //
 ///////////////////////////////////////////////////////////////////
-int _cdecl
+#if defined(_MSC_VER) || (defined(__GNUC__) && defined(_WIN32))
+int __cdecl
+#else
+int
+#endif
 WideStringClass::Format (const WCHAR *format, ...)
 {
 	if (format == NULL) {
