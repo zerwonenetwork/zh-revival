@@ -39,10 +39,17 @@
 #include	"mpmath.h"
 #include	"rng.h"
 
+#if defined(_MSC_VER)
+int bignum::Error = 0;
+bool bignum::Carry = false;
+bool bignum::Borrow = false;
+bignum bignum::Remainder;
+#else
 template<> int Int<MAX_UNIT_PRECISION>::Error = 0;
 template<> bool Int<MAX_UNIT_PRECISION>::Carry = false;
 template<> bool Int<MAX_UNIT_PRECISION>::Borrow = false;
 template<> Int<MAX_UNIT_PRECISION> Int<MAX_UNIT_PRECISION>::Remainder;
+#endif
 
 
 
