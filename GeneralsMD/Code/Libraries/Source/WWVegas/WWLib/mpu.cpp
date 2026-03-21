@@ -49,6 +49,15 @@ typedef union {
 	} QuadPart;
 } QuadValue;
 
+#if defined(__GNUC__) || defined(__clang__)
+static unsigned __int64 Read_Time_Stamp_Counter()
+{
+	return __builtin_ia32_rdtsc();
+}
+#elif defined(_MSC_VER)
+#define ASM_RDTSC _asm _emit 0x0f _asm _emit 0x31
+#endif
+
 
 /***********************************************************************************************
  * Get_CPU_Rate -- Fetch the rate of CPU ticks per second.                                     *
@@ -86,14 +95,20 @@ unsigned long Get_CPU_Rate(unsigned long & high)
 
 unsigned long Get_CPU_Clock(unsigned long & high)
 {
-	int h;
-	int l;
+	unsigned long h;
+	unsigned long l;
+#if defined(_MSC_VER)
 	__asm {
 		_emit 0Fh
 		_emit 31h
 		mov	[h],edx
 		mov	[l],eax
 	}
+#else
+	unsigned __int64 stamp = Read_Time_Stamp_Counter();
+	l = (unsigned long)(stamp & 0xffffffffULL);
+	h = (unsigned long)(stamp >> 32);
+#endif
 	high = h;
 	return(l);
 }
@@ -112,8 +127,6 @@ unsigned long Get_CPU_Clock(unsigned long & high)
 **
 */
 
-#define ASM_RDTSC _asm _emit 0x0f _asm _emit 0x31
-
 // Max # of samplings to allow before giving up and returning current average.
 #define MAX_TRIES			20
 #define ROUND_THRESHOLD		6
@@ -126,12 +139,18 @@ static unsigned long TSC_High;
 
 void RDTSC(void)
 {
-    _asm
-    {
-        ASM_RDTSC;
-        mov     TSC_Low, eax
-        mov     TSC_High, edx
-    }
+#if defined(_MSC_VER)
+	_asm
+	{
+		ASM_RDTSC;
+		mov     TSC_Low, eax
+		mov     TSC_High, edx
+	}
+#else
+	unsigned __int64 stamp = Read_Time_Stamp_Counter();
+	TSC_Low = (unsigned long)(stamp & 0xffffffffULL);
+	TSC_High = (unsigned long)(stamp >> 32);
+#endif
 }
 
 
@@ -197,8 +216,10 @@ int Get_RDTSC_CPU_Speed(void)
 			QueryPerformanceCounter(&t1);
 		}
 
-		ASM_RDTSC;
-		_asm	mov	stamp0, EAX
+		{
+			unsigned __int64 stamp = Read_Time_Stamp_Counter();
+			stamp0 = (DWORD)(stamp & 0xffffffffULL);
+		}
 
 		t0.LowPart = t1.LowPart;		// Reset Initial Time
 		t0.HighPart = t1.HighPart;
@@ -211,8 +232,10 @@ int Get_RDTSC_CPU_Speed(void)
 			QueryPerformanceCounter(&t1);
 		}
 
-		ASM_RDTSC;
-		_asm	mov	stamp1, EAX
+		{
+			unsigned __int64 stamp = Read_Time_Stamp_Counter();
+			stamp1 = (DWORD)(stamp & 0xffffffffULL);
+		}
 
 
 		cycles = stamp1 - stamp0;					// # of cycles passed between reads
