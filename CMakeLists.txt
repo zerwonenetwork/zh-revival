@@ -21,6 +21,13 @@ add_compile_definitions(
     _SILENCE_STDEXT_HASH_DEPRECATION_WARNINGS
 )
 
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
+    # -fpermissive: downgrade function-ptr→void* implicit conversion errors to warnings.
+    # This is required for legacy MSVC-extension code (FunctionLexicon, etc.) until
+    # those sites are updated in P5-07 (full memory safety audit).
+    add_compile_options(-fpermissive -Wno-error=permissive)
+endif()
+
 if(MSVC)
     # /W3   — warning level 3 (matches original .dsp)
     # /MP   — parallel compilation
