@@ -317,7 +317,7 @@ class Weapon;
 #ifdef AI_PASSIVE
 #undef AI_PASSIVE
 #endif
-enum AttitudeType : int {
+enum AttitudeType : int { AI_SLEEP = -2, AI_PASSIVE=-1, AI_NORMAL=0, AI_ALERT=1, AI_AGGRESSIVE=2, AI_INVALID=3 };		///< AI "attitude" behavior modifiers
 
 enum CommandSourceType : int;
 
