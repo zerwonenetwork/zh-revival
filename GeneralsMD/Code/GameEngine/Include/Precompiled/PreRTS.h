@@ -57,7 +57,7 @@ class STLSpecialAlloc;
 #include <assert.h>
 #include <ctype.h>
 #include <direct.h>
-#include <EXCPT.H>
+#include <excpt.h>
 #include <float.h>
 #include <fstream>     // fstream.h is deprecated; use standard <fstream>
 #include <imagehlp.h>
@@ -83,7 +83,7 @@ class STLSpecialAlloc;
 #include <sys/stat.h>
 #include <sys/timeb.h>
 #include <sys/types.h>
-#include <TCHAR.H>
+#include <tchar.h>
 #include <time.h>
 #include <vfw.h>
 #include <winerror.h>

@@ -49,7 +49,7 @@
 #include "SoundScene.h"
 #include "SoundPseudo3D.h"
 #include "ffactory.h"
-#include "Registry.h"
+#include "registry.h"
 #include "Threads.h"
 #include "LogicalSound.h"
 #include "LogicalListener.h"

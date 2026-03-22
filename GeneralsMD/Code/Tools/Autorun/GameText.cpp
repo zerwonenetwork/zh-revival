@@ -44,7 +44,7 @@
 
 #include <string>
 
-#include <Lib/BaseType.h>
+#include "Lib/BaseType.h"
 #include "GameText.h"
 
 #define DEBUG_LOG(x) {}
