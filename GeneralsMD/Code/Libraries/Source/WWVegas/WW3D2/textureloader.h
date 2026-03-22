@@ -108,6 +108,8 @@ private:
 	static int	TextureInactiveOverrideTime;
 };
 
+class TextureLoadTaskListClass; // forward declaration for use in TextureLoadTaskListNodeClass
+
 class TextureLoadTaskListNodeClass
 {
 	friend class TextureLoadTaskListClass;
