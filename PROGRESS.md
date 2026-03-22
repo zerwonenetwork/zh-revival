@@ -3,7 +3,7 @@
 > Repo: [https://github.com/ZerwOne/zh-revival](https://github.com/ZerwOne/zh-revival)
 > Forked from: [https://github.com/electronicarts/CnC_Generals_Zero_Hour](https://github.com/electronicarts/CnC_Generals_Zero_Hour)
 > Updated by Claude Code at the end of every session.
-> Last updated: 2026-03-17
+> Last updated: 2026-03-22
 
 ---
 
@@ -87,5 +87,6 @@
 | 2026-03-17 | P1-11 remove CD/DRM checks         | task/P1-07-alttab-crash   | done   | Removed hard-fail startup gating on legacy copy-protection launcher presence/notify; game now logs and continues on modern installs without SafeDisc wrapper                                                                                     |
 | 2026-03-17 | P1-12 BUILDING.md                  | task/P1-07-alttab-crash   | done   | Added BUILDING.md with modern CMake + vcpkg Windows build instructions, stub mode notes, and DXSDK_LIB_DIR guidance                                                                                                                              |
 | 2026-03-17 | CI stabilisation (multi-pass)      | main (direct)             | done   | 35+ CI-fix commits resolving MSVC/GCC errors: AIL stubs, D3D8 stubs, hash_map→unordered_map, template typename, for-loop scope, qualified-name C4596, BitTest redefinition, D3DTEXF/D3DTSS constants, D3dx8 stubs, point.h case rename for Linux |
+| 2026-03-22 | CI stabilisation (second pass)     | main (direct)             | done   | Linux GCC MinGW cross-compile now fully green. Fixes: waveType enum forward-decl, W3DWebBrowser ATL guards, Win32CDManager case, resource.h case, windres GENERALS.ICO case, comsuppw MSVC-only, CriticalSection/strtrim --allow-multiple-definition, _set_se_translator guard, BrowserDispatch.h __uuidof stub, WebBrowser::TestMethod vtable, _MBCS MSVC-only, FTP.CPP *.CPP glob, dbghelp link, TARGA.CPP _asm portable C fallback, Int<64>::Remainder explicit init, FramGrab AVI avifil32 guard, mmsystem.h for MMRESULT. Both Windows MSVC + Linux GCC jobs green on run 23411293522. |
 
 
