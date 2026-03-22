@@ -98,7 +98,7 @@ enum TransitionStatus
 	TRANSITIONSTATUS_PACKING,
 };
 
-enum BattlePlanStatus
+enum BattlePlanStatus : int
 {
 	PLANSTATUS_NONE,
 	PLANSTATUS_BOMBARDMENT,
