@@ -127,5 +127,9 @@ class WebBrowser :
 		STDMETHOD(TestMethod)(Int num1);
 	};
 
+#if defined(_MSC_VER) && !defined(__GNUC__)
 extern CComObject<WebBrowser> *TheWebBrowser;
+#else
+extern WebBrowser *TheWebBrowser;
+#endif
 #endif // __WEBBROWSER_H__
