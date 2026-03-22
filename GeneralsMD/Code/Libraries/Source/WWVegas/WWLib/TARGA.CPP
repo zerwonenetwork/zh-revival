@@ -825,6 +825,7 @@ void Targa::XFlip(void)
 *
 ****************************************************************************/
 
+#if defined(_MSC_VER) && !defined(__GNUC__)
 static __forceinline void _swapBytes(char *p1, char *p2, unsigned count)
 {
   _asm
@@ -866,6 +867,17 @@ static __forceinline void _swapBytes(char *p1, char *p2, unsigned count)
   done:
   }
 }
+#else
+// GCC: portable C fallback (equivalent byte-swap between two memory regions)
+static inline void _swapBytes(char *p1, char *p2, unsigned count)
+{
+    while (count--) {
+        char tmp = *p1;
+        *p1++ = *p2;
+        *p2++ = tmp;
+    }
+}
+#endif
 
 void Targa::YFlip(void)
 {
