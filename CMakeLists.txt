@@ -32,6 +32,11 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
     add_compile_options(-Wno-narrowing)
     # _USE_MATH_DEFINES: enable M_PI, M_PI_2 etc. from <math.h> on MinGW.
     add_compile_definitions(_USE_MATH_DEFINES)
+    # --allow-multiple-definition: several legacy source pairs define the same symbol
+    # (mutex.cpp/critsection.cpp both define CriticalSectionClass; WinMain.cpp/trim.cpp
+    # both define strtrim). MSVC silently picks the first definition; replicate that here.
+    # These duplicates will be cleaned up in P5-07.
+    add_link_options(-Wl,--allow-multiple-definition)
 endif()
 
 if(MSVC)
@@ -474,7 +479,9 @@ target_link_libraries(zh-revival PRIVATE
     kernel32 user32 gdi32 winspool comdlg32 advapi32 shell32
     ole32 oleaut32 uuid odbc32 odbccp32
     winmm vfw32 wsock32 imm32 wininet
-    dinput8 dxguid comsuppw
+    dinput8 dxguid
+    # comsuppw is an MSVC-specific COM support library not available in MinGW.
+    $<$<NOT:$<CXX_COMPILER_ID:GNU>>:comsuppw>
     # Proprietary audio/video .lib files
     # Present only when real SDKs are available (ZH_USE_STUBS=OFF + real libs).
     # When ZH_USE_STUBS=ON the stub headers provide inline no-ops so no .lib
