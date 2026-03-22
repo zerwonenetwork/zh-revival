@@ -204,6 +204,7 @@ protected:
 // Fits in 4 bits for now
 enum {MAX_WALL_PIECES = 128};
 
+class PathfindCell; // forward declaration — defined below at line ~253
 class PathfindCellInfo
 {
 	friend class PathfindCell;
