@@ -49,7 +49,7 @@
 #include "Lib/BaseType.h"
 #include "W3DDevice/GameClient/W3DGranny.h"
 #include "W3DDevice/GameClient/HeightMap.h"
-#include "D3dx8math.h"
+#include "d3dx8math.h"
 #include "common/GlobalData.h"
 #include "common/DrawModule.h"
 #include "W3DDevice/GameClient/W3DVolumetricShadow.h"
