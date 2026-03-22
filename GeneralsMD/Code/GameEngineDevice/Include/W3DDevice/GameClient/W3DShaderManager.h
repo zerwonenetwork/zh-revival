@@ -37,6 +37,8 @@
 #define __W3DSHADERMANAGER_H_
 
 #include "WW3D2/texture.h"
+enum FilterModes : int;	// forward decl; defined in GameClient/CommandXlat.h
+enum FilterTypes : int;	// forward decl; defined in GameClient/CommandXlat.h
 enum FilterTypes : int;
 enum CustomScenePassModes : int;
 enum StaticGameLODLevel : int;

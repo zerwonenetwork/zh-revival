@@ -61,6 +61,7 @@
 #include "Common/GameType.h"
 #include "Common/Dict.h"
 #include "Common/AsciiString.h"
+enum BodyDamageType : int;	// forward decl for GCC; defined in GameLogic/Module/BodyModule.h
 
 //-----------------------------------------------------------------------------
 //           Forward References
