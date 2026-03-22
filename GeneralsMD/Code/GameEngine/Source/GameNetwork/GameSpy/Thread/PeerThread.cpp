@@ -1169,7 +1169,9 @@ static UnsignedInt localIP = 0;
 void PeerThreadClass::Thread_Function()
 {
 	try {
+#ifdef _MSC_VER
 	_set_se_translator( DumpExceptionInfo ); // Hook that allows stack trace.
+#endif
 
 	PEER peer;
 
