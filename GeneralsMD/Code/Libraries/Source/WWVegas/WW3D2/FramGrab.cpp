@@ -21,6 +21,11 @@
 //////////////////////////////////////////////////////////////////////
 
 #include "framgrab.h"
+
+// AVI capture requires avifil32 which is only available in the MSVC toolchain.
+// On GCC/MinGW cross-compile the stub class in framgrab.h is used instead.
+#if defined(_MSC_VER) && !defined(__GNUC__)
+
 #include <stdio.h>
 #include <io.h>
 //#include <errno.h>
@@ -164,7 +169,7 @@ void FrameGrabClass::Grab(void *BitmapPointer)
 }
 
 
-void FrameGrabClass::ConvertFrame(void *BitmapPointer) 
+void FrameGrabClass::ConvertFrame(void *BitmapPointer)
 {
 
 	int width = BitmapInfoHeader.biWidth;
@@ -189,3 +194,5 @@ void FrameGrabClass::ConvertFrame(void *BitmapPointer)
 		}
 	}
 }
+
+#endif // defined(_MSC_VER) && !defined(__GNUC__)

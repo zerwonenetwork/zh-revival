@@ -46,7 +46,7 @@
 #include "always.h"
 #endif
 
-#if defined (_MSC_VER)
+#if defined(_MSC_VER) && !defined(__GNUC__)
 #pragma warning (push, 3)	// (gth) system headers complain at warning level 4...
 #endif
 
@@ -58,11 +58,10 @@
 #include "windowsx.h"
 #endif
 
+#if defined(_MSC_VER) && !defined(__GNUC__)
 #ifndef _INC_VFW
 #include "vfw.h"
 #endif
-
-#if defined (_MSC_VER)
 #pragma warning (pop)
 #endif
 
@@ -70,7 +69,9 @@
 //
 //////////////////////////////////////////////////////////////////////
 
-class FrameGrabClass  
+#if defined(_MSC_VER) && !defined(__GNUC__)
+
+class FrameGrabClass
 {
 public:
 	enum MODE {
@@ -100,11 +101,11 @@ protected:
 	void GrabRawFrame(void *BitmapPointer);
 
 	// avi settings
-	PAVIFILE				AVIFile;  
+	PAVIFILE				AVIFile;
 	long					*Bitmap;
-	PAVISTREAM			Stream;     
+	PAVISTREAM			Stream;
 	AVISTREAMINFO		AVIStreamInfo;
-	BITMAPINFOHEADER	BitmapInfoHeader; 
+	BITMAPINFOHEADER	BitmapInfoHeader;
 
 	// general purpose cleanup routine
 	void CleanupAVI();
@@ -113,5 +114,38 @@ protected:
 	void ConvertFrame(void *BitmapPointer);
 
 };
+
+#else // GCC/MinGW: stub class — AVI capture requires avifil32 which is MSVC-only
+
+class FrameGrabClass
+{
+public:
+	enum MODE { RAW, AVI };
+
+	FrameGrabClass(const char * /*filename*/, MODE /*mode*/, int /*width*/, int /*height*/, int /*bitdepth*/, float /*framerate*/) {}
+	virtual ~FrameGrabClass() {}
+
+	void ConvertGrab(void * /*BitmapPointer*/) {}
+	void Grab(void * /*BitmapPointer*/) {}
+
+	long *GetBuffer()    { return nullptr; }
+	float GetFrameRate() { return 0.0f; }
+
+protected:
+	const char *Filename = nullptr;
+	float        FrameRate = 0.0f;
+	MODE         Mode = RAW;
+	long         Counter = 0;
+	long        *Bitmap = nullptr;
+
+	BITMAPINFOHEADER BitmapInfoHeader{};
+
+	void GrabAVI(void * /*BitmapPointer*/) {}
+	void GrabRawFrame(void * /*BitmapPointer*/) {}
+	void CleanupAVI() {}
+	void ConvertFrame(void * /*BitmapPointer*/) {}
+};
+
+#endif // defined(_MSC_VER) && !defined(__GNUC__)
 
 #endif
