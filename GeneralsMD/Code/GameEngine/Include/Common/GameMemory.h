@@ -878,15 +878,15 @@ extern void userMemoryAdjustPoolSize(const char *poolName, Int& initialAllocatio
 	// additional overloads for 'placement new'
 	//inline void* __cdecl operator new							(size_t s, void *p) { return p; }
 	//inline void __cdecl operator delete						(void *, void *p)		{ }
-	// MSVC already provides placement new[]/delete[] in <new> as a non-replaceable function.
-	// Only define these for non-MSVC compilers (e.g. MinGW cross-compiler).
-	#if !defined(_MSC_VER)
+	// MSVC and GCC both provide placement new[]/delete[] via standard headers.
+	// Only define for compilers that provide neither (neither MSVC nor GCC/MinGW).
+	#if !defined(_MSC_VER) && !defined(__GNUC__)
 	#ifndef __PLACEMENT_VEC_NEW_INLINE
 	#define __PLACEMENT_VEC_NEW_INLINE
 	inline void* operator new[]  (size_t s, void *p) { return p; }
 	inline void  operator delete[](void *, void *p)  { }
 	#endif
-	#endif // !_MSC_VER
+	#endif // !_MSC_VER && !__GNUC__
 
 #endif
 
