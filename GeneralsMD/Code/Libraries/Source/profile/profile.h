@@ -32,6 +32,13 @@
 #ifndef PROFILE_H // Include guard
 #define PROFILE_H
 
+// GCC compatibility: _int64 is MSVC-only; map to long long for other compilers
+#ifndef _MSC_VER
+#  ifndef _int64
+#    define _int64 long long
+#  endif
+#endif
+
 #if defined(_DEBUG) && defined(_INTERNAL)
 	#error "Only either _DEBUG or _INTERNAL should ever be defined"
 #endif
