@@ -67,7 +67,7 @@
 #include "Common/version.h"
 #include "BuildVersion.h"
 #include "GeneratedVersion.h"
-#include "Resource.h"
+#include "resource.h"
 
 #include <rts/profile.h>
 
