@@ -31,8 +31,8 @@
 #define _FEBDISPATCH_H__
 
 #if defined(_MSC_VER) && !defined(__GNUC__)
+
 #include <atlbase.h>
-#endif
 extern CComModule _Module;
 #include <atlcom.h>
 #include <comutil.h>    // For _bstr_t.
@@ -105,4 +105,5 @@ private:
 	ITypeInfo *m_ptinfo;
 };
 
-#endif
+#endif // defined(_MSC_VER) && !defined(__GNUC__)
+#endif // _FEBDISPATCH_H__

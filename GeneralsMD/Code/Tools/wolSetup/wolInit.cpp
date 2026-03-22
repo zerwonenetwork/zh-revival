@@ -28,9 +28,9 @@
 
 #if defined(_MSC_VER) && !defined(__GNUC__)
 #include <atlbase.h>
-#endif
 extern CComModule _Module;  // Required for COM - must be between atlbase.h and atlcom.h.  Funky, no?
 #include <atlcom.h>
+#endif
 
 #include <stdio.h>
 #include <stdarg.h>
@@ -195,7 +195,9 @@ class OLEInitializer
          ~OLEInitializer() { OleUninitialize(); }
 };
 OLEInitializer g_OLEInitializer;
+#if defined(_MSC_VER) && !defined(__GNUC__)
 CComModule _Module;
+#endif
 
 IChat *g_pChat = NULL;
 
