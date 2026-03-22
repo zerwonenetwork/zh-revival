@@ -28,6 +28,7 @@
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 #include "PreRTS.h"	// This must go first in EVERY cpp file int the GameEngine
+#include <float.h>		// _fpreset, _controlfp, _MCW_RC, _MCW_PC, _PC_24
 
 #include "Common/AudioAffect.h"
 #include "Common/AudioHandleSpecialValues.h"
@@ -197,6 +198,7 @@ static Waypoint * findNamedWaypoint(AsciiString name)
 // ------------------------------------------------------------------------------------------------
 void setFPMode( void )
 {
+#if defined(_MSC_VER)
   // Set floating point round mode to CHOP, which only comes
   // into play when precision is exceeded.  This is necessary
   // for the fast float to int routines used elsewhere in the
@@ -215,6 +217,7 @@ void setFPMode( void )
 	newVal = (newVal & ~_MCW_PC) | (_PC_24   & _MCW_PC);
 
 	_controlfp(newVal, _MCW_PC | _MCW_RC);
+#endif // _MSC_VER
 }
 
 // ------------------------------------------------------------------------------------------------
