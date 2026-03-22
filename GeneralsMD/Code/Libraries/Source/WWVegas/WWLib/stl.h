@@ -49,7 +49,17 @@
 #pragma warning(push,3)
 #endif
 
+#ifdef __GNUC__
+#  pragma push_macro("min")
+#  pragma push_macro("max")
+#  undef min
+#  undef max
+#endif
 #include <map>
+#ifdef __GNUC__
+#  pragma pop_macro("min")
+#  pragma pop_macro("max")
+#endif
 
 #if (_MSC_VER >= 1200)
 #pragma warning(pop)

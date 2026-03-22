@@ -37,6 +37,12 @@
 #ifndef W3D_DEP_H
 #define W3D_DEP_H
 
+#ifdef __GNUC__
+#  pragma push_macro("min")
+#  pragma push_macro("max")
+#  undef min
+#  undef max
+#endif
 #pragma warning (push, 3)
 #pragma warning (disable: 4018 4284 4786 4788)
 #include <list>
@@ -47,6 +53,10 @@
 #include <strstream>
 #include <string>
 #pragma warning (pop)
+#ifdef __GNUC__
+#  pragma pop_macro("min")
+#  pragma pop_macro("max")
+#endif
 
 typedef std::list<std::string>	StringList;
 bool Get_W3D_Dependencies (const char *w3d_filename, StringList &files);

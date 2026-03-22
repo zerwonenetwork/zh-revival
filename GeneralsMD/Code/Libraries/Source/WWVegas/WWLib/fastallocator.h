@@ -612,6 +612,12 @@ WWINLINE bool operator!=(const FastSTLAllocator<T>&, const FastSTLAllocator<T>&)
 ///////////////////////////////////////////////////////////////////////////////
 
 #include <stdio.h>
+#ifdef __GNUC__
+#  pragma push_macro("min")
+#  pragma push_macro("max")
+#  undef min
+#  undef max
+#endif
 #include <vector>
 #include <list>
 #include <deque>
@@ -621,6 +627,10 @@ WWINLINE bool operator!=(const FastSTLAllocator<T>&, const FastSTLAllocator<T>&)
 #include <map>
 #include <string>
 #include <memory>
+#ifdef __GNUC__
+#  pragma pop_macro("min")
+#  pragma pop_macro("max")
+#endif
 // hash_set / hash_map removed — use unordered_set / unordered_map (C++11+)
 #include <unordered_set>
 #include <unordered_map>
