@@ -69,6 +69,9 @@ static const char *Anim2DModeNames[] =
 };
 #endif
 
+// forward declaration needed by Anim2D before Anim2DCollection is defined below
+class Anim2DCollection;
+
 // ------------------------------------------------------------------------------------------------
 /** A template of a 2D animation */
 // ------------------------------------------------------------------------------------------------

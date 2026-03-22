@@ -79,7 +79,9 @@ public:
 
 
 class WebBrowser :
+#if defined(_MSC_VER) && !defined(__GNUC__)
 		public FEBDispatch<WebBrowser, IBrowserDispatch, &IID_IBrowserDispatch>,
+#endif
 		public SubsystemInterface
 	{
 	public:
