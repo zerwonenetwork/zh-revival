@@ -46,7 +46,7 @@
 #include "Common/ProductionPrerequisite.h"
 #include "GameClient/GameClient.h"
 #include "GameClient/Drawable.h"
-#include "Common/INI.h"
+#include "Common/ini.h"
 
 #ifdef _INTERNAL
 // for occasional debugging...

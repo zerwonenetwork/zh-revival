@@ -39,9 +39,9 @@
 #ifndef __SOUND_SCENE_OBJ_H
 #define __SOUND_SCENE_OBJ_H
 
-#include "Refcount.h"
+#include "refcount.h"
 #include "WWAudio.h"
-#include "BitType.h"
+#include "bittype.h"
 #include "persist.h"
 #include "multilist.h"
 #include "mutex.h"

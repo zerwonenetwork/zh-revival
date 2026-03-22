@@ -49,11 +49,11 @@
 #include "Common/Language.h"
 #include "Common/Registry.h"
 #include "GameClient/LanguageFilter.h"
-#include "Common/Debug.h"
+#include "Common/debug.h"
 #include "Common/UnicodeString.h"
 #include "Common/AsciiString.h"
 #include "Common/GlobalData.h"
-#include "Common/File.h"
+#include "Common/file.h"
 #include "Common/FileSystem.h"
 
 

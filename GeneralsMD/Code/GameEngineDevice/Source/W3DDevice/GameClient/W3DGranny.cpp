@@ -51,8 +51,8 @@
 #include "rinfo.h"
 #include "camera.h"
 #include "assetmgr.h"
-#include "WW3D2/DX8Wrapper.h"
-#include "WW3D2/Scene.h"
+#include "WW3D2/dx8wrapper.h"
+#include "WW3D2/scene.h"
 
 #pragma comment( lib, "granny2" )
 

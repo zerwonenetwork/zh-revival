@@ -47,7 +47,7 @@
 #pragma warning (pop)
 
 #include "win.h"
-#include "RefCount.h"
+#include "refcount.h"
 
 
 // Forward declarations

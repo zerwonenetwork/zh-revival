@@ -31,8 +31,8 @@
 
 #include "Lib/BaseType.h"
 #include "Common/RandomValue.h"
-#include "Common/CRC.h"
-#include "Common/Debug.h"
+#include "Common/crc.h"
+#include "Common/debug.h"
 #include "GameLogic/GameLogic.h"
 
 //#define DETERMINISTIC				// to allow repetition for debugging

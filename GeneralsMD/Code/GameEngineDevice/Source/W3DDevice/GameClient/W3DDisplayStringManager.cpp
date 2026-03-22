@@ -29,7 +29,7 @@
 
 #include <stdlib.h>
 
-#include "Common/Debug.h"
+#include "Common/debug.h"
 #include "GameClient/GameClient.h"
 #include "GameClient/GameText.h"
 #include "GameClient/DisplayString.h"

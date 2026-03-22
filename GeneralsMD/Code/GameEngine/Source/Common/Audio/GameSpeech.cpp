@@ -39,7 +39,7 @@
 
 #include "wpaudio/attributes.h"
 
-#include "wsys/File.h"
+#include "wsys/file.h"
 #include "wsys/List.h"
 #include "wpaudio/Streamer.h"
 #include "wpaudio/Time.h"
@@ -49,7 +49,7 @@
 #define DEFINE_DLG_EVENT_PRIORITY_NAMES
 #include "Common/GameAudio.h"
 #include "Common/GameSpeech.h"
-#include "Common/INI.h"
+#include "Common/ini.h"
 
 #include "Common/STLTypedefs.h"
 

@@ -63,7 +63,7 @@
 #include "GameClient/HotKey.h"
 #include "GameClient/IMEManager.h"
 #include "GameClient/InGameUI.h"
-#include "GameClient/Keyboard.h"
+#include "GameClient/keyboard.h"
 #include "GameClient/LanguageFilter.h"
 #include "GameClient/LookAtXlat.h"
 #include "GameClient/MetaEvent.h"

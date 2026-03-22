@@ -17,7 +17,7 @@
 */
 
 
-#include "Common/SimplePlayer.h"
+#include "Common/simpleplayer.h"
 #include "Common/URLLaunch.h"
 
 

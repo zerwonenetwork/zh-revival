@@ -50,7 +50,7 @@
 #include "GameClient/WinInstanceData.h"
 #include "GameClient/GameWindow.h"
 #include "GameClient/DisplayStringManager.h"
-#include "Common/Debug.h"
+#include "Common/debug.h"
 
 // DEFINES ////////////////////////////////////////////////////////////////////
 

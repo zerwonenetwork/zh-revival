@@ -38,9 +38,9 @@
 #define __LOGICAL_LISTENER_H
 
 #include "SoundSceneObj.h"
-#include "BitType.h"
-#include "Vector3.h"
-#include "Matrix3D.h"
+#include "bittype.h"
+#include "vector3.h"
+#include "matrix3d.h"
 
 /////////////////////////////////////////////////////////////////////////////////
 //

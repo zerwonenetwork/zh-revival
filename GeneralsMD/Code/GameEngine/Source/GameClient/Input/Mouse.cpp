@@ -29,11 +29,11 @@
 
 #include "PreRTS.h"	// This must go first in EVERY cpp file int the GameEngine
 
-#include "Common/Debug.h"
+#include "Common/debug.h"
 #include "Common/MessageStream.h"
 #include "Common/GameEngine.h"
 #include "Common/GlobalData.h"
-#include "Common/INI.h"
+#include "Common/ini.h"
 
 #include "GameClient/Display.h"
 #include "GameClient/DisplayStringManager.h"
@@ -41,7 +41,7 @@
 #include "GameClient/GameText.h"
 #include "GameClient/GameWindow.h"
 #include "GameClient/InGameUI.h"
-#include "GameClient/Keyboard.h"
+#include "GameClient/keyboard.h"
 #include "GameClient/Mouse.h"
 #include "GameClient/GlobalLanguage.h"
 

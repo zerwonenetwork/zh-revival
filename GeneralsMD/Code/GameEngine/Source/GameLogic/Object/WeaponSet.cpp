@@ -36,7 +36,7 @@
 
 #include "GameLogic/WeaponSet.h"
 
-#include "Common/INI.h"
+#include "Common/ini.h"
 #include "Common/Player.h"
 #include "Common/PlayerList.h"
 #include "Common/ThingFactory.h"

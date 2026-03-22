@@ -31,7 +31,7 @@
 #pragma comment(linker, "/defaultlib:Dbghelp.lib")
 
 #include "Common/StackDump.h"
-#include "Common/Debug.h"
+#include "Common/debug.h"
 
 
 //*****************************************************************************

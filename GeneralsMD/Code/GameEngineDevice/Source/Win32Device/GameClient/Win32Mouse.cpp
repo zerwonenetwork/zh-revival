@@ -30,7 +30,7 @@
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 
-#include "Common/Debug.h"
+#include "Common/debug.h"
 #include "GameClient/GameClient.h"
 #include "Win32Device/GameClient/Win32Mouse.h"
 #include "../../../../Main/WinMain.h"

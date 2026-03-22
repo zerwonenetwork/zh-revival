@@ -49,8 +49,8 @@
 
 // USER INCLUDES //////////////////////////////////////////////////////////////
 #include "Lib/BaseType.h"
-#include "Common/Debug.h"
-#include "Common/File.h"
+#include "Common/debug.h"
+#include "Common/file.h"
 #include "Common/FileSystem.h"
 #include "Common/GameMemory.h"
 #include "Common/NameKeyGenerator.h"

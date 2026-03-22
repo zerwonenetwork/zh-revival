@@ -55,7 +55,7 @@
 #include "Common/BuildAssistant.h"
 #include "Common/Thing.h"
 #include "Common/ThingTemplate.h"
-#include "Common/INI.h"
+#include "Common/ini.h"
 #include "Common/RandomValue.h"
 #include "Common/Player.h"
 #include "Common/Xfer.h"

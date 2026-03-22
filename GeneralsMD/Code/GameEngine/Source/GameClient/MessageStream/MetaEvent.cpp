@@ -30,7 +30,7 @@
 // INCLUDES ///////////////////////////////////////////////////////////////////////////////////////
 #include "PreRTS.h"	// This must go first in EVERY cpp file int the GameEngine
 
-#include "Common/INI.h"
+#include "Common/ini.h"
 #include "Common/MessageStream.h"
 #include "Common/Player.h"
 #include "Common/PlayerList.h"
@@ -57,7 +57,7 @@
 
 
 #ifdef DUMP_ALL_KEYS_TO_LOG
-#include "GameClient/Keyboard.h"
+#include "GameClient/keyboard.h"
 #endif
 
 MetaMap *TheMetaMap = NULL;

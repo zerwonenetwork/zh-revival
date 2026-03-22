@@ -64,7 +64,7 @@
 #include "GameLogic/GameLogic.h"
 #include "GameLogic/TerrainLogic.h"
 
-#include "Common/File.h"
+#include "Common/file.h"
 
 #ifdef _INTERNAL
 //#pragma optimize("", off)

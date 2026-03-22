@@ -89,7 +89,7 @@
 #include "camera.h"
 #include "scene.h"
 #include "texfcach.h"
-#include "registry.h"
+#include "Registry.h"
 #include "segline.h"
 #include "shader.h"
 #include "vertmaterial.h"
@@ -108,7 +108,7 @@
 #include "render2d.h"
 #include "bound.h"
 #include "rddesc.h"
-#include "vector3i.h"
+#include "Vector3i.h"
 #include <cstdio>
 #include "dx8wrapper.h"
 #include "targa.h"

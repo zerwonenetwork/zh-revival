@@ -51,7 +51,7 @@
 #include "GameClient/GameClient.h"
 #include "GameClient/GameText.h"
 #include "GameClient/GameWindowManager.h"
-#include "GameClient/Keyboard.h"
+#include "GameClient/keyboard.h"
 #include "GameClient/SelectionInfo.h"
 #include "GameClient/SelectionXlat.h"
 #include "GameClient/TerrainVisual.h"

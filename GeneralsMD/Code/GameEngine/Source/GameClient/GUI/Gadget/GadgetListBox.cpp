@@ -51,7 +51,7 @@
 
 #include "Common/AudioEventRTS.h"
 #include "Common/Language.h"
-#include "Common/Debug.h"
+#include "Common/debug.h"
 #include "Common/GameAudio.h"
 #include "GameClient/DisplayStringManager.h"
 #include "GameClient/GameWindow.h"
@@ -61,7 +61,7 @@
 #include "GameClient/GadgetPushButton.h"
 #include "GameClient/GadgetSlider.h"
 #include "GameClient/GameWindowGlobal.h"
-#include "GameClient/Keyboard.h"
+#include "GameClient/keyboard.h"
 
 #ifdef _INTERNAL
 // for occasional debugging...

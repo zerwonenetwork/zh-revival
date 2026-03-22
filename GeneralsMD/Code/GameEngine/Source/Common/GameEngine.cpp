@@ -38,11 +38,11 @@
 #include "Common/PlayerList.h"
 #include "Common/GameAudio.h"
 #include "Common/GameEngine.h"
-#include "Common/INI.h"
+#include "Common/ini.h"
 #include "Common/INIException.h"
 #include "Common/MessageStream.h"
 #include "Common/ThingFactory.h"
-#include "Common/File.h"
+#include "Common/file.h"
 #include "Common/FileSystem.h"
 #include "Common/ArchiveFileSystem.h"
 #include "Common/LocalFileSystem.h"
@@ -52,7 +52,7 @@
 #include "Common/RandomValue.h"
 #include "Common/NameKeyGenerator.h"
 #include "Common/ModuleFactory.h"
-#include "Common/Debug.h"
+#include "Common/debug.h"
 #include "Common/GameState.h"
 #include "Common/GameStateMap.h"
 #include "Common/Science.h"
@@ -88,7 +88,7 @@
 #include "GameClient/Display.h"
 #include "GameClient/FXList.h"
 #include "GameClient/GameClient.h"
-#include "GameClient/Keyboard.h"
+#include "GameClient/keyboard.h"
 #include "GameClient/Shell.h"
 #include "GameClient/GameText.h"
 #include "GameClient/ParticleSys.h"
@@ -106,7 +106,7 @@
 #include "GameNetwork/LANAPI.h"
 #include "GameNetwork/GameSpy/GameResultsThread.h"
 
-#include "Common/Version.h"
+#include "Common/version.h"
 
 #ifdef _INTERNAL
 // for occasional debugging...
