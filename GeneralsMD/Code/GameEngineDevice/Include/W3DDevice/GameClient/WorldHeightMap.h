@@ -37,6 +37,7 @@
 #include "WWMath/vector3.h"
 #include "W3DDevice/GameClient/TileData.h"
 #include "Common/MapObject.h"
+#include "W3DDevice/GameClient/TerrainTex.h"
 
 #include "Common/STLTypedefs.h"
 typedef std::vector<ICoord2D> VecICoord2D;
