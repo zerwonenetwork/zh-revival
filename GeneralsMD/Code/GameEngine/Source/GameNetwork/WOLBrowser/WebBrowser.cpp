@@ -70,9 +70,12 @@ public:
 	}
 };
 OLEInitializer g_OLEInitializer;
+#if defined(_MSC_VER) && !defined(__GNUC__)
 CComModule _Module;
-
 CComObject<WebBrowser> * TheWebBrowser = NULL;
+#else
+WebBrowser * TheWebBrowser = NULL;
+#endif
 
 
 /******************************************************************************
@@ -237,6 +240,7 @@ WebBrowserURL * WebBrowser::makeNewURL(AsciiString tag)
 *
 ******************************************************************************/
 
+#if defined(_MSC_VER) && !defined(__GNUC__)
 STDMETHODIMP WebBrowser::QueryInterface(REFIID iid, void** ppv) noexcept
 {
 	*ppv = NULL;
@@ -313,3 +317,4 @@ STDMETHODIMP WebBrowser::TestMethod(Int num1)
 	DEBUG_LOG(("WebBrowser::TestMethod - num1 = %d\n", num1));
 	return S_OK;
 }
+#endif // defined(_MSC_VER) && !defined(__GNUC__)
