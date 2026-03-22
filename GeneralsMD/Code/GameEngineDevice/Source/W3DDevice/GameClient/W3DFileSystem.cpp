@@ -40,7 +40,7 @@
 // for now we maintain old legacy files
 // #define MAINTAIN_LEGACY_FILES
 
-#include "Common/debug.h"
+#include "Common/Debug.h"
 #include "Common/file.h"
 #include "Common/FileSystem.h"
 #include "Common/GlobalData.h"

@@ -30,7 +30,7 @@
 // Author: Mark Wilczynski, August 2002
 ///////////////////////////////////////////////////////////////////////////////
 
-#include "Common/debug.h"
+#include "Common/Debug.h"
 #include "Common/Player.h"
 #include "Common/PlayerList.h"
 #include "Common/ThingTemplate.h"

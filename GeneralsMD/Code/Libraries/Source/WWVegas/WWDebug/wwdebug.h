@@ -107,7 +107,7 @@ void					WWDebug_DBWin32_Message_Handler( const char * message);
 
 // Use include paths configured by the build system; avoid fragile relative paths
 // (and Windows-only backslashes) which break cross-compiles.
-#include "Common/debug.h"
+#include "Common/Debug.h"
 
 #ifdef DEBUG_LOGGING
 #define WWDEBUG_SAY(x)							DEBUG_LOG(x)

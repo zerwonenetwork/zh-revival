@@ -42,7 +42,7 @@
 #include "Common/CRCDebug.h"
 #include "Common/GameAudio.h"
 #include "Common/GameState.h"
-#include "Common/ini.h"
+#include "Common/INI.h"
 #include "Common/PerfTimer.h"
 #include "Common/Player.h"
 #include "Common/ThingFactory.h"

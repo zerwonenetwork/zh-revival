@@ -31,7 +31,7 @@
 #include <windows.h>
 #include <assert.h>
 
-#include "Common/debug.h"
+#include "Common/Debug.h"
 #include "Common/Language.h"
 #include "GameClient/KeyDefs.h"
 #include "GameClient/keyboard.h"

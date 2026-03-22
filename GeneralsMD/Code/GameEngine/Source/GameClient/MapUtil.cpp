@@ -42,7 +42,7 @@
 #include "Common/MapReaderWriterInfo.h"
 #include "Common/MessageStream.h"
 #include "Common/WellKnownKeys.h"
-#include "Common/ini.h"
+#include "Common/INI.h"
 #include "Common/QuotedPrintable.h"
 #include "Common/SkirmishBattleHonors.h"
 #include "Common/ThingFactory.h"

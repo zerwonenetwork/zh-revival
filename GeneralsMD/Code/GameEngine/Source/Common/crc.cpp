@@ -26,7 +26,7 @@
 #include "PreRTS.h"	// This must go first in EVERY cpp file int the GameEngine
 
 #include "Common/crc.h"
-#include "Common/debug.h"
+#include "Common/Debug.h"
 
 #ifdef _DEBUG
 

@@ -49,7 +49,7 @@
 #include "W3DDevice/GameClient/W3DProjectedShadow.h"
 #include "W3DDevice/GameClient/W3DShadow.h"
 #include "WW3D2/statistics.h"
-#include "Common/debug.h"
+#include "Common/Debug.h"
 #include "Common/PerfTimer.h"
 
 #define SUN_DISTANCE_FROM_GROUND	10000.0f	//distance of sun (our only light source).

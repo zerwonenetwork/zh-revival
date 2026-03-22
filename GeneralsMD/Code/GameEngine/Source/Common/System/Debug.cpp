@@ -51,7 +51,7 @@
 #ifdef DEBUG_THREADSAFE
 #include "Common/CriticalSection.h"
 #endif
-#include "Common/debug.h"
+#include "Common/Debug.h"
 #include "Common/SystemInfo.h"
 #include "Common/UnicodeString.h"
 #include "GameClient/GameText.h"

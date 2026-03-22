@@ -31,7 +31,7 @@
 #include "PreRTS.h"	// This must go first in EVERY cpp file int the GameEngine
 
 #define DEFINE_BODYDAMAGETYPE_NAMES
-#include "Common/ini.h"
+#include "Common/INI.h"
 #include "GameClient/TerrainRoads.h"
 
 // PUBLIC DATA ////////////////////////////////////////////////////////////////////////////////////

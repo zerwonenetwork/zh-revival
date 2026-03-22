@@ -50,7 +50,7 @@
 #include "Common/AudioEventRTS.h"
 #include "Common/AudioRequest.h"
 #include "Common/GameAudio.h"
-#include "Common/ini.h"
+#include "Common/INI.h"
 
 #ifdef _INTERNAL
 //#pragma optimize("", off)

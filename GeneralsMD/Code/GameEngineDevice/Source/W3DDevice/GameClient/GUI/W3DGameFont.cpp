@@ -47,7 +47,7 @@
 #include <stdlib.h>
 
 // USER INCLUDES //////////////////////////////////////////////////////////////
-#include "Common/debug.h"
+#include "Common/Debug.h"
 #include "W3DDevice/GameClient/W3DGameFont.h"
 #include "WW3D2/ww3d.h"
 #include "WW3D2/assetmgr.h"

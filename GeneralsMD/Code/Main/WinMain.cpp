@@ -47,7 +47,7 @@
 #include "Common/GlobalData.h"
 #include "Common/GameEngine.h"
 #include "Common/GameSounds.h"
-#include "Common/debug.h"
+#include "Common/Debug.h"
 #include "Common/GameMemory.h"
 // P1-11: SafeDisc/launcher copy-protection is obsolete on modern systems and
 // blocks launch for legitimate installs. The project builds with stubs, and we

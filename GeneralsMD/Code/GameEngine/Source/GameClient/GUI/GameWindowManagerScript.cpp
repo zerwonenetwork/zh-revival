@@ -49,7 +49,7 @@
 
 // USER INCLUDES //////////////////////////////////////////////////////////////
 #include "Lib/BaseType.h"
-#include "Common/debug.h"
+#include "Common/Debug.h"
 #include "Common/file.h"
 #include "Common/FileSystem.h"
 #include "Common/GameMemory.h"

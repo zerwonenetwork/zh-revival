@@ -51,7 +51,7 @@
 
 #include "Common/AudioEventRTS.h"
 #include "Common/Language.h"
-#include "Common/debug.h"
+#include "Common/Debug.h"
 #include "Common/GameAudio.h"
 #include "GameClient/DisplayStringManager.h"
 #include "GameClient/GameWindow.h"

@@ -50,7 +50,7 @@
 #include "Windows.h"
 #include "mbstring.h"
 
-#include "Common/debug.h"
+#include "Common/Debug.h"
 #include "Common/Language.h"
 #include "Common/UnicodeString.h"
 #include "GameClient/Display.h"

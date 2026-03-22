@@ -30,7 +30,7 @@
 // INCLUDES ///////////////////////////////////////////////////////////////////////////////////////
 #include "PreRTS.h"	// This must go first in EVERY cpp file int the GameEngine
 
-#include "Common/ini.h"
+#include "Common/INI.h"
 #include "Common/TerrainTypes.h"
 
 //-------------------------------------------------------------------------------------------------

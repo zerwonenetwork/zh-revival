@@ -42,7 +42,7 @@
 #include "Common/file.h"
 #include "Common/FileSystem.h"
 #include "Common/GameAudio.h"
-#include "Common/ini.h"
+#include "Common/INI.h"
 #include "Common/Registry.h"
 #include "Common/UserPreferences.h"
 #include "Common/version.h"

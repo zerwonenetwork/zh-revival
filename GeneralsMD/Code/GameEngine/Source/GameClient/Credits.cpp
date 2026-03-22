@@ -50,7 +50,7 @@
 //-----------------------------------------------------------------------------
 // USER INCLUDES //////////////////////////////////////////////////////////////
 //-----------------------------------------------------------------------------
-#include "Common/ini.h"
+#include "Common/INI.h"
 #include "GameClient/Credits.h"
 #include "GameClient/DisplayStringManager.h"
 #include "GameClient/Display.h"

@@ -29,11 +29,11 @@
 
 #include "PreRTS.h"	// This must go first in EVERY cpp file int the GameEngine
 
-#include "Common/debug.h"
+#include "Common/Debug.h"
 #include "Common/MessageStream.h"
 #include "Common/GameEngine.h"
 #include "Common/GlobalData.h"
-#include "Common/ini.h"
+#include "Common/INI.h"
 
 #include "GameClient/Display.h"
 #include "GameClient/DisplayStringManager.h"
