@@ -37,6 +37,7 @@
 
 __forceinline void ProfileGetTime(__int64 &t)
 {
+#if !defined(__GNUC__)
   _asm
   {
     mov ecx,[t]
@@ -48,6 +49,11 @@ __forceinline void ProfileGetTime(__int64 &t)
     pop edx
     pop eax
   };
+#else
+  unsigned int lo, hi;
+  __asm__ volatile("rdtsc" : "=a"(lo), "=d"(hi));
+  t = ((__int64)hi << 32) | lo;
+#endif
 }
 
 #ifdef _INTERNAL

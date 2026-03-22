@@ -143,8 +143,8 @@ void					WWDebug_DBWin32_Message_Handler( const char * message);
 ** The WWDEBUG_BREAK macro will cause the application to break into
 ** the debugger...
 */
-#ifdef WWDEBUG
-#define WWDEBUG_BREAK							_asm int 0x03
+#if defined(__GNUC__)
+#define WWDEBUG_BREAK							__builtin_trap()
 #else
 #define WWDEBUG_BREAK							_asm int 0x03
 #endif

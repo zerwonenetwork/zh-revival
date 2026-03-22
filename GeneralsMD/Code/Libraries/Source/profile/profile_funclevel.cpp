@@ -22,7 +22,7 @@
 // $Revision: #4 $
 // $DateTime: 2003/08/14 13:43:29 $
 //
-// ©2003 Electronic Arts
+// ï¿½2003 Electronic Arts
 //
 // Function level profiling
 //////////////////////////////////////////////////////////////////////////////
@@ -40,6 +40,7 @@ static ProfileFastCS cs;
 
 // Unfortunately VC 6 doesn't support _pleave (or _pexit) so
 // we have to come up with our own type of implementation here...
+#if !defined(__GNUC__)
 static void __declspec(naked) _pleave(void)
 {
   ProfileFuncLevelTracer *p;
@@ -77,7 +78,7 @@ extern "C" void __declspec(naked) _cdecl _penter(void)
   unsigned callerFunc,ESPonReturn,callerRet;
   ProfileFuncLevelTracer *p;
 
-  _asm 
+  _asm
   {
     push ebp
     push eax
@@ -125,6 +126,7 @@ extern "C" void __declspec(naked) _cdecl _penter(void)
     ret
   }
 }
+#endif // !defined(__GNUC__)
 
 ProfileFuncLevelTracer *ProfileFuncLevelTracer::head=NULL;
 bool ProfileFuncLevelTracer::shuttingDown=false;

@@ -87,6 +87,7 @@ public:
 
     // ASM version, verified by comparing resulting data with C++ version data
     unsigned *crcPtr=&crc;
+#if !defined(__GNUC__)
     _asm
     {
       mov esi,[buf]
@@ -104,6 +105,15 @@ public:
       jns lp
       mov dword ptr [edi],ebx
     };
+#else
+    for (const UnsignedByte *uintPtr=(const UnsignedByte *)buf;len>0;len--,uintPtr++)
+    {
+      int hibit = (crc & 0x80000000) ? 1 : 0;
+      crc <<= 1;
+      crc += *uintPtr;
+      crc += hibit;
+    }
+#endif
   }
 
   /// Clears the CRC to 0

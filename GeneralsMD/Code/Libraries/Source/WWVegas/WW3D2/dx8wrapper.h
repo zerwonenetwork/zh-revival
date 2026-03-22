@@ -1009,6 +1009,7 @@ WWINLINE unsigned int DX8Wrapper::Convert_Color(const Vector3& color,float alpha
 
 	// Multiply r, g, b and a components (0.0,...,1.0) by 255 and convert to integer. Or the integer values togerher
 	// such that 32 bit ingeger has AAAAAAAARRRRRRRRGGGGGGGGBBBBBBBB.
+#if !defined(__GNUC__)
 	__asm
 	{
 		sub	esp,20					// space for a, r, g and b float plus fpu rounding mode
@@ -1069,6 +1070,15 @@ not_changed:
 
 		mov	col,eax
 	}
+#else
+	{
+		unsigned int a = (unsigned int)(alpha * 255.0f);
+		unsigned int r = (unsigned int)(color[0] * 255.0f);
+		unsigned int g = (unsigned int)(color[1] * 255.0f);
+		unsigned int b = (unsigned int)(color[2] * 255.0f);
+		col = (a << 24) | (r << 16) | (g << 8) | b;
+	}
+#endif
 	return col;
 }
 
@@ -1088,6 +1098,7 @@ WWINLINE void DX8Wrapper::Clamp_Color(Vector4& color)
 		return;
 	}
 
+#if !defined(__GNUC__)
 	__asm
 	{
 		mov	esi,dword ptr color
@@ -1130,6 +1141,12 @@ WWINLINE void DX8Wrapper::Clamp_Color(Vector4& color)
 		cmovnb edi,edx
 		mov dword ptr[esi+12],edi
 	}
+#else
+	for (int i=0;i<4;++i) {
+		float f=(color[i]<0.0f) ? 0.0f : color[i];
+		color[i]=(f>1.0f) ? 1.0f : f;
+	}
+#endif
 }
 
 // ----------------------------------------------------------------------------

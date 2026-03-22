@@ -22,7 +22,7 @@
 // $Revision: #2 $
 // $DateTime: 2005/01/19 15:02:33 $
 //
-// ©2003 Electronic Arts
+// ï¿½2003 Electronic Arts
 //
 // Stack walker
 //////////////////////////////////////////////////////////////////////////////
@@ -362,7 +362,8 @@ int DebugStackwalk::StackWalk(Signature &sig, struct _CONTEXT *ctx)
   {
     // walk stack back using current call chain
 	  unsigned long reg_eip, reg_ebp, reg_esp;
-	  __asm 
+#if !defined(__GNUC__)
+	  __asm
     {
     here:
 		  lea	eax,here
@@ -370,6 +371,9 @@ int DebugStackwalk::StackWalk(Signature &sig, struct _CONTEXT *ctx)
 		  mov	reg_ebp,ebp
 		  mov	reg_esp,esp
 	  };
+#else
+	  reg_eip = 0; reg_ebp = 0; reg_esp = 0;
+#endif
 	  stackFrame.AddrPC.Offset = reg_eip;
 	  stackFrame.AddrStack.Offset = reg_esp;
 	  stackFrame.AddrFrame.Offset = reg_ebp;

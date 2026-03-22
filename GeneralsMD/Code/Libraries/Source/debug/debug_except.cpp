@@ -22,7 +22,7 @@
 // $Revision: #1 $
 // $DateTime: 2003/07/03 11:55:26 $
 //
-// ©2003 Electronic Arts
+// ï¿½2003 Electronic Arts
 //
 // Unhandled exception handler
 //////////////////////////////////////////////////////////////////////////////
@@ -172,12 +172,16 @@ void DebugExceptionhandler::LogFPURegisters(Debug &dbg, struct _EXCEPTION_POINTE
     double fpVal;
 
     // convert from temporary real (10 byte) to double
+#if !defined(__GNUC__)
     _asm
     {
       mov eax,value
       fld tbyte ptr [eax]
       fstp qword ptr [fpVal]
     }
+#else
+    fpVal = 0.0; // no safe GCC fallback for 80-bit float conversion
+#endif
 
     dbg << " " << fpVal << "\n";
   }

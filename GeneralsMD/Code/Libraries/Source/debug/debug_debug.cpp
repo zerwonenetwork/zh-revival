@@ -22,7 +22,7 @@
 // $Revision: #2 $
 // $DateTime: 2003/07/09 10:57:23 $
 //
-// ©2003 Electronic Arts
+// ï¿½2003 Electronic Arts
 //
 // Debug class implementation
 //////////////////////////////////////////////////////////////////////////////
@@ -270,11 +270,15 @@ bool Debug::SkipNext(void)
   // do not implement this function inline, we do need
   // a valid frame pointer here!
   unsigned help;
-  _asm 
+#if !defined(__GNUC__)
+  _asm
   {
     mov eax,[ebp+4]   // return address
     mov help,eax
   };
+#else
+  help = 0;
+#endif
   curStackFrame=help;
 
   // do we know if to skip the following code?
@@ -386,13 +390,17 @@ bool Debug::AssertDone(void)
           }
           break;
         case IDRETRY:
+#if !defined(__GNUC__)
           _asm int 0x03
+#else
+          __builtin_trap();
+#endif
           break;
         default:
           ((void)0);
       }
     }
-    else 
+    else
     {
       // we're running fullscreen
 
@@ -654,7 +662,11 @@ bool Debug::CrashDone(bool die)
             }
             break;
           case IDRETRY:
+#if !defined(__GNUC__)
             _asm int 0x03
+#else
+            __builtin_trap();
+#endif
             break;
           default:
             ((void)0);

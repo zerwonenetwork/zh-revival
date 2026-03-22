@@ -71,8 +71,9 @@ __forceinline void GetPrecisionTimer(Int64* t)
 #ifdef USE_QPF
 	QueryPerformanceCounter((LARGE_INTEGER*)t);
 #else
-	// CPUID is needed to force serialization of any previous instructions. 
-	__asm 
+	// CPUID is needed to force serialization of any previous instructions.
+#if !defined(__GNUC__)
+	__asm
 	{
 		// for now, I am commenting this out. It throws the timings off a bit more (up to .001%) jkmcd
 		//		CPUID
@@ -81,6 +82,13 @@ __forceinline void GetPrecisionTimer(Int64* t)
 		MOV [ECX], EAX
 		MOV [ECX+4], EDX
 	}
+#else
+	{
+		unsigned int lo, hi;
+		__asm__ volatile("rdtsc" : "=a"(lo), "=d"(hi));
+		*t = ((Int64)hi << 32) | lo;
+	}
+#endif
 #endif
 }
 #endif

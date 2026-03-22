@@ -22,7 +22,7 @@
 // $Revision: #3 $
 // $DateTime: 2003/07/09 10:57:23 $
 //
-// ©2003 Electronic Arts
+// ï¿½2003 Electronic Arts
 //
 // Internal header
 //////////////////////////////////////////////////////////////////////////////
@@ -48,6 +48,7 @@ class ProfileFastCS
 
 	void ThreadSafeSetFlag()
 	{
+#if !defined(__GNUC__)
 		volatile unsigned& nFlag=m_Flag;
 
 		#define ts_lock _emit 0xF0
@@ -67,6 +68,10 @@ class ProfileFastCS
 		__asm ts_lock
 		__asm bts dword ptr [ebx], 0
 		__asm jc  The_Bit_Was_Previously_Set_So_Try_Again
+#else
+		// GCC fallback: non-atomic set (profiler is debug-only, single-threaded usage)
+		m_Flag = 1;
+#endif
 	}
 
 	void ThreadSafeClearFlag()
@@ -109,6 +114,7 @@ void ProfileFreeMemory(void *ptr);
 
 __forceinline void ProfileGetTime(__int64 &t)
 {
+#if !defined(__GNUC__)
   _asm
   {
     mov ecx,[t]
@@ -120,6 +126,11 @@ __forceinline void ProfileGetTime(__int64 &t)
     pop edx
     pop eax
   };
+#else
+  unsigned int lo, hi;
+  __asm__ volatile("rdtsc" : "=a"(lo), "=d"(hi));
+  t = ((__int64)hi << 32) | lo;
+#endif
 }
 
 #endif // INTERNAL_H
