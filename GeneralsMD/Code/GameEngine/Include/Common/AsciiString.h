@@ -57,7 +57,7 @@
 
 class UnicodeString;
 
-#include "windows.h"
+#include <windows.h>
 
 // -----------------------------------------------------
 /**

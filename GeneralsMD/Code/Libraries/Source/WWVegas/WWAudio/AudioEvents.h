@@ -44,6 +44,11 @@
 #include "simplevec.h"
 #include "bittype.h"
 
+// _stdcall is an MSVC alias; GCC/MinGW uses __stdcall
+#if defined(__GNUC__) && !defined(_stdcall)
+#  define _stdcall __stdcall
+#endif
+
 
 /////////////////////////////////////////////////////////////////////////////////
 //	Forward declarations

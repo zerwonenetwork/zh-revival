@@ -37,7 +37,7 @@
 #ifndef __WWAUDIO_THREADS_H
 #define __WWAUDIO_THREADS_H
 
-#include "Windows.h"
+#include <windows.h>
 #include "vector.h"
 #include "mutex.h"
 
