@@ -48,7 +48,8 @@ bignum bignum::Remainder;
 template<> int Int<MAX_UNIT_PRECISION>::Error = 0;
 template<> bool Int<MAX_UNIT_PRECISION>::Carry = false;
 template<> bool Int<MAX_UNIT_PRECISION>::Borrow = false;
-template<> Int<MAX_UNIT_PRECISION> Int<MAX_UNIT_PRECISION>::Remainder;
+// Explicit initializer forces GCC to emit a strong symbol definition.
+template<> Int<MAX_UNIT_PRECISION> Int<MAX_UNIT_PRECISION>::Remainder = Int<MAX_UNIT_PRECISION>();
 #endif
 
 

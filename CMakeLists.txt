@@ -485,7 +485,7 @@ target_link_libraries(zh-revival PRIVATE
     # Windows system libraries (always available in Windows SDK)
     kernel32 user32 gdi32 winspool comdlg32 advapi32 shell32
     ole32 oleaut32 uuid odbc32 odbccp32
-    winmm vfw32 wsock32 imm32 wininet
+    winmm vfw32 avifil32 wsock32 imm32 wininet
     dbghelp   # StackDump.cpp uses Sym*/StackWalk from DbgHelp.dll
     dinput8 dxguid
     # comsuppw is an MSVC-specific COM support library not available in MinGW.
