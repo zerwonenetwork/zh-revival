@@ -59,7 +59,7 @@
 #include "rddesc.h"
 #include "lightenvironment.h"
 #include "statistics.h"
-#include "Registry.h"
+#include "registry.h"
 #include "boxrobj.h"
 #include "pointgr.h"
 #include "render2d.h"

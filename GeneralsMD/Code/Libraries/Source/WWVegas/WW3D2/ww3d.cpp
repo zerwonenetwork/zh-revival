@@ -89,7 +89,7 @@
 #include "camera.h"
 #include "scene.h"
 #include "texfcach.h"
-#include "Registry.h"
+#include "registry.h"
 #include "segline.h"
 #include "shader.h"
 #include "vertmaterial.h"
