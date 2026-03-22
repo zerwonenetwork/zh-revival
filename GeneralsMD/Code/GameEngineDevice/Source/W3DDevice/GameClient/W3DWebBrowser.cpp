@@ -59,13 +59,20 @@ Bool W3DWebBrowser::createBrowserWindow(char *tag, GameWindow *win)
 
 #if defined(_MSC_VER) && !defined(__GNUC__)
 	CComQIPtr<IDispatch> idisp(m_dispatch);
-#endif
 	if (m_dispatch == NULL)
 	{
 		return FALSE;
 	}
+#endif
 
-	DX8WebBrowser::CreateBrowser(windowName.str(), url->m_url.str(), x, y, w, h, 0, BROWSEROPTION_SCROLLBARS | BROWSEROPTION_3DBORDER, (LPDISPATCH)this);
+	DX8WebBrowser::CreateBrowser(windowName.str(), url->m_url.str(), x, y, w, h, 0,
+		BROWSEROPTION_SCROLLBARS | BROWSEROPTION_3DBORDER,
+#if defined(_MSC_VER) && !defined(__GNUC__)
+		(LPDISPATCH)this
+#else
+		nullptr
+#endif
+	);
 
 	return TRUE;
 }
