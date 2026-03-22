@@ -26,8 +26,9 @@ static unsigned missing_image_width=128;
 static unsigned missing_image_height=128;
 static unsigned missing_image_depth=24;
 
-extern unsigned int missing_image_palette[];
-extern unsigned int missing_image_pixels[];
+// Forward declarations — these are defined as static arrays later in this file
+static unsigned int missing_image_palette[];
+static unsigned int missing_image_pixels[];
 
 static IDirect3DTexture8 * _MissingTexture = NULL;
 
