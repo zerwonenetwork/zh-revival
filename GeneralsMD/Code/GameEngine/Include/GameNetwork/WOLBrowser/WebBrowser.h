@@ -46,7 +46,9 @@
 #define __WEBBROWSER_H__
 
 #include "Common/SubsystemInterface.h"
+#if defined(_MSC_VER) && !defined(__GNUC__)
 #include <atlbase.h>
+#endif
 #include <windows.h>
 #include <Common/GameMemory.h>
 #include "EABrowserDispatch/BrowserDispatch.h"

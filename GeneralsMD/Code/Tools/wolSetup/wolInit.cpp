@@ -26,7 +26,9 @@
 #include <snmp.h>
 #include <winreg.h>
 
+#if defined(_MSC_VER) && !defined(__GNUC__)
 #include <atlbase.h>
+#endif
 extern CComModule _Module;  // Required for COM - must be between atlbase.h and atlcom.h.  Funky, no?
 #include <atlcom.h>
 
