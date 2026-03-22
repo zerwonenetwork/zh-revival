@@ -30,6 +30,8 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
     # int arrays (e.g. 0xFFFFFFFA = -6 in fixed-point). These are intentional bit patterns.
     # The actual type correctness will be addressed in P5-07.
     add_compile_options(-Wno-narrowing)
+    # _USE_MATH_DEFINES: enable M_PI, M_PI_2 etc. from <math.h> on MinGW.
+    add_compile_definitions(_USE_MATH_DEFINES)
 endif()
 
 if(MSVC)
