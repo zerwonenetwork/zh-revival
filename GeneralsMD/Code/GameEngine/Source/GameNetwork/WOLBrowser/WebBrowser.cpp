@@ -312,9 +312,18 @@ ULONG STDMETHODCALLTYPE WebBrowser::Release(void) noexcept
 	return mRefCount;
 }
 
-STDMETHODIMP WebBrowser::TestMethod(Int num1) 
+STDMETHODIMP WebBrowser::TestMethod(Int num1)
 {
 	DEBUG_LOG(("WebBrowser::TestMethod - num1 = %d\n", num1));
 	return S_OK;
 }
+#else // !(_MSC_VER && !__GNUC__)
+
+// GCC: provide the vtable entry for TestMethod (declared virtual in WebBrowser.h).
+HRESULT STDMETHODCALLTYPE WebBrowser::TestMethod(Int num1)
+{
+	DEBUG_LOG(("WebBrowser::TestMethod - num1 = %d\n", num1));
+	return S_OK;
+}
+
 #endif // defined(_MSC_VER) && !defined(__GNUC__)

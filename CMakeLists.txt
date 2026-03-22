@@ -17,9 +17,14 @@ add_compile_definitions(
     WINVER=0x0A00
     WIN32
     _WINDOWS
-    _MBCS
     _SILENCE_STDEXT_HASH_DEPRECATION_WARNINGS
 )
+# _MBCS is MSVC-only: enables tchar.h multi-byte character functions (_mbslen, _mbscmp).
+# On MinGW cross-compilation _mbslen/etc. are not available as import stubs, so we leave
+# _MBCS undefined and let tchar.h map _tcsclen→strlen, _tcscmp→strcmp (ANSI mode).
+if(MSVC)
+    add_compile_definitions(_MBCS)
+endif()
 
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
     # -fpermissive: downgrade function-ptr→void* implicit conversion errors to warnings.
@@ -176,6 +181,8 @@ macro(zh_glob_sources VAR DIR)
     file(GLOB_RECURSE ${VAR}
         "${DIR}/*.cpp"
         "${DIR}/*.c"
+        "${DIR}/*.CPP"   # some legacy files use uppercase extension (e.g. FTP.CPP, TARGA.CPP)
+        "${DIR}/*.C"
     )
 endmacro()
 
@@ -479,6 +486,7 @@ target_link_libraries(zh-revival PRIVATE
     kernel32 user32 gdi32 winspool comdlg32 advapi32 shell32
     ole32 oleaut32 uuid odbc32 odbccp32
     winmm vfw32 wsock32 imm32 wininet
+    dbghelp   # StackDump.cpp uses Sym*/StackWalk from DbgHelp.dll
     dinput8 dxguid
     # comsuppw is an MSVC-specific COM support library not available in MinGW.
     $<$<NOT:$<CXX_COMPILER_ID:GNU>>:comsuppw>

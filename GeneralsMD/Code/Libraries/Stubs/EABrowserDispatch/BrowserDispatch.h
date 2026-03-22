@@ -14,14 +14,21 @@
 #include <oaidl.h>
 
 // Only a single dispatch method is referenced by the browser wrapper.
+// MSVC: use __declspec(uuid) + __uuidof for ATL compatibility.
+// MinGW/GCC: skip __declspec(uuid) and define IID as a literal GUID struct.
+#if defined(_MSC_VER) && !defined(__GNUC__)
 struct __declspec(uuid("00000000-0000-0000-0000-000000000001")) IBrowserDispatch : public IDispatch
 {
 	virtual HRESULT STDMETHODCALLTYPE TestMethod(int num1) = 0;
 };
-
-// Define IID_IBrowserDispatch as an inline variable (C++17) so it has
-// external linkage and is defined in every translation unit that includes
-// this header without causing ODR violations.
 inline const IID IID_IBrowserDispatch = __uuidof(IBrowserDispatch);
+#else
+struct IBrowserDispatch : public IDispatch
+{
+	virtual HRESULT STDMETHODCALLTYPE TestMethod(int num1) = 0;
+};
+// GUID: 00000000-0000-0000-0000-000000000001
+inline const IID IID_IBrowserDispatch = {0x00000000, 0x0000, 0x0000, {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x01}};
+#endif
 
 #endif // EA_BROWSER_DISPATCH_H

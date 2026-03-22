@@ -886,7 +886,9 @@ Int APIENTRY WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance,
 
 	try {
 
+#if defined(_MSC_VER)
 		_set_se_translator( DumpExceptionInfo ); // Hook that allows stack trace.
+#endif
 		//
 		// there is something about checkin in and out the .dsp and .dsw files 
 		// that blows the working directory information away on each of the 
