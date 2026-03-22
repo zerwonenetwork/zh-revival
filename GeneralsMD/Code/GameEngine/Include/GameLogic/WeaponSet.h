@@ -185,7 +185,7 @@ enum WeaponLockType : int
 };
 
 //-------------------------------------------------------------------------------------------------
-enum CanAttackResult
+enum CanAttackResult : int
 {
 	//Worst scenario to best scenario -- These must be done this way now!
 	ATTACKRESULT_NOT_POSSIBLE,					//Can't possibly attack target.

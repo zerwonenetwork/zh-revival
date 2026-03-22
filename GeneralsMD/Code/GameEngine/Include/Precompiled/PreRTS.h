@@ -41,7 +41,9 @@ class STLSpecialAlloc;
 // PLEASE DO NOT ABUSE WINDOWS OR IT WILL BE REMOVED ENTIRELY. :-)
 //--------------------------------------------------------------------------------- System Includes 
 #define WIN32_LEAN_AND_MEAN
+#if defined(_MSC_VER) && !defined(__GNUC__)
 #include <atlbase.h>
+#endif
 #include <windows.h>
 // winnt.h defines BitTest as _bittest (takes LONG*); override immediately with our bitwise version
 #ifdef BitTest

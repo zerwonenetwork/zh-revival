@@ -44,6 +44,8 @@
 #define DEFAULT_VIEW_ORIGIN_Y 0
 
 // FORWARD DECLARATIONS ///////////////////////////////////////////////////////////////////////////
+enum FilterModes : int;
+enum FilterTypes : int;
 class Drawable;
 class ViewLocation;
 class Thing;
