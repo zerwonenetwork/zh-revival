@@ -26,6 +26,10 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
     # This is required for legacy MSVC-extension code (FunctionLexicon, etc.) until
     # those sites are updated in P5-07 (full memory safety audit).
     add_compile_options(-fpermissive)
+    # -Wno-narrowing: legacy trig/lookup tables use large unsigned hex constants in signed
+    # int arrays (e.g. 0xFFFFFFFA = -6 in fixed-point). These are intentional bit patterns.
+    # The actual type correctness will be addressed in P5-07.
+    add_compile_options(-Wno-narrowing)
 endif()
 
 if(MSVC)
