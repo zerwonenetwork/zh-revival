@@ -55,7 +55,7 @@
 #include "Common/SystemInfo.h"
 #include "Common/UnicodeString.h"
 #include "GameClient/GameText.h"
-#include "GameClient/keyboard.h"
+#include "GameClient/Keyboard.h"
 #include "GameClient/Mouse.h"
 #if defined(DEBUG_STACKTRACE) || defined(IG_DEBUG_STACKTRACE)
 	#include "Common/StackDump.h"

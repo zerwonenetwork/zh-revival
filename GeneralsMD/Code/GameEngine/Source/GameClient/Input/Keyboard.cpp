@@ -32,7 +32,7 @@
 #include "Common/Language.h"
 #include "Common/GameEngine.h"
 #include "Common/MessageStream.h"
-#include "GameClient/keyboard.h"
+#include "GameClient/Keyboard.h"
 #include "GameClient/KeyDefs.h"
 
 

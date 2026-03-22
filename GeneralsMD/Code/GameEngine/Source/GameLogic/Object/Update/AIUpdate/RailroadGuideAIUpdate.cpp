@@ -43,7 +43,7 @@
 #include "GameLogic/AIPathfind.h"
 
 #include "GameClient/Drawable.h"
-#include "GameClient/statistics.h"
+#include "GameClient/Statistics.h"
 
 
 ///#define RAILROAD_DESYNC_TEST

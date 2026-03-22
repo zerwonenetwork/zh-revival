@@ -68,11 +68,11 @@
 #include "GameClient/Display.h"
 #include "GameClient/Water.h"
 #include "GameLogic/GameLogic.h"
-#include "common/GlobalData.h"
-#include "common/GameLOD.h"
+#include "Common/GlobalData.h"
+#include "Common/GameLOD.h"
 #include "d3dx8tex.h"
 #include "dx8caps.h"
-#include "common/GameLOD.h"
+#include "Common/GameLOD.h"
 #include "benchmark.h"
 
 #ifdef _INTERNAL

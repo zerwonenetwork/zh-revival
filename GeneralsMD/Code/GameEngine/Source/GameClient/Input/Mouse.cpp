@@ -41,7 +41,7 @@
 #include "GameClient/GameText.h"
 #include "GameClient/GameWindow.h"
 #include "GameClient/InGameUI.h"
-#include "GameClient/keyboard.h"
+#include "GameClient/Keyboard.h"
 #include "GameClient/Mouse.h"
 #include "GameClient/GlobalLanguage.h"
 

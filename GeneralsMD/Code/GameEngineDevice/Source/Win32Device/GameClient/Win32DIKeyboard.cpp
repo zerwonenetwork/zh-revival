@@ -34,7 +34,7 @@
 #include "Common/Debug.h"
 #include "Common/Language.h"
 #include "GameClient/KeyDefs.h"
-#include "GameClient/keyboard.h"
+#include "GameClient/Keyboard.h"
 #include "Win32Device/GameClient/Win32DIKeyboard.h"
 #include "../../../../Main/WinMain.h"
 

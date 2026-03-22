@@ -28,7 +28,7 @@
 
 #include "Common/LocalFile.h"
 #include "Common/LocalFileSystem.h"
-#include "Common/ramfile.h"
+#include "Common/RAMFile.h"
 #include "Common/StreamingArchiveFile.h"
 #include "Common/GameMemory.h"
 #include "Common/PerfTimer.h"

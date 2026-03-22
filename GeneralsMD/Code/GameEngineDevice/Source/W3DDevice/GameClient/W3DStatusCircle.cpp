@@ -37,7 +37,7 @@
 #include "WW3D2/dx8wrapper.h"
 #include "WW3D2/shader.h"
 #include "Common/GlobalData.h"
-#include "common/MapObject.h"
+#include "Common/MapObject.h"
 #include "GameLogic/GameLogic.h"
 #include "GameLogic/ScriptEngine.h"
 

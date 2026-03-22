@@ -50,7 +50,7 @@
 #include "Common/Language.h"
 #include "GameClient/Gadget.h"
 #include "GameClient/GameWindowManager.h"
-#include "GameClient/keyboard.h"
+#include "GameClient/Keyboard.h"
 
 // DEFINES ////////////////////////////////////////////////////////////////////
 

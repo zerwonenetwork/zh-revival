@@ -55,7 +55,7 @@
 
 #include "Common/AsciiString.h"
 #include "Common/FileSystem.h"
-#include "Common/ramfile.h"
+#include "Common/RAMFile.h"
 #include "Common/PerfTimer.h"
 									
 

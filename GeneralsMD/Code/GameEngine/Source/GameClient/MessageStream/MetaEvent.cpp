@@ -57,7 +57,7 @@
 
 
 #ifdef DUMP_ALL_KEYS_TO_LOG
-#include "GameClient/keyboard.h"
+#include "GameClient/Keyboard.h"
 #endif
 
 MetaMap *TheMetaMap = NULL;

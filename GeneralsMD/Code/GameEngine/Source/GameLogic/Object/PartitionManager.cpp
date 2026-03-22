@@ -85,7 +85,7 @@
 #endif
 
 #ifdef PM_CACHE_TERRAIN_HEIGHT
-#include "common/MapObject.h"
+#include "Common/MapObject.h"
 #endif
 
 #ifdef DUMP_PERF_STATS

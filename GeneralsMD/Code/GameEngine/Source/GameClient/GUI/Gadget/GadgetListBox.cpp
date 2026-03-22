@@ -61,7 +61,7 @@
 #include "GameClient/GadgetPushButton.h"
 #include "GameClient/GadgetSlider.h"
 #include "GameClient/GameWindowGlobal.h"
-#include "GameClient/keyboard.h"
+#include "GameClient/Keyboard.h"
 
 #ifdef _INTERNAL
 // for occasional debugging...

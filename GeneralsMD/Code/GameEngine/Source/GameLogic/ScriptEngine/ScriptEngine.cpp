@@ -28,7 +28,7 @@
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 #include "PreRTS.h"	// This must go first in EVERY cpp file int the GameEngine
 
-#include "common/DataChunk.h"
+#include "Common/DataChunk.h"
 #include "Common/file.h"
 #include "Common/FileSystem.h"
 #include "Common/GameEngine.h"
@@ -78,7 +78,7 @@ static HMODULE st_DebugDLL;
 #define DEFINE_PARTICLE_SYSTEM_NAMES 1
 #include "GameClient/ParticleSys.h"
 #include "Common/MapObject.h"
-#include "../../GameEngineDevice/Include/W3DDevice/GameClient/W3DAssetManagerExposed.h"
+#include "W3DDevice/GameClient/W3DAssetManagerExposed.h"
 
 static void _addUpdatedParticleSystem( AsciiString particleSystemName );
 static void _appendAllParticleSystems( void );

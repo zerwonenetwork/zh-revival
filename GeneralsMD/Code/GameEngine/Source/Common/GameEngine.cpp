@@ -88,7 +88,7 @@
 #include "GameClient/Display.h"
 #include "GameClient/FXList.h"
 #include "GameClient/GameClient.h"
-#include "GameClient/keyboard.h"
+#include "GameClient/Keyboard.h"
 #include "GameClient/Shell.h"
 #include "GameClient/GameText.h"
 #include "GameClient/ParticleSys.h"

@@ -39,7 +39,7 @@
 
 #include "PreRTS.h"	// This must go first in EVERY cpp file int the GameEngine
 
-#include "GameClient/statistics.h"
+#include "GameClient/Statistics.h"
 
 // Solution taken from http://www.epanorama.net/documents/telecom/ulaw_alaw.html
 Real MuLaw(Real valueToRun, Real maxValueForVal, Real mu)
