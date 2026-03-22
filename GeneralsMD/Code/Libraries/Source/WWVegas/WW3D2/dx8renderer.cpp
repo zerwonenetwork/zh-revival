@@ -940,7 +940,7 @@ public:
 	TextureClass* Peek_Texture(unsigned idx,unsigned pass,unsigned stage)
 	{
 		if (mmc->Has_Texture_Array(pass,stage)) {
-			if (idx>=unsigned(mmc->Get_Polygon_Count())) {
+			if (idx>=(unsigned)(mmc->Get_Polygon_Count())) {
 				WWASSERT(mmc->Get_Gap_Filler());
 				return mmc->Get_Gap_Filler()->Get_Texture_Array(pass,stage)[idx-mmc->Get_Polygon_Count()];
 			}
@@ -952,7 +952,7 @@ public:
 	VertexMaterialClass* Peek_Material(unsigned idx,unsigned pass)
 	{
 		if (mmc->Has_Material_Array(pass)) {
-			if (idx>=unsigned(mmc->Get_Polygon_Count())) {
+			if (idx>=(unsigned)(mmc->Get_Polygon_Count())) {
 				WWASSERT(mmc->Get_Gap_Filler());
 				return mmc->Get_Gap_Filler()->Get_Material_Array(pass)[idx-mmc->Get_Polygon_Count()];
 			}
@@ -966,7 +966,7 @@ public:
 		if (mmc->Has_Shader_Array(pass)) {
 			ShaderClass shader;
 			
-			if (idx>=unsigned(mmc->Get_Polygon_Count())) {
+			if (idx>=(unsigned)(mmc->Get_Polygon_Count())) {
 				WWASSERT(mmc->Get_Gap_Filler());
 				shader=mmc->Get_Gap_Filler()->Get_Shader_Array(pass)[idx-mmc->Get_Polygon_Count()];
 			}
@@ -1573,7 +1573,7 @@ unsigned DX8TextureCategoryClass::Add_Mesh(
 			int* strip=StripOptimizerClass::Combine_Strips(strips+1,strips[0]);
 			delete[] strips;
 
-			if (index_count<unsigned(strip[0])) {
+			if (index_count<(unsigned)(strip[0])) {
 				stripify=false;
 			}
 			else {
@@ -1602,7 +1602,7 @@ unsigned DX8TextureCategoryClass::Add_Mesh(
 					for (unsigned i=0;i<index_count;++i) {
 						unsigned short idx;
 
-						idx=unsigned short(strip[i+1]);
+						idx=(unsigned short)(strip[i+1]);
 						vmin=MIN(vmin,idx);
 						vmax=MAX(vmax,idx);
 						*dst_indices++=idx;
@@ -1649,19 +1649,19 @@ unsigned DX8TextureCategoryClass::Add_Mesh(
 				if (all_textures_same && Equal_Material(mat,material) && shd==shader) {
 					unsigned short idx;
 
-					idx=unsigned short(src_indices[i][0]+vertex_offset);
+					idx=(unsigned short)(src_indices[i][0]+vertex_offset);
 					vmin=MIN(vmin,idx);
 					vmax=MAX(vmax,idx);
 					*dst_indices++=idx;
 //					WWDEBUG_SAY(("%d, ",idx));
 
-					idx=unsigned short(src_indices[i][1]+vertex_offset);
+					idx=(unsigned short)(src_indices[i][1]+vertex_offset);
 					vmin=MIN(vmin,idx);
 					vmax=MAX(vmax,idx);
 					*dst_indices++=idx;
 //					WWDEBUG_SAY(("%d, ",idx));
 
-					idx=unsigned short(src_indices[i][2]+vertex_offset);
+					idx=(unsigned short)(src_indices[i][2]+vertex_offset);
 					vmin=MIN(vmin,idx);
 					vmax=MAX(vmax,idx);
 					*dst_indices++=idx;
@@ -1675,7 +1675,7 @@ unsigned DX8TextureCategoryClass::Add_Mesh(
 			** Remember the min and max vertex indices that these polygons used (for optimization)
 			*/
 			p_renderer->Set_Vertex_Index_Range(vmin,vmax-vmin+1);
-			WWASSERT(index_count<=unsigned(split_table.Get_Polygon_Count()*3));
+			WWASSERT(index_count<=(unsigned)(split_table.Get_Polygon_Count()*3));
 		}
 	}
 
