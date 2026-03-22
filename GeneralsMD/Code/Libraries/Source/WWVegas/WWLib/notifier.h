@@ -43,8 +43,21 @@
 #pragma warning(push, 3)
 #endif
 
+// Suspend min/max macros so GCC's STL template declarations compile cleanly
+#ifdef __GNUC__
+#  pragma push_macro("min")
+#  pragma push_macro("max")
+#  undef min
+#  undef max
+#endif
+
 #include <vector>
 #include <algorithm>
+
+#ifdef __GNUC__
+#  pragma pop_macro("min")
+#  pragma pop_macro("max")
+#endif
 
 #if defined(_MSC_VER)
 #pragma warning(pop)

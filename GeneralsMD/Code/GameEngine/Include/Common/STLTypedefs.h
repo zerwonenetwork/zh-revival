@@ -68,6 +68,17 @@ enum NameKeyType : int;
 enum ObjectID : int;
 enum DrawableID : int;
 
+// GCC's <algorithm> declares std::min/std::max as templates. The min/max macros
+// defined in BaseType.h cause the preprocessor to expand these declarations
+// incorrectly (e.g., std::min<T>(a,b,cmp) looks like a 3-arg macro call).
+// Suspend the macros around all STL includes, then restore them.
+#ifdef __GNUC__
+#  pragma push_macro("min")
+#  pragma push_macro("max")
+#  undef min
+#  undef max
+#endif
+
 #include <algorithm>
 #include <bitset>
 #include <unordered_map>
@@ -82,6 +93,11 @@ namespace std {
 #include <stack>
 #include <string>
 #include <vector>
+
+#ifdef __GNUC__
+#  pragma pop_macro("min")
+#  pragma pop_macro("max")
+#endif
 
 // List of AsciiStrings to allow list of ThingTemplate names from INI and such
 typedef std::list< AsciiString >													AsciiStringList;
