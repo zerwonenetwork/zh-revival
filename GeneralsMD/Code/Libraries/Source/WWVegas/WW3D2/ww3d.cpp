@@ -122,7 +122,10 @@
 
 #include "shdlib.h"
 
+// mmsystem.h provides MMRESULT, timeBeginPeriod, timeEndPeriod.
+// MinGW does not pull it in automatically via windows.h without this explicit include.
 #ifndef _UNIX
+#include <mmsystem.h>
 #include "framgrab.h"
 #endif
 
