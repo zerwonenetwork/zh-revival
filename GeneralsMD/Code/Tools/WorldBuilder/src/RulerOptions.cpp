@@ -22,7 +22,7 @@
 
 #include "stdafx.h"
 #include "resource.h"
-#include "Lib\BaseType.h"
+#include "Lib/BaseType.h"
 #include "RulerOptions.h"
 #include "WorldBuilderView.h"
 #include "RulerTool.h"

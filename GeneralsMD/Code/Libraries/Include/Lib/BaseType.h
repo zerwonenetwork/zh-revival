@@ -185,7 +185,7 @@ inline Real deg2rad(Real rad) { return rad * (PI/180); }
 // code, so use this function with caution -- it might not round in the way you want.
 __forceinline long fast_float2long_round(float f)
 {
-#if defined(_MSC_VER)
+#if defined(_MSC_VER) && !defined(__GNUC__)
 	long i;
 
 	__asm {
@@ -203,7 +203,7 @@ __forceinline long fast_float2long_round(float f)
 // code courtesy of Martin Hoffesommer (grin)
 __forceinline float fast_float_trunc(float f)
 {
-#if defined(_MSC_VER)
+#if defined(_MSC_VER) && !defined(__GNUC__)
   _asm
   {
     mov ecx,[f]

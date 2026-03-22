@@ -23,7 +23,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "Lib/BaseType.h"
-#include "Noxcompress.h"
+#include "NoxCompress.h"
 #include "CompLibHeader/lzhl.h"
 
 #ifdef _INTERNAL
