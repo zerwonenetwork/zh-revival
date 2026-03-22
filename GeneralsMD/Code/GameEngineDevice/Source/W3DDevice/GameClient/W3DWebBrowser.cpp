@@ -57,7 +57,9 @@ Bool W3DWebBrowser::createBrowserWindow(char *tag, GameWindow *win)
 		return FALSE;
 	}
 
+#if defined(_MSC_VER) && !defined(__GNUC__)
 	CComQIPtr<IDispatch> idisp(m_dispatch);
+#endif
 	if (m_dispatch == NULL)
 	{
 		return FALSE;
