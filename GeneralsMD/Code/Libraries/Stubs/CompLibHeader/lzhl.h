@@ -1,7 +1,7 @@
 #ifndef LZHL_H
 #define LZHL_H
 
-#include "Lib/basetype.h"
+#include "Lib/BaseType.h"
 
 #ifdef __cplusplus
 extern "C" {
