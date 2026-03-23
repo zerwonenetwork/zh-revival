@@ -590,6 +590,18 @@ typedef struct _CRITICAL_SECTION {
 #define _strcmpi strcasecmp
 #endif
 
+// Win32 lstr* string functions — global namespace (called as ::lstrcmpi etc.)
+static inline int lstrcmpiA(LPCSTR s1, LPCSTR s2) { return strcasecmp(s1?s1:"", s2?s2:""); }
+static inline int lstrcmpA(LPCSTR s1, LPCSTR s2)  { return strcmp(s1?s1:"", s2?s2:""); }
+static inline LPSTR lstrcpyA(LPSTR dst, LPCSTR src) { if(dst&&src) strcpy(dst,src); return dst; }
+static inline LPSTR lstrcatA(LPSTR dst, LPCSTR src) { if(dst&&src) strcat(dst,src); return dst; }
+static inline int lstrlenA(LPCSTR s) { return s?(int)strlen(s):0; }
+#define lstrcmpi  lstrcmpiA
+#define lstrcmp   lstrcmpA
+#define lstrcpy   lstrcpyA
+#define lstrcat   lstrcatA
+#define lstrlen   lstrlenA
+
 // _strlwr / _strupr — MSVC in-place case-convert functions
 #include <ctype.h>
 static inline char* _strlwr(char* s) {

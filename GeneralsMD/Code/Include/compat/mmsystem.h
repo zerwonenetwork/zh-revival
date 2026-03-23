@@ -68,6 +68,14 @@ typedef struct tWAVEFORMAT {
 typedef const WAVEFORMAT* LPCWAVEFORMAT;
 #pragma pack(pop)
 
+// PCMWAVEFORMAT — extends WAVEFORMAT with wBitsPerSample
+#pragma pack(push, 1)
+typedef struct tPCMWAVEFORMAT {
+    WAVEFORMAT wf;
+    unsigned short wBitsPerSample;
+} PCMWAVEFORMAT, *PPCMWAVEFORMAT, *LPPCMWAVEFORMAT;
+#pragma pack(pop)
+
 // WAVEFORMATEX
 #pragma pack(push, 1)
 typedef struct tWAVEFORMATEX {
