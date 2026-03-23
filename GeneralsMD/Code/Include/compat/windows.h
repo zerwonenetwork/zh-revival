@@ -421,12 +421,12 @@ typedef struct tagSIZE  { LONG cx, cy; }                    SIZE,  *LPSIZE,  *PS
 //  LARGE_INTEGER / ULARGE_INTEGER (used by QueryPerformanceCounter path)
 // ---------------------------------------------------------------------------
 typedef union _LARGE_INTEGER {
-    struct { DWORD LowPart; LONG  HighPart; } s;
+    struct { DWORD LowPart; LONG  HighPart; };
     int64_t QuadPart;
 } LARGE_INTEGER, *PLARGE_INTEGER;
 
 typedef union _ULARGE_INTEGER {
-    struct { DWORD LowPart; DWORD HighPart; } s;
+    struct { DWORD LowPart; DWORD HighPart; };
     uint64_t QuadPart;
 } ULARGE_INTEGER, *PULARGE_INTEGER;
 
@@ -794,6 +794,14 @@ static inline HANDLE  CreateFileA(LPCSTR path, DWORD access, DWORD share, void* 
     return INVALID_HANDLE_VALUE;
 }
 #define CreateFile CreateFileA
+static inline BOOL    DeviceIoControl(HANDLE device, DWORD code, void* in_buffer, DWORD in_size,
+                                      void* out_buffer, DWORD out_size, DWORD* bytes_returned,
+                                      LPOVERLAPPED overlapped) {
+    (void)device; (void)code; (void)in_buffer; (void)in_size;
+    (void)out_buffer; (void)out_size; (void)overlapped;
+    if (bytes_returned) *bytes_returned = 0;
+    return FALSE;
+}
 static inline BOOL    WriteFile(HANDLE h, LPCVOID buffer, DWORD bytes, DWORD* written, LPOVERLAPPED overlapped) {
     (void)h; (void)buffer; (void)bytes; (void)overlapped;
     if (written) *written = 0;
@@ -838,6 +846,12 @@ static inline BOOL    SetEvent(HANDLE h)                               { (void)h
 static inline BOOL    ResetEvent(HANDLE h)                             { (void)h; return FALSE; }
 static inline DWORD   WaitForSingleObject(HANDLE h, DWORD ms)         { (void)h;(void)ms; return 0; }
 static inline BOOL    CloseHandle(HANDLE h)                            { (void)h; return TRUE; }
+static inline HANDLE  GetCurrentProcess(void)                          { return NULL; }
+static inline HANDLE  GetCurrentThread(void)                           { return NULL; }
+static inline DWORD   GetPriorityClass(HANDLE h)                       { (void)h; return 0; }
+static inline BOOL    SetPriorityClass(HANDLE h, DWORD priority)       { (void)h; (void)priority; return TRUE; }
+static inline int     GetThreadPriority(HANDLE h)                      { (void)h; return 0; }
+static inline BOOL    SetThreadPriority(HANDLE h, int priority)        { (void)h; (void)priority; return TRUE; }
 static inline DWORD   GetCurrentThreadId(void)                        { return 1; }
 static inline DWORD   GetCurrentProcessId(void)                       { return 1; }
 static inline LONG    InterlockedIncrement(LONG* p)                   { return ++(*p); }
@@ -847,6 +861,14 @@ static inline HANDLE  GetStdHandle(DWORD n)                           { (void)n;
 static inline BOOL    WriteConsoleA(HANDLE,const void*,DWORD,DWORD*,void*) { return FALSE; }
 static inline UINT    GetDriveTypeA(LPCSTR p)                         { (void)p; return 0; }
 #define GetDriveType GetDriveTypeA
+
+#ifndef REALTIME_PRIORITY_CLASS
+#define REALTIME_PRIORITY_CLASS 0x00000100
+#endif
+
+#ifndef THREAD_PRIORITY_TIME_CRITICAL
+#define THREAD_PRIORITY_TIME_CRITICAL 15
+#endif
 
 #endif  // !_WIN32
 #endif  // ZH_COMPAT_WINDOWS_H

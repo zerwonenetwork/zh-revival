@@ -52,16 +52,27 @@ typedef union {
 	} QuadPart;
 } QuadValue;
 
+#if defined(_M_IX86) || defined(_M_X64) || defined(__i386__) || defined(__x86_64__)
+#define WWLIB_HAS_RDTSC 1
+#else
+#define WWLIB_HAS_RDTSC 0
+#endif
+
 #if defined(_MSC_VER)
 static unsigned __int64 Read_Time_Stamp_Counter()
 {
 	return __rdtsc();
 }
 #define ASM_RDTSC _asm _emit 0x0f _asm _emit 0x31
-#elif defined(__GNUC__) || defined(__clang__)
+#elif (defined(__GNUC__) || defined(__clang__)) && WWLIB_HAS_RDTSC
 static unsigned __int64 Read_Time_Stamp_Counter()
 {
 	return __builtin_ia32_rdtsc();
+}
+#elif defined(__GNUC__) || defined(__clang__)
+static unsigned __int64 Read_Time_Stamp_Counter()
+{
+	return 0;
 }
 #endif
 
@@ -163,6 +174,9 @@ void RDTSC(void)
 
 int Get_RDTSC_CPU_Speed(void)
 {
+#if !defined(_WIN32)
+	return 0;
+#else
 	LARGE_INTEGER t0,t1;
 	DWORD	freq=0;						// Most current freq. calc.
 	DWORD	freq2=0;						// 2nd most current freq. calc.
@@ -284,7 +298,7 @@ int Get_RDTSC_CPU_Speed(void)
 	if ( (freq3 - freq) >= ROUND_THRESHOLD ) norm_freq++;
 
 	return (norm_freq);
-
+#endif
 }
 
 
