@@ -1193,8 +1193,10 @@ static inline DWORD GetFileSizeEx(HANDLE hFile, LARGE_INTEGER* lpFileSize) {
 #include "mmsystem.h"
 // winnt.h - PE image structures (IMAGE_DOS_HEADER, IMAGE_FILE_HEADER, etc.)
 #include "winnt.h"
-// objbase.h - COM base interfaces (IUnknown, IDispatch, LPDISPATCH, CoInitialize etc.)
+// objbase.h - COM base interfaces (IUnknown, CoInitialize etc.)
 #include "objbase.h"
+// oaidl.h - COM automation interfaces (IDispatch, LPDISPATCH, VARIANT, BSTR etc.)
+#include "oaidl.h"
 
 // ---------------------------------------------------------------------------
 //  Control window messages (used by windowsx.h macros and direct SendMessage)

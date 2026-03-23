@@ -44,17 +44,10 @@ static inline HRESULT CoCreateInstance(REFCLSID rclsid, void* pUnkOuter, DWORD d
 #define CLSCTX_LOCAL_SERVER   0x4
 #define CLSCTX_ALL            0x17
 
-// IDispatch — minimal COM automation interface
+// IDispatch is defined in oaidl.h (included from windows.h after objbase.h).
+// Only forward-declare it here so code that includes only objbase.h can use LPDISPATCH.
 #ifdef __cplusplus
-struct IDispatch : public IUnknown {
-    virtual HRESULT GetTypeInfoCount(UINT* pctinfo) = 0;
-    virtual HRESULT GetTypeInfo(UINT iTInfo, DWORD lcid, void** ppTInfo) = 0;
-    virtual HRESULT GetIDsOfNames(REFIID riid, void** rgszNames, UINT cNames,
-                                   DWORD lcid, LONG* rgDispId) = 0;
-    virtual HRESULT Invoke(LONG dispIdMember, REFIID riid, DWORD lcid, WORD wFlags,
-                           void* pDispParams, void* pVarResult,
-                           void* pExcepInfo, UINT* puArgErr) = 0;
-};
+struct IDispatch;
 typedef IDispatch* LPDISPATCH;
 #endif
 
