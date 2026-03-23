@@ -215,9 +215,37 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends \
             gcc g++ cmake ninja-build \
-            libsdl3-dev \
             libgl-dev \
             curl zip unzip tar pkg-config
+
+      # SDL3 is not in Ubuntu 22.04 apt repos — build from source (takes ~90s, cached below)
+      - name: Cache SDL3 build
+        id: cache-sdl3
+        uses: actions/cache@v4
+        with:
+          path: /opt/sdl3
+          key: sdl3-ubuntu2204-${{ hashFiles('.github/workflows/ci-build.yml') }}
+
+      - name: Build SDL3 from source
+        if: steps.cache-sdl3.outputs.cache-hit != 'true'
+        run: |
+          git clone --depth=1 --branch release-3.2.10 \
+            https://github.com/libsdl-org/SDL.git /tmp/SDL3-src
+          cmake -S /tmp/SDL3-src -B /tmp/SDL3-build \
+            -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_INSTALL_PREFIX=/opt/sdl3 \
+            -DSDL_STATIC=ON \
+            -DSDL_SHARED=ON
+          cmake --build /tmp/SDL3-build --parallel
+          cmake --install /tmp/SDL3-build
+
+      - name: Add SDL3 to system paths
+        run: |
+          echo "/opt/sdl3/lib" | sudo tee /etc/ld.so.conf.d/sdl3.conf
+          sudo ldconfig
+          echo "CMAKE_PREFIX_PATH=/opt/sdl3" >> $GITHUB_ENV
+          echo "PKG_CONFIG_PATH=/opt/sdl3/lib/pkgconfig:$PKG_CONFIG_PATH" >> $GITHUB_ENV
 
       # ── vcpkg ─────────────────────────────────────────────────────────────
       - name: Cache vcpkg binary cache
