@@ -7,6 +7,17 @@ if(WIN32)
 endif()
 
 # ─────────────────────────────────────────────
+#  Non-Windows compatibility shim
+#  On Linux/macOS, prepend GeneralsMD/Code/Include/compat/ to every
+#  target's include path so that #include <windows.h> and #include <new.h>
+#  resolve to our shim headers instead of failing with "file not found".
+# ─────────────────────────────────────────────
+if(NOT WIN32)
+  set(ZH_COMPAT_INCLUDE_DIR "${CMAKE_SOURCE_DIR}/GeneralsMD/Code/Include/compat")
+  include_directories(BEFORE SYSTEM "${ZH_COMPAT_INCLUDE_DIR}")
+endif()
+
+# ─────────────────────────────────────────────
 #  C++ standard
 # ─────────────────────────────────────────────
 set(CMAKE_CXX_STANDARD 20)

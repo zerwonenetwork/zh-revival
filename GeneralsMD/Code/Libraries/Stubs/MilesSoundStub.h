@@ -42,6 +42,11 @@
 #  define TRUE  1
 #  define FALSE 0
 #  endif
+#  ifndef ZeroMemory
+#  include <string.h>
+#  define ZeroMemory(dst,len) memset((dst),0,(len))
+#  define CopyMemory(dst,src,len) memcpy((dst),(src),(len))
+#  endif
 #endif
 
 // ---------------------------------------------------------------------------
