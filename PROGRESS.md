@@ -3,7 +3,7 @@
 > Repo: [https://github.com/ZerwOne/zh-revival](https://github.com/ZerwOne/zh-revival)
 > Forked from: [https://github.com/electronicarts/CnC_Generals_Zero_Hour](https://github.com/electronicarts/CnC_Generals_Zero_Hour)
 > Updated by Claude Code at the end of every session.
-> Last updated: 2026-03-23 (Phase 5 P5-01 through P5-06 complete)
+> Last updated: 2026-03-23 (ALL PHASES COMPLETE — v1.0-revival)
 
 ---
 
@@ -64,8 +64,8 @@
 - [x] P5-04 — Win64 build — completed 2026-03-23
 - [x] P5-05 — Linux native build — completed 2026-03-23
 - [x] P5-06 — macOS ARM64 build — completed 2026-03-23
-- [ ] P5-07 — Full memory safety audit
-- [ ] P5-FINAL — Tag v1.0-revival
+- [x] P5-07 — Full memory safety audit — completed 2026-03-23
+- [x] P5-FINAL — Tag v1.0-revival — completed 2026-03-23
 
 ---
 
@@ -116,4 +116,6 @@
 | 2026-03-23 | P5-04 Win64 build                  | main (direct)             | done   | DWORD_PTR for pointer casts in StackDump.cpp. getVersionNumber() sets bit 15 on _WIN64 (multiplayer channel separation). /wd4311 /wd4312 for legacy Tools/ code. |
 | 2026-03-23 | P5-05 Linux native build           | main (direct)             | done   | #ifdef _WIN32 guards on windows.h includes in AsciiString.h and URLLaunch.h. build-linux-native CI job (GCC x86_64 + SDL3, x64-linux triplet, headless smoke test). docs/modding/LINUX_BUILD.md. |
 | 2026-03-23 | P5-06 macOS ARM64 build            | main (direct)             | done   | build-macos-arm64 CI job (macos-14, Clang ARM64, Homebrew SDL3+MoltenVK, arm64-osx triplet, headless smoke test). docs/modding/MACOS_BUILD.md. |
+| 2026-03-23 | P5-07 Memory safety audit          | main (direct)             | done   | docs/MEMORY_SAFETY_AUDIT.md: 4 CRITICAL + 7 HIGH + ~20 MEDIUM. Fixed: WOLLoginMenu strcpy to GP struct fields (C01), BuddyThread login/response fields (C02/C03), StackDump function_name overflow (C04), StackDump sprintf/strcpy (H01/H02), FirewallHelper mangler buffers (H03/H04), GameLogic mapName overflow (H05/H06), GameSpeech dialog filenames (H07). |
+| 2026-03-23 | P5-FINAL v1.0-revival              | main (direct)             | done   | CHANGELOG.md, PROGRESS.md final update, git tag v1.0-revival. |
 
