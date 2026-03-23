@@ -291,7 +291,7 @@ void GetFunctionDetails(void *pointer, char*name, char*filename, unsigned int* l
     psymbol->SizeOfStruct = sizeof(symbol_buffer);
     psymbol->MaxNameLength = 512;
 
-    if (SymGetSymFromAddr(process, (DWORD) pointer, &displacement, psymbol))
+    if (SymGetSymFromAddr(process, (DWORD_PTR) pointer, &displacement, psymbol))
     {
 		if (name)
 		{
@@ -309,7 +309,7 @@ void GetFunctionDetails(void *pointer, char*name, char*filename, unsigned int* l
 			line.SizeOfStruct = sizeof(line);
 
 		
-			if (gsSymGetLineFromAddr(process, (DWORD) pointer, &displacement, &line))
+			if (gsSymGetLineFromAddr(process, (DWORD_PTR) pointer, &displacement, &line))
 			{
 				if (filename)
 				{

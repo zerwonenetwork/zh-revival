@@ -59,7 +59,21 @@ if(MSVC)
         /wd4267   # size_t->int narrowing (32-bit codegen assumption)
         /wd4305   # double->float truncation in constant expressions
         /wd4018   # signed/unsigned mismatch in comparisons
+        /wd4311   # P5-04: pointer truncation in 64-bit — remaining sites audited in P5-07
+        /wd4312   # P5-04: conversion from int to pointer of greater size — same
     )
+
+    # P5-04: Win64 build.
+    # To build 64-bit: cmake -B build64 -S . -A x64
+    # The only source-level change required is StackDump.cpp (DWORD→DWORD_PTR) and
+    # version.cpp (multiplayer channel bit).  All other int/pointer truncations in
+    # Tools/ and Libraries/ are suppressed by /wd4311 /wd4312 above and scheduled
+    # for full cleanup in P5-07 (full memory safety audit).
+    if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+        message(STATUS "[zh-revival] Win64 build (P5-04)")
+    else()
+        message(STATUS "[zh-revival] Win32 build")
+    endif()
 
     # /MD Release, /MDd Debug — matches original .dsp
     set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")

@@ -64,7 +64,15 @@ void Version::setVersion(Int major, Int minor, Int buildNum,
 
 UnsignedInt Version::getVersionNumber( void )
 {
-	return m_major << 16 | m_minor;
+	UnsignedInt ver = (UnsignedInt)(m_major << 16) | (UnsignedInt)m_minor;
+#ifdef _WIN64
+	// P5-04: 64-bit builds set bit 15 so they cannot accidentally join a
+	// multiplayer session hosted by a 32-bit client (and vice-versa).
+	// Bit 15 sits in the minor-version nibble and is never used by the
+	// original game's version numbering.
+	ver |= 0x00008000u;
+#endif
+	return ver;
 }
 
 AsciiString Version::getAsciiVersion( void )
