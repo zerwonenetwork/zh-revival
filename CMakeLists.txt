@@ -57,6 +57,9 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
     # int arrays (e.g. 0xFFFFFFFA = -6 in fixed-point). These are intentional bit patterns.
     # The actual type correctness will be addressed in P5-07.
     add_compile_options(-Wno-narrowing)
+    # Silence pointer↔int cast warnings from 25-year-old HKEY/handle code.
+    # The game stores HKEY in int fields; safe on 32-bit, benign stub on 64-bit.
+    add_compile_options(-Wno-pointer-to-int-cast -Wno-int-to-pointer-cast)
     # _USE_MATH_DEFINES: enable M_PI, M_PI_2 etc. from <math.h> on MinGW.
     add_compile_definitions(_USE_MATH_DEFINES)
     # --allow-multiple-definition: several legacy source pairs define the same symbol
@@ -64,6 +67,17 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
     # both define strtrim). MSVC silently picks the first definition; replicate that here.
     # These duplicates will be cleaned up in P5-07.
     add_link_options(-Wl,--allow-multiple-definition)
+endif()
+
+if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    # Clang-specific: suppress warnings from 25-year-old pointer/handle code that
+    # stores HKEY (void*) in int fields.  Benign on stub builds; fix tracked in P5-07.
+    add_compile_options(
+        -Wno-pointer-to-int-cast
+        -Wno-int-to-pointer-cast
+        -Wno-non-pod-varargs        # StringClass passed through variadic (wwprofile.cpp)
+        -Wno-deprecated-declarations
+    )
 endif()
 
 if(MSVC)

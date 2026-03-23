@@ -1023,6 +1023,123 @@ static inline DWORD GetFileSizeEx(HANDLE hFile, LARGE_INTEGER* lpFileSize) {
 // winreg.h - registry API (many files include only <windows.h> but use RegOpenKeyEx etc.)
 #include "winreg.h"
 
+// ---------------------------------------------------------------------------
+//  System information stubs (GetComputerName, GetUserName, GetDiskFreeSpace)
+// ---------------------------------------------------------------------------
+#ifndef _zh_sysinfo_stubs_
+#define _zh_sysinfo_stubs_
+static inline BOOL GetComputerNameA(LPSTR lpBuffer, DWORD* lpnSize) {
+    const char* name = "localhost";
+    DWORD len = (DWORD)strlen(name);
+    if (!lpBuffer || !lpnSize || *lpnSize <= len) { if(lpnSize) *lpnSize = len+1; return FALSE; }
+    strcpy(lpBuffer, name); *lpnSize = len; return TRUE;
+}
+#define GetComputerName  GetComputerNameA
+#define GetComputerNameW GetComputerNameA
+static inline BOOL GetUserNameA(LPSTR lpBuffer, DWORD* lpnSize) {
+    const char* name = "user";
+    DWORD len = (DWORD)strlen(name);
+    if (!lpBuffer || !lpnSize || *lpnSize <= len) { if(lpnSize) *lpnSize = len+1; return FALSE; }
+    strcpy(lpBuffer, name); *lpnSize = len; return TRUE;
+}
+#define GetUserName  GetUserNameA
+#define GetUserNameW GetUserNameA
+// GetDiskFreeSpace — return large fake values so code thinks disk has space
+static inline BOOL GetDiskFreeSpaceA(LPCSTR lpRootPathName,
+                                      DWORD* lpSectorsPerCluster, DWORD* lpBytesPerSector,
+                                      DWORD* lpNumberOfFreeClusters, DWORD* lpTotalNumberOfClusters) {
+    (void)lpRootPathName;
+    if(lpSectorsPerCluster)     *lpSectorsPerCluster     = 8;
+    if(lpBytesPerSector)        *lpBytesPerSector        = 512;
+    if(lpNumberOfFreeClusters)  *lpNumberOfFreeClusters  = 0x00FFFFFF;
+    if(lpTotalNumberOfClusters) *lpTotalNumberOfClusters = 0x00FFFFFF;
+    return TRUE;
+}
+#define GetDiskFreeSpace  GetDiskFreeSpaceA
+#define GetDiskFreeSpaceW GetDiskFreeSpaceA
+static inline BOOL GetDiskFreeSpaceExA(LPCSTR lpDirName,
+                                        ULARGE_INTEGER* lpFreeBytesAvailableToCaller,
+                                        ULARGE_INTEGER* lpTotalNumberOfBytes,
+                                        ULARGE_INTEGER* lpTotalNumberOfFreeBytes) {
+    (void)lpDirName;
+    if(lpFreeBytesAvailableToCaller) lpFreeBytesAvailableToCaller->QuadPart = (uint64_t)4096*1024*1024;
+    if(lpTotalNumberOfBytes)         lpTotalNumberOfBytes->QuadPart         = (uint64_t)4096*1024*1024;
+    if(lpTotalNumberOfFreeBytes)     lpTotalNumberOfFreeBytes->QuadPart     = (uint64_t)4096*1024*1024;
+    return TRUE;
+}
+#define GetDiskFreeSpaceEx  GetDiskFreeSpaceExA
+#define GetDiskFreeSpaceExW GetDiskFreeSpaceExA
+// GetVolumeInformation stub
+static inline BOOL GetVolumeInformationA(LPCSTR lpRootPathName,
+                                          LPSTR lpVolumeNameBuffer, DWORD nVolumeNameSize,
+                                          DWORD* lpVolumeSerialNumber, DWORD* lpMaximumComponentLength,
+                                          DWORD* lpFileSystemFlags, LPSTR lpFileSystemNameBuffer,
+                                          DWORD nFileSystemNameSize) {
+    (void)lpRootPathName;
+    if(lpVolumeNameBuffer && nVolumeNameSize > 0) lpVolumeNameBuffer[0] = '\0';
+    if(lpVolumeSerialNumber) *lpVolumeSerialNumber = 0;
+    if(lpMaximumComponentLength) *lpMaximumComponentLength = 255;
+    if(lpFileSystemFlags) *lpFileSystemFlags = 0;
+    if(lpFileSystemNameBuffer && nFileSystemNameSize > 0) { strncpy(lpFileSystemNameBuffer,"ext4",nFileSystemNameSize-1); lpFileSystemNameBuffer[nFileSystemNameSize-1]='\0'; }
+    return TRUE;
+}
+#define GetVolumeInformation  GetVolumeInformationA
+#define GetVolumeInformationW GetVolumeInformationA
+// GetModuleFileName stub
+static inline DWORD GetModuleFileNameA(HMODULE hModule, LPSTR lpFilename, DWORD nSize) {
+    (void)hModule; if(lpFilename && nSize > 0) lpFilename[0] = '\0'; return 0;
+}
+#define GetModuleFileName  GetModuleFileNameA
+#define GetModuleFileNameW GetModuleFileNameA
+// WinExec stub
+static inline UINT WinExec(LPCSTR lpCmdLine, UINT uCmdShow) { (void)lpCmdLine;(void)uCmdShow; return 0; }
+// GetWindowsDirectory stub
+static inline UINT GetWindowsDirectoryA(LPSTR lpBuffer, UINT uSize) {
+    if(lpBuffer && uSize > 1) { lpBuffer[0]='/'; lpBuffer[1]='\0'; } return 1;
+}
+#define GetWindowsDirectory  GetWindowsDirectoryA
+#define GetWindowsDirectoryW GetWindowsDirectoryA
+// GetSystemDirectory stub
+static inline UINT GetSystemDirectoryA(LPSTR lpBuffer, UINT uSize) {
+    if(lpBuffer && uSize > 4) { strncpy(lpBuffer,"/usr",uSize-1); lpBuffer[uSize-1]='\0'; } return 4;
+}
+#define GetSystemDirectory  GetSystemDirectoryA
+#define GetSystemDirectoryW GetSystemDirectoryA
+// GetTempPath stub (if not already defined above)
+#ifndef _zh_gettemppath_defined_
+#define _zh_gettemppath_defined_
+static inline DWORD GetTempPathA(DWORD nBuf, LPSTR lpBuf) {
+    const char* t = "/tmp"; DWORD len=(DWORD)strlen(t);
+    if(lpBuf && nBuf > len) { strcpy(lpBuf,t); } return len;
+}
+#define GetTempPath  GetTempPathA
+#define GetTempPathW GetTempPathA
+#endif
+// GetFullPathName stub (if not already defined)
+#ifndef _zh_getfullpathname_defined_
+#define _zh_getfullpathname_defined_
+#include <limits.h>
+static inline DWORD GetFullPathNameA(LPCSTR lp, DWORD nBuf, LPSTR buf, LPSTR* part) {
+    if(!buf||nBuf==0) return 0;
+    char resolved[PATH_MAX];
+    if(!realpath(lp,resolved)) strncpy(resolved,lp,PATH_MAX-1);
+    strncpy(buf,resolved,nBuf-1); buf[nBuf-1]='\0';
+    if(part){char*s=strrchr(buf,'/');*part=s?s+1:buf;}
+    return (DWORD)strlen(buf);
+}
+#define GetFullPathName  GetFullPathNameA
+#define GetFullPathNameW GetFullPathNameA
+#endif
+// LoadLibrary stubs (if not already defined)
+#ifndef _zh_loadlibrary_defined_
+#define _zh_loadlibrary_defined_
+static inline HMODULE LoadLibraryExA(LPCSTR n, HANDLE h, DWORD f) { (void)n;(void)h;(void)f; return NULL; }
+#define LoadLibraryEx  LoadLibraryExA
+#define LoadLibraryExW LoadLibraryExA
+#define LoadLibraryW   LoadLibraryA
+#endif
+#endif // _zh_sysinfo_stubs_
+
 #endif  // !_WIN32
 #endif  // ZH_COMPAT_WINDOWS_H
 
