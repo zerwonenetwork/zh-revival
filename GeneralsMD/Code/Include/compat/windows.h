@@ -399,14 +399,27 @@ typedef LRESULT (*WNDPROC)(HWND, UINT, WPARAM, LPARAM);
 #define SecureZeroMemory(dst, len)    memset((dst), 0, (len))
 
 // ---------------------------------------------------------------------------
-//  Min / Max (some game headers use these without including algorithm)
+//  NOMINMAX — suppress min/max macros to avoid conflicts with C++ stdlib
+//  (GCC's <limits>/<cmath> use std::min with 3 args internally; our 2-arg
+//   macros cause hard errors when those headers are included without
+//   always.h having done #undef min/max first)
+//
+//  Game code that needs lowercase min/max gets them from:
+//    - always.h (WWVegas) — defines template min/max after #undef
+//    - std::min / std::max from <algorithm>
 // ---------------------------------------------------------------------------
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+// Only define min/max macros if NOMINMAX is NOT set (it is, so these are skipped)
+#ifndef NOMINMAX
 #ifndef min
 #define min(a,b) ((a)<(b)?(a):(b))
 #endif
 #ifndef max
 #define max(a,b) ((a)>(b)?(a):(b))
 #endif
+#endif  // !NOMINMAX
 
 // ---------------------------------------------------------------------------
 //  MAKEWORD / MAKELONG / LOWORD / HIWORD
@@ -1080,6 +1093,24 @@ static inline DWORD GetFileSizeEx(HANDLE hFile, LARGE_INTEGER* lpFileSize) {
 #include "winnls.h"
 // mmsystem.h - multimedia timer (timeSetEvent/Kill, timeGetTime) — wwmouse.cpp etc.
 #include "mmsystem.h"
+// winnt.h - PE image structures (IMAGE_DOS_HEADER, IMAGE_FILE_HEADER, etc.)
+#include "winnt.h"
+
+// ---------------------------------------------------------------------------
+//  Non-underscore MSVC string helpers (used via ::strupr / ::strlwr)
+//  Some WW code calls strupr/strlwr without the leading underscore.
+// ---------------------------------------------------------------------------
+#ifndef _zh_strupr_defined_
+#define _zh_strupr_defined_
+static inline char* strupr(char* s) {
+    if (s) { for (char* p = s; *p; ++p) *p = (char)toupper((unsigned char)*p); }
+    return s;
+}
+static inline char* strlwr(char* s) {
+    if (s) { for (char* p = s; *p; ++p) *p = (char)tolower((unsigned char)*p); }
+    return s;
+}
+#endif
 
 // ---------------------------------------------------------------------------
 //  System information stubs (GetComputerName, GetUserName, GetDiskFreeSpace)
