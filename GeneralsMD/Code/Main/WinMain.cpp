@@ -830,14 +830,6 @@ static Bool initializeAppWindows( HINSTANCE hInstance, Int nCmdShow, Bool runWin
 
 #else
 	// Original Win32 window creation path
-	// register the window class
-	WNDCLASS wndClass = { CS_HREDRAW | CS_VREDRAW | CS_DBLCLKS, WndProc, 0, 0, hInstance,
-	                     LoadIcon (hInstance, MAKEINTRESOURCE(IDI_ApplicationIcon)),
-	                     NULL/*LoadCursor(NULL, IDC_ARROW)*/,
-	                     (HBRUSH)GetStockObject(BLACK_BRUSH), NULL,
-	                     TEXT("Game Window") };
-	RegisterClass( &wndClass );
-
 	hWnd = CreateWindow( TEXT("Game Window"),
 	                     TEXT("zh-revival"),
 	                     windowStyle,
@@ -1349,10 +1341,10 @@ GameEngine *CreateGameEngine( void )
 //=============================================================================
 void ApplyResolutionOverride( void )
 {
-	if (TheGlobalData == NULL)
+	if (TheWritableGlobalData == NULL)
 		return;
 	if (ApplicationWidthOverride > 0)
-		TheGlobalData->m_xResolution = ApplicationWidthOverride;
+		TheWritableGlobalData->m_xResolution = ApplicationWidthOverride;
 	if (ApplicationHeightOverride > 0)
-		TheGlobalData->m_yResolution = ApplicationHeightOverride;
+		TheWritableGlobalData->m_yResolution = ApplicationHeightOverride;
 }  // end ApplyResolutionOverride
