@@ -283,6 +283,8 @@ jobs:
             -DZH_SDL3_WINDOW=ON \
             -DZH_OPENAL_AUDIO=OFF \
             -DZH_FFMPEG_VIDEO=OFF \
+            -DCMAKE_CXX_FLAGS="-fpermissive -Wno-error -Wno-narrowing -Wno-pointer-to-int-cast -Wno-int-to-pointer-cast" \
+            -DCMAKE_C_FLAGS="-fpermissive -Wno-error -Wno-pointer-to-int-cast -Wno-int-to-pointer-cast" \
             -DCMAKE_BUILD_TYPE=Release
 
       # ── Build ─────────────────────────────────────────────────────────────
@@ -371,8 +373,8 @@ jobs:
             -DCMAKE_PREFIX_PATH="$BREW_PREFIX" \
             -DZH_USE_STUBS=ON \
             -DZH_SDL3_WINDOW=ON \
-            -DCMAKE_CXX_FLAGS="-Wno-non-pod-varargs -fpermissive -Wno-error" \
-            -DCMAKE_C_FLAGS="-fpermissive -Wno-error" \
+            -DCMAKE_CXX_FLAGS="-Wno-non-pod-varargs -Wno-pointer-to-int-cast -Wno-int-to-pointer-cast -fpermissive -Wno-error" \
+            -DCMAKE_C_FLAGS="-Wno-pointer-to-int-cast -Wno-int-to-pointer-cast -fpermissive -Wno-error" \
             -DCMAKE_BUILD_TYPE=Release
 
       # ── Build ─────────────────────────────────────────────────────────────

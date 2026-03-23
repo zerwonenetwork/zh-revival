@@ -83,7 +83,14 @@ static inline LSTATUS RegQueryValueExA(HKEY hKey, LPCSTR lpValueName, DWORD* lpR
     return (LSTATUS)ERROR_FILE_NOT_FOUND;
 }
 #define RegQueryValueEx  RegQueryValueExA
-#define RegQueryValueExW RegQueryValueExA
+// Wide version — takes LPCWSTR, same no-op stub
+static inline LSTATUS RegQueryValueExW(HKEY hKey, const wchar_t* lpValueName, DWORD* lpReserved,
+                                        DWORD* lpType, BYTE* lpData, DWORD* lpcbData) {
+    (void)hKey;(void)lpValueName;(void)lpReserved;
+    if(lpType) *lpType = REG_NONE;
+    if(lpcbData) *lpcbData = 0;
+    return (LSTATUS)ERROR_FILE_NOT_FOUND;
+}
 
 static inline LSTATUS RegSetValueExA(HKEY hKey, LPCSTR lpValueName, DWORD Reserved,
                                       DWORD dwType, const BYTE* lpData, DWORD cbData) {
@@ -91,7 +98,12 @@ static inline LSTATUS RegSetValueExA(HKEY hKey, LPCSTR lpValueName, DWORD Reserv
     return (LSTATUS)ERROR_ACCESS_DENIED;
 }
 #define RegSetValueEx  RegSetValueExA
-#define RegSetValueExW RegSetValueExA
+// Wide version — takes LPCWSTR
+static inline LSTATUS RegSetValueExW(HKEY hKey, const wchar_t* lpValueName, DWORD Reserved,
+                                      DWORD dwType, const BYTE* lpData, DWORD cbData) {
+    (void)hKey;(void)lpValueName;(void)Reserved;(void)dwType;(void)lpData;(void)cbData;
+    return (LSTATUS)ERROR_ACCESS_DENIED;
+}
 
 static inline LSTATUS RegDeleteKeyA(HKEY hKey, LPCSTR lpSubKey) {
     (void)hKey;(void)lpSubKey; return (LSTATUS)ERROR_ACCESS_DENIED;
@@ -126,6 +138,42 @@ static inline LSTATUS RegEnumValueA(HKEY hKey, DWORD dwIndex, LPSTR lpValueName,
 }
 #define RegEnumValue  RegEnumValueA
 #define RegEnumValueW RegEnumValueA
+
+static inline LSTATUS RegQueryInfoKeyA(HKEY hKey, LPSTR lpClass, DWORD* lpcchClass,
+                                        DWORD* lpReserved, DWORD* lpcSubKeys,
+                                        DWORD* lpcbMaxSubKeyLen, DWORD* lpcbMaxClassLen,
+                                        DWORD* lpcValues, DWORD* lpcbMaxValueNameLen,
+                                        DWORD* lpcbMaxValueLen, DWORD* lpcbSecurityDescriptor,
+                                        void* lpftLastWriteTime) {
+    (void)hKey;(void)lpClass;(void)lpcchClass;(void)lpReserved;
+    if(lpcSubKeys) *lpcSubKeys = 0;
+    if(lpcbMaxSubKeyLen) *lpcbMaxSubKeyLen = 0;
+    if(lpcbMaxClassLen) *lpcbMaxClassLen = 0;
+    if(lpcValues) *lpcValues = 0;
+    if(lpcbMaxValueNameLen) *lpcbMaxValueNameLen = 0;
+    if(lpcbMaxValueLen) *lpcbMaxValueLen = 0;
+    if(lpcbSecurityDescriptor) *lpcbSecurityDescriptor = 0;
+    if(lpftLastWriteTime) memset(lpftLastWriteTime, 0, 8); // sizeof(FILETIME)
+    return (LSTATUS)ERROR_SUCCESS;
+}
+#define RegQueryInfoKey  RegQueryInfoKeyA
+#define RegQueryInfoKeyW RegQueryInfoKeyA
+
+static inline LSTATUS RegOpenKeyA(HKEY hKey, LPCSTR lpSubKey, HKEY* phkResult) {
+    (void)hKey;(void)lpSubKey;
+    if(phkResult) *phkResult = NULL;
+    return (LSTATUS)ERROR_FILE_NOT_FOUND;
+}
+#define RegOpenKey  RegOpenKeyA
+#define RegOpenKeyW RegOpenKeyA
+
+static inline LSTATUS RegCreateKeyA(HKEY hKey, LPCSTR lpSubKey, HKEY* phkResult) {
+    (void)hKey;(void)lpSubKey;
+    if(phkResult) *phkResult = NULL;
+    return (LSTATUS)ERROR_ACCESS_DENIED;
+}
+#define RegCreateKey  RegCreateKeyA
+#define RegCreateKeyW RegCreateKeyA
 
 #endif // !_WIN32
 #endif // ZH_COMPAT_WINREG_H
