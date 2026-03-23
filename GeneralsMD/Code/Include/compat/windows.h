@@ -754,20 +754,7 @@ static inline int     wsprintfA(LPSTR buffer, LPCSTR format, ...) {
     return result;
 }
 #define wsprintf wsprintfA
-static inline DWORD   GetWindowsDirectoryA(LPSTR path, DWORD size)     {
-    if (path && size > 0) { path[0] = '.'; if (size > 1) path[1] = '\0'; }
-    return 1;
-}
-#define GetWindowsDirectory GetWindowsDirectoryA
-static inline UINT    GetTempFileNameA(LPCSTR path, LPCSTR prefix, UINT unique, LPSTR buffer) {
-    (void)path; (void)prefix; (void)unique;
-    if (buffer) {
-        strcpy(buffer, "zh_compat.tmp");
-        return 1;
-    }
-    return 0;
-}
-#define GetTempFileName GetTempFileNameA
+// GetWindowsDirectoryA and GetTempFileNameA defined in sysinfo stubs block below
 static inline HANDLE  CreateMutexA(void* sa, BOOL initial_owner, LPCSTR name) { (void)sa; (void)initial_owner; (void)name; return (HANDLE)1; }
 #define CreateMutex CreateMutexA
 static inline HANDLE  CreateEventA(void*,BOOL,BOOL,LPCSTR)            { return NULL; }
