@@ -140,6 +140,26 @@ typedef LONG      HRESULT;
 // ATOM — used as return value from RegisterClass
 typedef WORD ATOM;
 
+// ---------------------------------------------------------------------------
+//  GUID — used by D3D8 and COM (must be here so d3d8.h stub compiles)
+// ---------------------------------------------------------------------------
+typedef struct _GUID {
+    unsigned long  Data1;
+    unsigned short Data2;
+    unsigned short Data3;
+    unsigned char  Data4[8];
+} GUID, IID, CLSID;
+typedef const GUID* REFGUID;
+typedef const IID*  REFIID;
+typedef const CLSID* REFCLSID;
+
+#ifndef IsEqualGUID
+#define IsEqualGUID(a,b) (memcmp(&(a),&(b),sizeof(GUID))==0)
+#endif
+#ifndef IsEqualIID
+#define IsEqualIID(a,b)  IsEqualGUID(a,b)
+#endif
+
 // WNDPROC — must be declared before WNDCLASS which uses it as a field
 typedef LRESULT (*WNDPROC)(HWND, UINT, WPARAM, LPARAM);
 
@@ -405,6 +425,12 @@ typedef struct _CRITICAL_SECTION {
     ULONG_PTR SpinCount;
 } CRITICAL_SECTION, *LPCRITICAL_SECTION, *PCRITICAL_SECTION;
 
+// _WINDOWS_ — tell d3d8.h and similar stubs that windows.h is already included
+// so they don't try to re-include it via #ifndef _WINDOWS_ guards
+#ifndef _WINDOWS_
+#define _WINDOWS_
+#endif
+
 // ---------------------------------------------------------------------------
 //  Standard C includes needed by many game files
 // ---------------------------------------------------------------------------
@@ -420,6 +446,26 @@ typedef struct _CRITICAL_SECTION {
 #  include <ctype.h>
 #  include <wchar.h>
 #  include <stdlib.h>
+#endif
+
+// ---------------------------------------------------------------------------
+//  Case-insensitive string comparison (POSIX — not in <string.h> on some platforms)
+// ---------------------------------------------------------------------------
+#include <strings.h>   // provides strcasecmp / strncasecmp on Linux & macOS
+#ifndef stricmp
+#define stricmp  strcasecmp
+#endif
+#ifndef strnicmp
+#define strnicmp strncasecmp
+#endif
+#ifndef _stricmp
+#define _stricmp  strcasecmp
+#endif
+#ifndef _strnicmp
+#define _strnicmp strncasecmp
+#endif
+#ifndef _wcsicmp
+#define _wcsicmp  wcscasecmp
 #endif
 
 // ---------------------------------------------------------------------------
