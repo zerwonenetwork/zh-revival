@@ -67,6 +67,9 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
     # both define strtrim). MSVC silently picks the first definition; replicate that here.
     # These duplicates will be cleaned up in P5-07.
     add_link_options(-Wl,--allow-multiple-definition)
+    # C++17 removed the 'register' storage-class specifier. 25-year-old SAGE code
+    # uses it in a few files. Redefine to empty so GCC silently drops it.
+    add_compile_definitions(register=)
 endif()
 
 if(CMAKE_CXX_COMPILER_ID MATCHES "Clang|AppleClang")
@@ -80,6 +83,8 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "Clang|AppleClang")
         -Wno-deprecated-declarations
         -Wno-int-conversion         # implicit integer conversions
     )
+    # C++17 removed 'register' storage-class specifier. Redefine to empty on Clang.
+    add_compile_definitions(register=)
 endif()
 
 if(MSVC)
