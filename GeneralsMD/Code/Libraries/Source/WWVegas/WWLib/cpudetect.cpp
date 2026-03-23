@@ -25,7 +25,13 @@
 #include <windows.h>
 #include "systimer.h"
 
-#if defined(__GNUC__) || defined(__clang__)
+#if defined(__i386__) || defined(__x86_64__) || defined(_M_IX86) || defined(_M_X64)
+#define WWLIB_CPUDETECT_X86 1
+#else
+#define WWLIB_CPUDETECT_X86 0
+#endif
+
+#if (defined(__GNUC__) || defined(__clang__)) && WWLIB_CPUDETECT_X86
 # include <cpuid.h>
 #endif
 
@@ -131,10 +137,15 @@ const char* CPUDetectClass::Get_Processor_Manufacturer_Name()
 #define ASM_RDTSC _asm _emit 0x0f _asm _emit 0x31
 #endif
 
-#if defined(__GNUC__) || defined(__clang__)
+#if (defined(__GNUC__) || defined(__clang__)) && WWLIB_CPUDETECT_X86
 static unsigned __int64 Read_Time_Stamp_Counter()
 {
     return __builtin_ia32_rdtsc();
+}
+#elif defined(__GNUC__) || defined(__clang__)
+static unsigned __int64 Read_Time_Stamp_Counter()
+{
+    return 0;
 }
 #endif
 
@@ -149,8 +160,10 @@ static unsigned Calculate_Processor_Speed(__int64& ticks_per_second)
       mov dword ptr [timer0], eax
       mov dword ptr [timer0 + 4], edx
    }
-#elif defined(__GNUC__) || defined(__clang__)
+#elif (defined(__GNUC__) || defined(__clang__)) && WWLIB_CPUDETECT_X86
     timer0=Read_Time_Stamp_Counter();
+#elif defined(__GNUC__) || defined(__clang__)
+    timer0=0;
 #elif defined(_UNIX)
       __asm__("rdtsc");
       __asm__("mov %eax, __Time.timer1_h");
@@ -166,8 +179,10 @@ static unsigned Calculate_Processor_Speed(__int64& ticks_per_second)
          mov dword ptr [timer1], eax
          mov dword ptr [timer1 + 4], edx
       }
-#elif defined(__GNUC__) || defined(__clang__)
+#elif (defined(__GNUC__) || defined(__clang__)) && WWLIB_CPUDETECT_X86
         timer1=Read_Time_Stamp_Counter();
+#elif defined(__GNUC__) || defined(__clang__)
+        timer1=0;
 #elif defined(_UNIX)
       __asm__ ("rdtsc");
       __asm__("mov %eax, __Time.timer1_h");
@@ -860,8 +875,10 @@ void CPUDetectClass::Init_CPUID_Instruction()
       popfd
       pop ebx
    }
-#elif defined(__GNUC__) || defined(__clang__)
+#elif (defined(__GNUC__) || defined(__clang__)) && WWLIB_CPUDETECT_X86
     cpuid_available=(__get_cpuid_max(0, 0) != 0);
+#elif defined(__GNUC__) || defined(__clang__)
+    cpuid_available=0;
 #elif defined(_UNIX)
      __asm__(" mov $0, __cpuid_available");  // clear flag
      __asm__(" push %ebx");
@@ -976,12 +993,14 @@ bool CPUDetectClass::CPUID(
       mov    [u_edx], edx
       popad
    }
-#elif defined(__GNUC__) || defined(__clang__)
+#elif (defined(__GNUC__) || defined(__clang__)) && WWLIB_CPUDETECT_X86
     unsigned max_cpuid = (cpuid_type & 0x80000000U) ? __get_cpuid_max(0x80000000U, 0) : __get_cpuid_max(0, 0);
     if (max_cpuid < cpuid_type) {
         return false;
     }
     __cpuid_count(cpuid_type, 0, u_eax, u_ebx, u_ecx, u_edx);
+#elif defined(__GNUC__) || defined(__clang__)
+    return false;
 #elif defined(_UNIX)
    __asm__("pusha");
    __asm__("mov    __cpuid_type, %eax");

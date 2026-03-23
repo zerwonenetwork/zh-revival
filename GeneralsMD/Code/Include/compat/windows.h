@@ -264,6 +264,9 @@ typedef LRESULT (*WNDPROC)(HWND, UINT, WPARAM, LPARAM);
 #define FORMAT_MESSAGE_FROM_STRING      0x00000400
 #define FORMAT_MESSAGE_FROM_HMODULE     0x00000800
 #define FORMAT_MESSAGE_MAX_WIDTH_MASK   0x000000FF
+#define VER_PLATFORM_WIN32s             0
+#define VER_PLATFORM_WIN32_WINDOWS      1
+#define VER_PLATFORM_WIN32_NT           2
 
 // ---------------------------------------------------------------------------
 //  File / registry / misc constants
@@ -409,6 +412,36 @@ typedef struct _SYSTEMTIME {
     WORD wYear, wMonth, wDayOfWeek, wDay;
     WORD wHour, wMinute, wSecond, wMilliseconds;
 } SYSTEMTIME, *LPSYSTEMTIME;
+
+typedef struct _MEMORYSTATUS {
+    DWORD  dwLength;
+    DWORD  dwMemoryLoad;
+    SIZE_T dwTotalPhys;
+    SIZE_T dwAvailPhys;
+    SIZE_T dwTotalPageFile;
+    SIZE_T dwAvailPageFile;
+    SIZE_T dwTotalVirtual;
+    SIZE_T dwAvailVirtual;
+} MEMORYSTATUS, *LPMEMORYSTATUS;
+
+typedef struct _OSVERSIONINFOA {
+    DWORD dwOSVersionInfoSize;
+    DWORD dwMajorVersion;
+    DWORD dwMinorVersion;
+    DWORD dwBuildNumber;
+    DWORD dwPlatformId;
+    CHAR  szCSDVersion[128];
+} OSVERSIONINFOA, OSVERSIONINFO, *LPOSVERSIONINFOA, *LPOSVERSIONINFO;
+
+typedef struct _TIME_ZONE_INFORMATION {
+    LONG       Bias;
+    WCHAR      StandardName[32];
+    SYSTEMTIME StandardDate;
+    LONG       StandardBias;
+    WCHAR      DaylightName[32];
+    SYSTEMTIME DaylightDate;
+    LONG       DaylightBias;
+} TIME_ZONE_INFORMATION, *LPTIME_ZONE_INFORMATION;
 
 // ---------------------------------------------------------------------------
 //  OVERLAPPED (used by async file I/O)
@@ -590,11 +623,30 @@ static inline void    OutputDebugStringW(LPCWSTR s)                    { (void)s
 static inline DWORD   GetLastError(void)                               { return 0; }
 static inline void    SetLastError(DWORD e)                            { (void)e; }
 static inline DWORD   GetTickCount(void)                               { return 0; }
+static inline unsigned long _lrotl(unsigned long value, int shift)     {
+    unsigned bits = (unsigned)(sizeof(unsigned long) * 8);
+    unsigned amount = ((unsigned)shift) & (bits - 1);
+    return amount ? ((value << amount) | (value >> (bits - amount))) : value;
+}
 static inline void    Sleep(DWORD ms)                                  { (void)ms; }
 static inline BOOL    QueryPerformanceCounter(LARGE_INTEGER* p)        { if(p) p->QuadPart=0; return TRUE; }
 static inline BOOL    QueryPerformanceFrequency(LARGE_INTEGER* p)      { if(p) p->QuadPart=1000000; return TRUE; }
 static inline void    GetSystemTime(SYSTEMTIME* st)                    { if(st) memset(st,0,sizeof(*st)); }
 static inline void    GetLocalTime(SYSTEMTIME* st)                     { if(st) memset(st,0,sizeof(*st)); }
+static inline void    GlobalMemoryStatus(LPMEMORYSTATUS ms)            { if(ms) memset(ms, 0, sizeof(*ms)); }
+static inline BOOL    GetVersionExA(LPOSVERSIONINFOA info)             {
+    if (info) {
+        memset(info, 0, sizeof(*info));
+        info->dwOSVersionInfoSize = sizeof(*info);
+        info->dwPlatformId = VER_PLATFORM_WIN32_NT;
+    }
+    return TRUE;
+}
+#define GetVersionEx GetVersionExA
+static inline DWORD   GetTimeZoneInformation(LPTIME_ZONE_INFORMATION tz) {
+    if (tz) memset(tz, 0, sizeof(*tz));
+    return 0;
+}
 static inline DWORD   GetWindowsDirectoryA(LPSTR path, DWORD size)     {
     if (path && size > 0) { path[0] = '.'; if (size > 1) path[1] = '\0'; }
     return 1;
