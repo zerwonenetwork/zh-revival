@@ -382,12 +382,15 @@ typedef struct _CRITICAL_SECTION {
 } CRITICAL_SECTION, *LPCRITICAL_SECTION, *PCRITICAL_SECTION;
 
 // ---------------------------------------------------------------------------
-//  Stub inline implementations for critical-section and basic Win32 calls
-//  that are used in headers (e.g. inline functions in game headers)
+//  Stub inline implementations — all static inline, no extern "C" needed
+//  (static inline has internal linkage; no name mangling issues)
 // ---------------------------------------------------------------------------
 #ifdef __cplusplus
-#include <cstdio>
-extern "C" {
+#  include <cstdio>
+#  include <cstring>
+#else
+#  include <stdio.h>
+#  include <string.h>
 #endif
 
 // ---------------------------------------------------------------------------

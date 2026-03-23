@@ -34,25 +34,14 @@
 #  define WIN32_LEAN_AND_MEAN
 #  endif
 #  include <windows.h>
-#else
-#  include <stdint.h>
-#  include <stddef.h>
-   typedef int            BOOL;
-   typedef unsigned long  DWORD;
-   typedef unsigned short WORD;
-   typedef unsigned int   UINT;
-   typedef void*          HANDLE;
-   typedef void*          HWND;
-   typedef char*          LPSTR;
-   typedef const char*    LPCSTR;
-   typedef void*          LPVOID;
-   typedef long           LONG;
-   typedef unsigned int   SOCKET;
+#endif
+// On Linux/macOS: all Windows types come from compat/windows.h (force-included).
+// SOCKET on non-Windows:
+#ifndef _WIN32
+#  ifndef SOCKET
+typedef unsigned int SOCKET;
 #  define INVALID_SOCKET ((SOCKET)(~0u))
 #  define SOCKET_ERROR   (-1)
-#  ifndef TRUE
-#  define TRUE  1
-#  define FALSE 0
 #  endif
 #endif
 #include <stddef.h>  // NULL

@@ -29,22 +29,6 @@
 #  define WIN32_LEAN_AND_MEAN
 #  endif
 #  include <windows.h>
-#else
-#  include <stdint.h>
-#  include <stddef.h>
-   typedef int            BOOL;
-   typedef unsigned long  DWORD;
-   typedef unsigned short WORD;
-   typedef unsigned int   UINT;
-   typedef void*          HANDLE;
-   typedef void*          HWND;
-   typedef char*          LPSTR;
-   typedef const char*    LPCSTR;
-   typedef void*          LPVOID;
-#  ifndef TRUE
-#  define TRUE  1
-#  define FALSE 0
-#  endif
 #endif
 #include <cstdint>
 #include <cstdio>
