@@ -883,6 +883,137 @@ static inline UINT    GetDriveTypeA(LPCSTR p)                         { (void)p;
 #define THREAD_PRIORITY_TIME_CRITICAL 15
 #endif
 
+// ---------------------------------------------------------------------------
+//  FILETIME and file-information structs (used by rawfile.cpp and others)
+// ---------------------------------------------------------------------------
+#ifndef _FILETIME_
+#define _FILETIME_
+typedef struct _FILETIME { DWORD dwLowDateTime; DWORD dwHighDateTime; } FILETIME, *PFILETIME, *LPFILETIME;
+#endif
+
+#ifndef _BY_HANDLE_FILE_INFORMATION_
+#define _BY_HANDLE_FILE_INFORMATION_
+typedef struct _BY_HANDLE_FILE_INFORMATION {
+    DWORD    dwFileAttributes;
+    FILETIME ftCreationTime;
+    FILETIME ftLastAccessTime;
+    FILETIME ftLastWriteTime;
+    DWORD    dwVolumeSerialNumber;
+    DWORD    nFileSizeHigh;
+    DWORD    nFileSizeLow;
+    DWORD    nNumberOfLinks;
+    DWORD    nFileIndexHigh;
+    DWORD    nFileIndexLow;
+} BY_HANDLE_FILE_INFORMATION, *PBY_HANDLE_FILE_INFORMATION, *LPBY_HANDLE_FILE_INFORMATION;
+#endif
+
+// ---------------------------------------------------------------------------
+//  File I/O functions missing from the stubs above (need POSIX headers)
+// ---------------------------------------------------------------------------
+#include <unistd.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <time.h>
+#include <errno.h>
+
+// ReadFile — backed by POSIX read(2)
+static inline BOOL ReadFile(HANDLE hFile, void* lpBuffer, DWORD nNumberOfBytesToRead,
+                             DWORD* lpNumberOfBytesRead, void* lpOverlapped) {
+    (void)lpOverlapped;
+    // hFile is stored as (fd+1) cast to pointer by our CreateFileA stub — but that stub
+    // returns INVALID_HANDLE_VALUE, so on real runs this is a no-op stub.
+    if (lpNumberOfBytesRead) *lpNumberOfBytesRead = 0;
+    return FALSE;
+}
+
+// GetFileSize — stub (file handle is not a real fd via our CreateFileA)
+static inline DWORD GetFileSize(HANDLE hFile, DWORD* lpFileSizeHigh) {
+    (void)hFile;
+    if (lpFileSizeHigh) *lpFileSizeHigh = 0;
+    return INVALID_FILE_SIZE;
+}
+
+// SetFilePointer — stub
+static inline DWORD SetFilePointer(HANDLE hFile, LONG lDistanceToMove,
+                                    LONG* lpDistanceToMoveHigh, DWORD dwMoveMethod) {
+    (void)hFile;(void)lDistanceToMove;(void)lpDistanceToMoveHigh;(void)dwMoveMethod;
+    return INVALID_SET_FILE_POINTER;
+}
+
+// GetFileInformationByHandle — stub
+static inline BOOL GetFileInformationByHandle(HANDLE hFile,
+                                               BY_HANDLE_FILE_INFORMATION* lpFileInformation) {
+    (void)hFile;
+    if (lpFileInformation) memset(lpFileInformation, 0, sizeof(*lpFileInformation));
+    return FALSE;
+}
+
+// FILETIME <-> DOS date/time conversion stubs
+static inline BOOL FileTimeToDosDateTime(const FILETIME* lpFileTime,
+                                          WORD* lpFatDate, WORD* lpFatTime) {
+    (void)lpFileTime;
+    if (lpFatDate) *lpFatDate = 0;
+    if (lpFatTime) *lpFatTime = 0;
+    return TRUE;
+}
+
+static inline BOOL DosDateTimeToFileTime(WORD wFatDate, WORD wFatTime,
+                                          FILETIME* lpFileTime) {
+    (void)wFatDate;(void)wFatTime;
+    if (lpFileTime) { lpFileTime->dwLowDateTime = 0; lpFileTime->dwHighDateTime = 0; }
+    return TRUE;
+}
+
+// SetFileTime — stub
+static inline BOOL SetFileTime(HANDLE hFile, const FILETIME* lpCreationTime,
+                                const FILETIME* lpLastAccessTime,
+                                const FILETIME* lpLastWriteTime) {
+    (void)hFile;(void)lpCreationTime;(void)lpLastAccessTime;(void)lpLastWriteTime;
+    return FALSE;
+}
+
+// GetFileTime — stub
+static inline BOOL GetFileTime(HANDLE hFile, FILETIME* lpCreationTime,
+                                FILETIME* lpLastAccessTime, FILETIME* lpLastWriteTime) {
+    (void)hFile;
+    if (lpCreationTime)   memset(lpCreationTime,   0, sizeof(FILETIME));
+    if (lpLastAccessTime) memset(lpLastAccessTime, 0, sizeof(FILETIME));
+    if (lpLastWriteTime)  memset(lpLastWriteTime,  0, sizeof(FILETIME));
+    return FALSE;
+}
+
+// FileTimeToSystemTime / SystemTimeToFileTime stubs
+static inline BOOL FileTimeToSystemTime(const FILETIME* ft, SYSTEMTIME* st) {
+    (void)ft; if (st) memset(st, 0, sizeof(*st)); return TRUE;
+}
+static inline BOOL SystemTimeToFileTime(const SYSTEMTIME* st, FILETIME* ft) {
+    (void)st; if (ft) memset(ft, 0, sizeof(*ft)); return TRUE;
+}
+static inline BOOL FileTimeToLocalFileTime(const FILETIME* utc, FILETIME* local) {
+    if (local && utc) *local = *utc; return TRUE;
+}
+static inline BOOL LocalFileTimeToFileTime(const FILETIME* local, FILETIME* utc) {
+    if (utc && local) *utc = *local; return TRUE;
+}
+
+// CompareFileTime — stub
+static inline LONG CompareFileTime(const FILETIME* ft1, const FILETIME* ft2) {
+    if (!ft1 || !ft2) return 0;
+    if (ft1->dwHighDateTime != ft2->dwHighDateTime)
+        return (ft1->dwHighDateTime < ft2->dwHighDateTime) ? -1 : 1;
+    if (ft1->dwLowDateTime != ft2->dwLowDateTime)
+        return (ft1->dwLowDateTime < ft2->dwLowDateTime) ? -1 : 1;
+    return 0;
+}
+
+// FlushFileBuffers — stub
+static inline BOOL FlushFileBuffers(HANDLE hFile) { (void)hFile; return TRUE; }
+
+// GetFileSize (64-bit) — stub
+static inline DWORD GetFileSizeEx(HANDLE hFile, LARGE_INTEGER* lpFileSize) {
+    (void)hFile; if (lpFileSize) lpFileSize->QuadPart = 0; return FALSE;
+}
+
 #endif  // !_WIN32
 #endif  // ZH_COMPAT_WINDOWS_H
 
