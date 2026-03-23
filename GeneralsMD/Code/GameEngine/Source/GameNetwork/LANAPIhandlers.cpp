@@ -231,11 +231,8 @@ void LANAPI::handleRequestJoin( LANMessage *msg, UnsignedInt senderIP )
 			int player;
 			Bool canJoin = true;
 
-			// see if the CRCs match
-#if defined(_DEBUG) || defined(_INTERNAL)
-			if (TheGlobalData->m_netMinPlayers > 0) {
-#endif
-/*			if (msg->GameToJoin.iniCRC != TheGlobalData->m_iniCRC ||
+			// P2-08: enforce version CRC — reject clients whose exeCRC or iniCRC differ from host
+			if (msg->GameToJoin.iniCRC != TheGlobalData->m_iniCRC ||
 					msg->GameToJoin.exeCRC != TheGlobalData->m_exeCRC)
 			{
 				DEBUG_LOG(("LANAPI::handleRequestJoin - join denied because of CRC mismatch. CRCs are them/us INI:%X/%X exe:%X/%X\n",
@@ -247,10 +244,6 @@ void LANAPI::handleRequestJoin( LANMessage *msg, UnsignedInt senderIP )
 				reply.GameNotJoined.playerIP = senderIP;
 				canJoin = false;
 			}
-*/
-#if defined(_DEBUG) || defined(_INTERNAL)
-			}
-#endif
 			
 			// check for a duplicate serial
 			AsciiString s;
