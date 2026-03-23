@@ -25,7 +25,7 @@
 
 ## Phase 2 — Online
 
-- P2-01 — RNG discipline audit
+- [x] P2-01 — RNG discipline audit — completed 2026-03-22
 - P2-02 — Per-tick state hashing for mismatch detection
 - P2-03 — Map transfer retry and content validation
 - P2-04 — Full network message security audit
@@ -88,5 +88,6 @@
 | 2026-03-17 | P1-12 BUILDING.md                  | task/P1-07-alttab-crash   | done   | Added BUILDING.md with modern CMake + vcpkg Windows build instructions, stub mode notes, and DXSDK_LIB_DIR guidance                                                                                                                              |
 | 2026-03-17 | CI stabilisation (multi-pass)      | main (direct)             | done   | 35+ CI-fix commits resolving MSVC/GCC errors: AIL stubs, D3D8 stubs, hash_map→unordered_map, template typename, for-loop scope, qualified-name C4596, BitTest redefinition, D3DTEXF/D3DTSS constants, D3dx8 stubs, point.h case rename for Linux |
 | 2026-03-22 | CI stabilisation (second pass)     | main (direct)             | done   | Linux GCC MinGW cross-compile now fully green. Fixes: waveType enum forward-decl, W3DWebBrowser ATL guards, Win32CDManager case, resource.h case, windres GENERALS.ICO case, comsuppw MSVC-only, CriticalSection/strtrim --allow-multiple-definition, _set_se_translator guard, BrowserDispatch.h __uuidof stub, WebBrowser::TestMethod vtable, _MBCS MSVC-only, FTP.CPP *.CPP glob, dbghelp link, TARGA.CPP _asm portable C fallback, Int<64>::Remainder explicit init, FramGrab AVI avifil32 guard, mmsystem.h for MMRESULT. Both Windows MSVC + Linux GCC jobs green on run 23411293522. |
+| 2026-03-22 | P2-01 RNG discipline audit         | main (direct)             | done   | Full audit of all RNG usage. Three-tier system (GameLogic/GameClient/GameAudio) is well-architected. ~80 simulation calls all use shared deterministic seed. ONE CRITICAL FINDING: GetTickCount() used as seed source in LAN/skirmish/GameSpy games — non-deterministic, desync vector. Full table in docs/RNG_AUDIT.md. Human review required before fixes. |
 
 
