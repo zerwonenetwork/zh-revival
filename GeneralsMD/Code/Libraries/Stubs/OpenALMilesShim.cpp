@@ -256,10 +256,20 @@ struct OALSample {
 };
 
 //----------------------------------------------------------------------------
+// OALObjectType — type tag; MUST be the first field of every H3DPOBJECT struct
+// so AIL_set_3D_position / AIL_set_3D_orientation can safely distinguish
+// a listener pointer from a sample pointer without relying on struct layout
+// coincidences.
+//----------------------------------------------------------------------------
+
+enum OALObjectType { OAL_OBJECT_SAMPLE3D = 0, OAL_OBJECT_LISTENER = 1 };
+
+//----------------------------------------------------------------------------
 // OAL3DSample — wraps a 3D OpenAL source
 //----------------------------------------------------------------------------
 
 struct OAL3DSample {
+    OALObjectType type;           // must be first — read via H3DPOBJECT cast
     ALuint        src;
     ALuint        buf;
     void*         userData[8];
@@ -267,8 +277,8 @@ struct OAL3DSample {
     F32           volume;
     bool          playing;
 
-    OAL3DSample() : src(0), buf(0), eosCallback(NULL),
-                    volume(1.f), playing(false)
+    OAL3DSample() : type(OAL_OBJECT_SAMPLE3D), src(0), buf(0),
+                    eosCallback(NULL), volume(1.f), playing(false)
     { memset(userData, 0, sizeof(userData)); }
 };
 
@@ -277,8 +287,8 @@ struct OAL3DSample {
 //----------------------------------------------------------------------------
 
 struct OALListener {
-    bool isListener; // used to distinguish from OAL3DSample in H3DPOBJECT casts
-    OALListener() : isListener(true) {}
+    OALObjectType type;           // must be first — same offset as OAL3DSample::type
+    OALListener() : type(OAL_OBJECT_LISTENER) {}
 };
 
 //----------------------------------------------------------------------------
@@ -734,13 +744,12 @@ void AIL_set_3D_sample_distances(H3DSAMPLE hs, F32 nearDist, F32 farDist)
     alSourcef(s->src, AL_MAX_DISTANCE,       farDist);
 }
 
-// AIL_set_3D_position handles both listener (H3DPOBJECT) and sample (H3DSAMPLE)
-// objects.  We distinguish by checking the isListener flag of OALListener.
+// AIL_set_3D_position handles both listener (H3DPOBJECT) and sample (H3DSAMPLE).
+// Safe because OALObjectType is the first field of both OALListener and OAL3DSample.
 void AIL_set_3D_position(H3DPOBJECT obj, F32 x, F32 y, F32 z)
 {
     if (!obj) return;
-    OALListener* li = (OALListener*)obj;
-    if (li->isListener) {
+    if (*(OALObjectType*)obj == OAL_OBJECT_LISTENER) {
         alListener3f(AL_POSITION, x, y, z);
     } else {
         OAL3DSample* s = (OAL3DSample*)obj;
@@ -952,8 +961,7 @@ void AIL_set_3D_orientation(H3DPOBJECT obj,
                              F32 ux, F32 uy, F32 uz)
 {
     if (!obj) return;
-    OALListener* li = (OALListener*)obj;
-    if (li->isListener) {
+    if (*(OALObjectType*)obj == OAL_OBJECT_LISTENER) {
         float orient[6] = { fx, fy, fz, ux, uy, uz };
         alListenerfv(AL_ORIENTATION, orient);
     }
