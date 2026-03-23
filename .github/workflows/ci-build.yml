@@ -279,6 +279,8 @@ jobs:
             -DVCPKG_TARGET_TRIPLET=x64-linux \
             -DZH_USE_STUBS=ON \
             -DZH_SDL3_WINDOW=ON \
+            -DZH_OPENAL_AUDIO=OFF \
+            -DZH_FFMPEG_VIDEO=OFF \
             -DCMAKE_BUILD_TYPE=Release
 
       # ── Build ─────────────────────────────────────────────────────────────

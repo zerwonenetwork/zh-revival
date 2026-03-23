@@ -9,14 +9,17 @@
     "zlib",
     {
       "name": "openal-soft",
-      "platform": "windows"
+      "platform": "windows & !mingw"
     },
     {
       "name": "ffmpeg",
       "features": ["avcodec", "avformat", "swscale"],
       "default-features": false,
-      "platform": "!mingw"
+      "platform": "windows & !mingw"
     },
-    "sdl3"
+    {
+      "name": "sdl3",
+      "platform": "windows"
+    }
   ]
 }
