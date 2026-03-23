@@ -3828,6 +3828,59 @@ void InGameUI::postDraw( void )
 	//draw superweapon ready multipliers
 	TheControlBar->drawSpecialPowerShortcutMultiplierText();
 
+	// P3-06: Replay HUD — tick counter + elapsed time + speed indicator
+	// Drawn only during replay playback so it never appears in live games.
+	if (TheRecorder && TheRecorder->getMode() == RECORDERMODETYPE_PLAYBACK && TheDisplay)
+	{
+		UnsignedInt frame = TheGameLogic ? TheGameLogic->getFrame() : 0;
+		UnsignedInt totalSec  = frame / LOGICFRAMES_PER_SECOND;
+		UnsignedInt hours     = totalSec / 3600;
+		UnsignedInt minutes   = (totalSec % 3600) / 60;
+		UnsignedInt seconds   = totalSec % 60;
+
+		// Speed: report effective multiplier relative to default 30 FPS
+		Int curFPS  = TheGameEngine ? TheGameEngine->getFramesPerSecondLimit() : 30;
+		if (curFPS <= 0) curFPS = 30;
+		Int speedNum = curFPS / 15;  // 15=0.5x, 30=1x, 60=2x, 120=4x
+		Int speedDen = 1;
+		if (curFPS < 30) { speedNum = 1; speedDen = 2; }
+
+		AsciiString hud;
+		if (hours > 0)
+			hud.format("Tick:%u  %u:%02u:%02u  Speed:%dx", frame, hours, minutes, seconds, speedNum);
+		else if (speedDen == 2)
+			hud.format("Tick:%u  %02u:%02u  Speed:0.5x", frame, minutes, seconds);
+		else
+			hud.format("Tick:%u  %02u:%02u  Speed:%dx", frame, minutes, seconds, speedNum);
+
+		Int scrW = TheDisplay->getWidth();
+		Int scrH = TheDisplay->getHeight();
+		// Draw a small semi-transparent background bar then white text in the top-right corner
+		Int barH = 18;
+		Int barW = 220;
+		Int barX = scrW - barW - 4;
+		Int barY = 4;
+		TheDisplay->drawFillRect(barX - 2, barY - 1, barW + 4, barH + 2, GameMakeColor(0, 0, 0, 160));
+
+		// Use the same font as superweapon timers (smallest available)
+		GameFont *font = TheFontLibrary ? TheFontLibrary->getFont(
+			AsciiString(TheGlobalData->m_superweaponNormalFont),
+			TheGlobalData->m_superweaponNormalFontSize, FALSE) : NULL;
+		if (font)
+		{
+			DisplayString *ds = TheDisplayStringManager->newDisplayString();
+			if (ds)
+			{
+				ds->setFont(font);
+				UnicodeString wideHud;
+				wideHud.translate(hud);
+				ds->setText(wideHud);
+				ds->draw(barX, barY, GameMakeColor(255, 255, 255, 220), GameMakeColor(0, 0, 0, 180));
+				TheDisplayStringManager->freeDisplayString(ds);
+			}
+		}
+	}
+
 }  // end postDraw
 
 //-------------------------------------------------------------------------------------------------

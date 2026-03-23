@@ -269,6 +269,8 @@ public:
 		MSG_META_CAMERA_RESET,
     MSG_META_TOGGLE_CAMERA_TRACKING_DRAWABLE,
 		MSG_META_TOGGLE_FAST_FORWARD_REPLAY,	      ///< Toggle the fast forward feature
+		MSG_META_REPLAY_SPEED_UP,               ///< P3-06: cycle replay speed up (] key)
+		MSG_META_REPLAY_SPEED_DOWN,             ///< P3-06: cycle replay speed down ([ key)
 		MSG_META_DEMO_INSTANT_QUIT,									///< bail out of game immediately
 
     

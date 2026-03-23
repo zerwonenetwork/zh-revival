@@ -223,8 +223,13 @@ void ControlBar::populateObserverList( void )
 				if(p->isPlayerObserver())
 					continue;
 				DEBUG_ASSERTCRASH(currentButton < MAX_BUTTONS, ("ControlBar::populateObserverList trying to populate more buttons then we have"));
+				// P3-06: guard against NULL button window (missing layout element)
+				if (currentButton >= MAX_BUTTONS || buttonPlayer[currentButton] == NULL || staticTextPlayer[currentButton] == NULL)
+					continue;
 				GadgetButtonSetData(buttonPlayer[currentButton], (void *)p);
-				GadgetButtonSetEnabledImage( buttonPlayer[currentButton], p->getPlayerTemplate()->getEnabledImage() );
+				const PlayerTemplate *pt = p->getPlayerTemplate();
+				if (pt)
+					GadgetButtonSetEnabledImage( buttonPlayer[currentButton], pt->getEnabledImage() );
 				//GadgetButtonSetHiliteImage( buttonPlayer[currentButton], p->getPlayerTemplate()->getHiliteImage() );
 				//GadgetButtonSetHiliteSelectedImage( buttonPlayer[currentButton], p->getPlayerTemplate()->getPushedImage() );
 				//GadgetButtonSetDisabledImage( buttonPlayer[currentButton], p->getPlayerTemplate()->getDisabledImage() );
@@ -232,7 +237,8 @@ void ControlBar::populateObserverList( void )
 				buttonPlayer[currentButton]->winHide(FALSE);
 				buttonPlayer[currentButton]->winSetStatus( WIN_STATUS_USE_OVERLAY_STATES );
 
-				const GameSlot *slot = TheGameInfo->getConstSlot(currentButton);
+				// P3-06: use slot index i (player's actual slot), not currentButton (display position)
+				const GameSlot *slot = TheGameInfo->getConstSlot(i);
 				Color playerColor = p->getPlayerColor();
 				Color backColor = GameMakeColor(0, 0, 0, 255);
 				staticTextPlayer[currentButton]->winSetEnabledTextColors( playerColor, backColor );
@@ -265,8 +271,13 @@ void ControlBar::populateObserverList( void )
 			if(p && !p->isPlayerObserver() && p->getPlayerType() == PLAYER_HUMAN)
 			{
 				DEBUG_ASSERTCRASH(currentButton < MAX_BUTTONS, ("ControlBar::populateObserverList trying to populate more buttons then we have"));
+				// P3-06: guard against NULL button window
+				if (currentButton >= MAX_BUTTONS || buttonPlayer[currentButton] == NULL || staticTextPlayer[currentButton] == NULL)
+					break;
 				GadgetButtonSetData(buttonPlayer[currentButton], (void *)p);
-				GadgetButtonSetEnabledImage( buttonPlayer[currentButton], p->getPlayerTemplate()->getEnabledImage() );
+				const PlayerTemplate *pt = p->getPlayerTemplate();
+				if (pt)
+					GadgetButtonSetEnabledImage( buttonPlayer[currentButton], pt->getEnabledImage() );
 				//GadgetButtonSetHiliteImage( buttonPlayer[currentButton], p->getPlayerTemplate()->getHiliteImage() );
 				//GadgetButtonSetHiliteSelectedImage( buttonPlayer[currentButton], p->getPlayerTemplate()->getPushedImage() );
 				//GadgetButtonSetDisabledImage( buttonPlayer[currentButton], p->getPlayerTemplate()->getDisabledImage() );

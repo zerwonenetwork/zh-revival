@@ -3260,6 +3260,42 @@ GameMessageDisposition CommandTranslator::translateGameMessage(const GameMessage
 
 		}  // end toggle special power delays
 
+		// P3-06: Replay speed controls — ] = speed up, [ = speed down
+		// Speed steps: 15 FPS (0.5x) → 30 (1x) → 60 (2x) → 120 (4x)
+		case GameMessage::MSG_META_REPLAY_SPEED_UP:
+		case GameMessage::MSG_META_REPLAY_SPEED_DOWN:
+		{
+			if (TheGameLogic->isInReplayGame() && TheGameEngine)
+			{
+				static const Int speedSteps[] = { 15, 30, 60, 120 };
+				static const int numSteps = (int)(sizeof(speedSteps)/sizeof(speedSteps[0]));
+				static const wchar_t *speedLabels[] = { L"0.5x", L"1x", L"2x", L"4x" };
+
+				Int cur = TheGameEngine->getFramesPerSecondLimit();
+				int idx = 0;
+				for (int s = 0; s < numSteps; ++s) {
+					if (speedSteps[s] >= cur) { idx = s; break; }
+					idx = s;
+				}
+
+				if (t == GameMessage::MSG_META_REPLAY_SPEED_UP)
+					idx = (idx < numSteps - 1) ? idx + 1 : idx;
+				else
+					idx = (idx > 0) ? idx - 1 : idx;
+
+				TheGameEngine->setFramesPerSecondLimit(speedSteps[idx]);
+				// disable TiVO fast-mode so our explicit FPS limit takes effect
+				if (TheWritableGlobalData)
+					TheWritableGlobalData->m_TiVOFastMode = FALSE;
+
+				UnicodeString msg;
+				msg.format(L"Replay speed: %ls", speedLabels[idx]);
+				TheInGameUI->message(msg);
+			}
+			disp = DESTROY_MESSAGE;
+			break;
+		}  // end replay speed controls
+
 #if defined(_ALLOW_DEBUG_CHEATS_IN_RELEASE)//may be defined in GameCommon.h
     case GameMessage::MSG_CHEAT_RUNSCRIPT1:
     case GameMessage::MSG_CHEAT_RUNSCRIPT2:      

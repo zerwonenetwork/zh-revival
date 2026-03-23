@@ -182,6 +182,8 @@ static const LookupListRec GameMessageMetaTypeNames[] =
 	{ "CAMERA_RESET",															GameMessage::MSG_META_CAMERA_RESET },
 	{ "TOGGLE_CAMERA_TRACKING_DRAWABLE",					GameMessage::MSG_META_TOGGLE_CAMERA_TRACKING_DRAWABLE },
 	{ "TOGGLE_FAST_FORWARD_REPLAY",              GameMessage::MSG_META_TOGGLE_FAST_FORWARD_REPLAY },
+	{ "REPLAY_SPEED_UP",                         GameMessage::MSG_META_REPLAY_SPEED_UP },    // P3-06: ] key
+	{ "REPLAY_SPEED_DOWN",                       GameMessage::MSG_META_REPLAY_SPEED_DOWN },  // P3-06: [ key
   	{ "DEMO_INSTANT_QUIT",												GameMessage::MSG_META_DEMO_INSTANT_QUIT },
 
 #if defined(_ALLOW_DEBUG_CHEATS_IN_RELEASE)//may be defined in GameCommon.h

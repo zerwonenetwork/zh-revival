@@ -403,6 +403,8 @@ AsciiString GameMessage::getCommandTypeAsAsciiString(GameMessage::Type t)
 
 #endif
     CHECK_IF(MSG_META_TOGGLE_FAST_FORWARD_REPLAY)
+    CHECK_IF(MSG_META_REPLAY_SPEED_UP)
+    CHECK_IF(MSG_META_REPLAY_SPEED_DOWN)
     
     
 #if defined(_DEBUG) || defined(_INTERNAL)
