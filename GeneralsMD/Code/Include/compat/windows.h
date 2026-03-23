@@ -242,6 +242,10 @@ typedef LRESULT (*WNDPROC)(HWND, UINT, WPARAM, LPARAM);
 // ---------------------------------------------------------------------------
 #define MAX_PATH        260
 #define MAX_COMPUTERNAME_LENGTH 15
+#define _MAX_DRIVE      3
+#define _MAX_DIR        256
+#define _MAX_FNAME      256
+#define _MAX_EXT        256
 #define INFINITE        0xFFFFFFFFu
 #define INVALID_HANDLE_VALUE ((HANDLE)(LONG_PTR)(-1))
 #define INVALID_FILE_SIZE    0xFFFFFFFFu
@@ -779,6 +783,11 @@ typedef struct _PROCESS_INFORMATION {
     DWORD  dwProcessId;
     DWORD  dwThreadId;
 } PROCESS_INFORMATION, *LPPROCESS_INFORMATION;
+typedef struct _WIN32_FIND_DATAA {
+    DWORD dwFileAttributes;
+    CHAR  cFileName[MAX_PATH];
+    CHAR  cAlternateFileName[14];
+} WIN32_FIND_DATAA, WIN32_FIND_DATA, *PWIN32_FIND_DATAA, *LPWIN32_FIND_DATAA, *PWIN32_FIND_DATA, *LPWIN32_FIND_DATA;
 static inline HANDLE  CreateFileA(LPCSTR path, DWORD access, DWORD share, void* sa,
                                   DWORD creation, DWORD flags, HANDLE template_file) {
     (void)path; (void)access; (void)share; (void)sa; (void)creation; (void)flags; (void)template_file;
@@ -790,8 +799,32 @@ static inline BOOL    WriteFile(HANDLE h, LPCVOID buffer, DWORD bytes, DWORD* wr
     if (written) *written = 0;
     return FALSE;
 }
+static inline DWORD   GetFileAttributesA(LPCSTR path)                 { (void)path; return 0xFFFFFFFFu; }
+#define GetFileAttributes GetFileAttributesA
 static inline BOOL    DeleteFileA(LPCSTR path)                        { (void)path; return FALSE; }
 #define DeleteFile DeleteFileA
+static inline BOOL    MoveFileA(LPCSTR existing_name, LPCSTR new_name){ (void)existing_name; (void)new_name; return FALSE; }
+#define MoveFile MoveFileA
+static inline HANDLE  FindFirstFileA(LPCSTR path, LPWIN32_FIND_DATAA info) {
+    (void)path;
+    if (info) memset(info, 0, sizeof(*info));
+    return INVALID_HANDLE_VALUE;
+}
+#define FindFirstFile FindFirstFileA
+static inline BOOL    FindNextFileA(HANDLE handle, LPWIN32_FIND_DATAA info) {
+    (void)handle;
+    if (info) memset(info, 0, sizeof(*info));
+    return FALSE;
+}
+#define FindNextFile FindNextFileA
+static inline BOOL    FindClose(HANDLE handle)                        { (void)handle; return TRUE; }
+static inline void    _splitpath(const char* path, char* drive, char* dir, char* fname, char* ext) {
+    (void)path;
+    if (drive) drive[0] = '\0';
+    if (dir) dir[0] = '\0';
+    if (fname) fname[0] = '\0';
+    if (ext) ext[0] = '\0';
+}
 static inline BOOL    CreateProcessA(LPCSTR app, LPSTR cmd, void* proc_attr, void* thread_attr,
                                      BOOL inherit_handles, DWORD creation_flags, void* env,
                                      LPCSTR current_dir, LPSTARTUPINFOA startup, LPPROCESS_INFORMATION process) {
