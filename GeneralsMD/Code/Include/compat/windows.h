@@ -255,6 +255,9 @@ typedef LRESULT (*WNDPROC)(HWND, UINT, WPARAM, LPARAM);
 //  Common constants
 // ---------------------------------------------------------------------------
 #define MAX_PATH        260
+#ifndef _MAX_PATH
+#define _MAX_PATH       MAX_PATH  // MSVC-style alias for MAX_PATH
+#endif
 #define MAX_COMPUTERNAME_LENGTH 15
 #define _MAX_DRIVE      3
 #define _MAX_DIR        256
@@ -495,6 +498,16 @@ typedef struct tagBITMAPINFO {
     BITMAPINFOHEADER bmiHeader;
     RGBQUAD          bmiColors[1];
 } BITMAPINFO, *LPBITMAPINFO, *PBITMAPINFO;
+
+#pragma pack(push, 2)
+typedef struct tagBITMAPFILEHEADER {
+    WORD  bfType;       // 'BM' magic = 0x4D42
+    DWORD bfSize;       // file size in bytes
+    WORD  bfReserved1;
+    WORD  bfReserved2;
+    DWORD bfOffBits;    // offset from file start to pixel data
+} BITMAPFILEHEADER, *PBITMAPFILEHEADER, *LPBITMAPFILEHEADER;
+#pragma pack(pop)
 
 typedef struct _MEMORYSTATUS {
     DWORD  dwLength;
