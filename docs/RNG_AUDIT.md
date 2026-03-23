@@ -6,7 +6,7 @@
 
 **Task:** P2-01
 **Date:** 2026-03-22
-**Status:** Complete — human review required before any fixes proceed
+**Status:** Revised 2026-03-22 — citations corrected, GetTickCount() finding downgraded per human review
 
 ---
 
@@ -32,7 +32,7 @@ All ~80 simulation RNG calls correctly use the shared `GameLogicRandomValue` mac
 | `GeneralsMD/Code/GameEngine/Source/Common/RandomValue.cpp` | `GetGameLogicRandomValue()` | SIMULATION | YES — `theGameLogicSeed[6]` | Core deterministic RNG for all game logic |
 | `GeneralsMD/Code/GameEngine/Source/Common/RandomValue.cpp` | `GetGameClientRandomValue()` | AUDIO-VISUAL | YES — `theGameClientSeed[6]` | Rendering/visual effects, isolated from logic |
 | `GeneralsMD/Code/GameEngine/Source/Common/RandomValue.cpp` | `GetGameAudioRandomValue()` | AUDIO-VISUAL | YES — `theGameAudioSeed[6]` | Audio playback, isolated from logic |
-| `GeneralsMD/Code/GameEngine/Source/Common/RandomValue.cpp` | `InitRandom(void)` | SIMULATION | Seeds from `time(NULL)` | Default non-deterministic init (editor/UI only) |
+| `GeneralsMD/Code/GameEngine/Source/Common/RandomValue.cpp` | `InitRandom(void)` | SIMULATION | Seeds from `time(NULL)` | Default non-deterministic init. Called during engine startup (GameEngine.cpp) in addition to editor/UI — harmless only if later overwritten by `InitGameLogicRandom()` before simulation starts. |
 | `GeneralsMD/Code/GameEngine/Source/Common/RandomValue.cpp` | `InitGameLogicRandom(UnsignedInt seed)` | SIMULATION | YES — host-provided seed | **This is the correct multiplayer path** |
 | `GeneralsMD/Code/GameEngine/Source/GameNetwork/GameInfo.cpp:311` | `setSeed(GetTickCount())` | NETWORK | NO — `GetTickCount()` | **CRITICAL: non-deterministic seed source** |
 | `GeneralsMD/Code/GameEngine/Source/GameNetwork/GameSpy.cpp:1040` | `setSeed(GetTickCount())` | NETWORK | NO — `GetTickCount()` | **CRITICAL: non-deterministic seed source** |
@@ -71,29 +71,44 @@ All ~80 simulation RNG calls correctly use the shared `GameLogicRandomValue` mac
 
 ---
 
-## Critical Finding — CRITICAL
+## Finding — NEEDS VERIFICATION (downgraded from CRITICAL)
 
 ### Seed Source: GetTickCount() in Multiplayer
 
-**Files affected:**
-- `GameInfo.cpp:311` — `m_seed = GetTickCount();`
-- `GameSpy.cpp:1040` — `TheGameSpyGame->setSeed(GetTickCount());`
-- `LANAPI.cpp:891`
-- `SkirmishGameOptionsMenu.cpp:1223` — `TheSkirmishGameInfo->setSeed(GetTickCount());`
-- `PeerDefs.cpp:542`
+> **⚠ Revision 2026-03-22:** Human review found that this finding overstated what the code proves.
+> The seed **is** serialized into `GameInfo` and propagated to joining clients via the lobby handshake
+> before `InitGameLogicRandom()` is called (confirmed in `LANAPICallbacks.cpp` and
+> `StagingRoomGameInfo.cpp`). An immediate "both clients desync" path was **not demonstrated**.
+> The finding is retained as a design smell requiring end-to-end verification.
 
-**Problem:** `GetTickCount()` returns milliseconds since system boot — different for every machine at every moment. If two clients independently call this and the host doesn't send the seed to joining players before they call `InitGameLogicRandom()`, they will have different seeds and desync immediately.
+**Files affected (corrected citations):**
+- `GameInfo.cpp:311` — `m_seed = GetTickCount();` (host-side seed generation at lobby creation)
+- `LANAPI.cpp` (line approximate) — `setSeed(GetTickCount())` in LAN lobby creation
+- `SkirmishGameOptionsMenu.cpp:1352` (not 1223) — `TheSkirmishGameInfo->setSeed(GetTickCount())`
+- `StagingRoomGameInfo.cpp:866` — calls `InitGameLogicRandom(getSeed())` (host seed propagated correctly here)
+- Note: `GameSpy.cpp` is not present in this repo as a standalone file; the original citation was incorrect.
+- Note: `PeerDefs.cpp:542` — needs re-verification; could not be confirmed in current repo.
 
-**Why it's a desync vector:** The `setSeed()` / `getSeed()` propagation system exists and works correctly (evidenced by WOL quick-match using a server-provided seed). The issue is the **source** of the seed when generated locally.
+**What the code actually shows:** The host calls `GetTickCount()` to generate a seed, stores it in
+`GameInfo.m_seed`, which is then sent to all joining players via the lobby handshake. Clients
+receive the seed and call `InitGameLogicRandom(getSeed())` using the host's value.
 
-**Commented-out evidence:** Code comments show the original intent was to use `GameClientRandomValue()` as the seed source, then this was changed to `GetTickCount()`:
+**Remaining concern:** If `GetTickCount()` is called on a client *before* the host's seed is received
+and applied, that client would initialize with a different seed. Whether this timing race actually
+occurs requires tracing the call order in `LANAPICallbacks.cpp` and the skirmish lobby path.
+This has **not** been verified in this audit pass.
+
+**Commented-out evidence:**
 ```cpp
 // GameInfo.cpp:311
 m_seed = GetTickCount(); //GameClientRandomValue(0, INT_MAX - 1);
 ```
-The reason for this change is unknown — it may have been a deliberate fix for some other issue.
+The reason for this change is unknown.
 
-**Fix required (P2 scope):** Ensure the host's seed is the authoritative source, sent to all clients before `InitGameLogicRandom()` is called. The networking infrastructure for this already exists; only the seed source needs to be made authoritative.
+**What needs to happen before a fix is written:**
+1. Trace the full call sequence from lobby creation → game start for LAN and Skirmish modes
+2. Confirm whether `InitGameLogicRandom()` is called from the host-propagated seed or locally
+3. If a race exists: fix the call ordering, not necessarily the seed source
 
 ---
 
@@ -126,10 +141,11 @@ The `randomValue()` function uses a 48-bit LCG with add-with-carry, implemented 
 
 | Priority | Finding | Fix | Phase |
 |----------|---------|-----|-------|
-| HIGH | GetTickCount() seed in LAN/skirmish games | Ensure host generates seed once, sends to all clients before game start | P2-08 or dedicated fix |
+| MEDIUM (needs verification) | GetTickCount() seed in LAN/skirmish: possible timing race | Trace lobby→game-start call order; fix ordering if race confirmed | Dedicated research before P2-08 |
 | MEDIUM | Platform consistency of LCG | Add unit test: same seed → same 10,000-value sequence on Win32 and Win64 | P2-09 (CI replay test) |
+| LOW | InitRandom(void) also called at engine startup | Verify InitGameLogicRandom() always overwrites it before simulation | Research only |
 | LOW | Commented-out code suggesting prior seed change | Investigate why GetTickCount was chosen over GameClientRandomValue | Research only |
 
 ---
 
-*Do not fix anything in this document. Human must approve findings before any code changes proceed (per P2-01 spec).*
+*Revised 2026-03-22 per human code review: GetTickCount() finding downgraded from CRITICAL to NEEDS VERIFICATION. Citations corrected. InitRandom() scope clarified.*
