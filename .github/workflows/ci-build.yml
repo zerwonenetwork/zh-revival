@@ -1,11 +1,12 @@
 # ci-build.yml — zh-revival continuous integration
 #
 # Triggers on every pull request targeting main and on every push to main.
-# Runs two jobs in parallel:
-#   build-windows  — MSVC x86 Release via Visual Studio 2022
-#   build-linux    — GCC x86 Release via Docker (Ubuntu 22.04 + mingw-w64)
+# Runs three jobs in parallel:
+#   build-windows      — MSVC x86 Release via Visual Studio 2022
+#   build-linux-cross  — GCC cross-compile (mingw-w64 → Windows x86), validates GCC compat
+#   build-linux-native — GCC native Linux x86_64 (P5-05), with headless smoke test via Wine
 #
-# Both jobs use vcpkg (manifest mode) and the P1-03 stubs so no
+# All jobs use vcpkg (manifest mode) and the P1-03 stubs so no
 # proprietary SDKs are required.
 #
 # Secrets used: none (build-only — signing is in ci-release.yml).
@@ -112,14 +113,10 @@ jobs:
           retention-days: 7
 
   # ─────────────────────────────────────────────────────────────────────────
-  # Linux — GCC cross-compile (mingw-w64 i686 → Windows x86)
-  #
-  # We cross-compile for Windows on Linux (rather than native Linux) because
-  # the game is Windows-only until P5-05 (Linux native build).  This job
-  # validates that the code compiles cleanly with a second compiler toolchain
-  # (GCC) and catches MSVC-specific extensions slipping into the shared code.
+  # Linux cross-compile — GCC mingw-w64 i686 → Windows x86
+  # Validates GCC compatibility; catches MSVC-specific extensions early.
   # ─────────────────────────────────────────────────────────────────────────
-  build-linux:
+  build-linux-cross:
     name: Linux (GCC cross → Windows x86 Release)
     runs-on: ubuntu-22.04
 
@@ -189,4 +186,96 @@ jobs:
           path: |
             GeneralsMD/Run/zh-revival.exe
           if-no-files-found: error
+          retention-days: 7
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # P5-05: Linux native build — GCC x86_64, Ubuntu 22.04
+  #
+  # Uses SDL3 (ZH_SDL3_WINDOW=ON) so window and input management is
+  # cross-platform.  The binary is exercised with --headless-replay to
+  # confirm it starts and exits cleanly.
+  # ─────────────────────────────────────────────────────────────────────────
+  build-linux-native:
+    name: Linux native (GCC x86_64 Release + headless test)
+    runs-on: ubuntu-22.04
+
+    env:
+      VCPKG_ROOT: ${{ github.workspace }}/vcpkg
+      VCPKG_DEFAULT_BINARY_CACHE: ${{ github.workspace }}/.vcpkg-cache
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            gcc g++ cmake ninja-build \
+            libsdl3-dev \
+            libgl-dev \
+            curl zip unzip tar pkg-config
+
+      # ── vcpkg ─────────────────────────────────────────────────────────────
+      - name: Cache vcpkg binary cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.VCPKG_DEFAULT_BINARY_CACHE }}
+          key: vcpkg-linux-native-x64-${{ hashFiles('vcpkg.json') }}
+          restore-keys: vcpkg-linux-native-x64-
+
+      - name: Bootstrap vcpkg
+        run: |
+          git clone --depth=1 https://github.com/microsoft/vcpkg.git $VCPKG_ROOT
+          $VCPKG_ROOT/bootstrap-vcpkg.sh -disableMetrics
+          mkdir -p $VCPKG_DEFAULT_BINARY_CACHE
+
+      - name: Install vcpkg dependencies (x64-linux triplet)
+        run: |
+          $VCPKG_ROOT/vcpkg install --triplet x64-linux \
+            --vcpkg-root $VCPKG_ROOT
+
+      # ── CMake configure ───────────────────────────────────────────────────
+      - name: Configure (CMake native Linux)
+        run: |
+          cmake -B build -S . \
+            -G Ninja \
+            --toolchain "$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" \
+            -DVCPKG_TARGET_TRIPLET=x64-linux \
+            -DZH_USE_STUBS=ON \
+            -DZH_SDL3_WINDOW=ON \
+            -DCMAKE_BUILD_TYPE=Release
+
+      # ── Build ─────────────────────────────────────────────────────────────
+      - name: Build (Release)
+        run: cmake --build build --config Release --parallel
+
+      # ── P5-05 headless smoke test ─────────────────────────────────────────
+      # If tests/replays/smoke.rep exists, run it headlessly to confirm the
+      # binary starts and terminates cleanly.  Skipped if no replay is present.
+      - name: Headless smoke test (P5-05)
+        run: |
+          EXE="GeneralsMD/Run/zh-revival"
+          REP="tests/replays/smoke.rep"
+          if [ -f "$REP" ]; then
+            "$EXE" --headless-replay "$REP"
+            STATUS=$?
+            if [ $STATUS -ne 0 ]; then
+              echo "ERROR: headless replay exited $STATUS" >&2
+              exit 1
+            fi
+          else
+            echo "No smoke.rep — skipping headless test (add tests/replays/smoke.rep to enable)"
+          fi
+
+      # ── Upload artifact ───────────────────────────────────────────────────
+      - name: Upload Linux native build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: zh-revival-linux-native-x64-${{ github.sha }}
+          path: |
+            GeneralsMD/Run/zh-revival
+          if-no-files-found: warn
           retention-days: 7
