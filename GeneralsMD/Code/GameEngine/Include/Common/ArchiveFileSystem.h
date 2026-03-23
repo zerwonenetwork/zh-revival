@@ -174,8 +174,14 @@ class ArchiveFileSystem : public SubsystemInterface
 	AsciiString						getArchiveFilenameForFile(const AsciiString& filename) const;
 	void loadMods( void );
 
-protected:
+	// P4-05: exposed for ModManager so it can load individual archives and track
+	// conflicts before inserting them into the directory tree.
 	virtual void					loadIntoDirectoryTree(const ArchiveFile *archiveFile, const AsciiString& archiveFilename, Bool overwrite = FALSE );	///< load the archive file's header information and apply it to the global archive directory tree.
+	/// Register a previously opened ArchiveFile in the lookup map so that
+	/// openFile() can resolve files to the correct archive.
+	void							registerArchiveFile(const AsciiString& filename, ArchiveFile *archiveFile) { m_archiveFileMap[filename] = archiveFile; }
+
+protected:
 
 	ArchiveFileMap m_archiveFileMap;
 	ArchivedDirectoryInfo m_rootDirectory;

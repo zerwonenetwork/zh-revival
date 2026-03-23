@@ -3854,7 +3854,6 @@ void InGameUI::postDraw( void )
 			hud.format("Tick:%u  %02u:%02u  Speed:%dx", frame, minutes, seconds, speedNum);
 
 		Int scrW = TheDisplay->getWidth();
-		Int scrH = TheDisplay->getHeight();
 		// Draw a small semi-transparent background bar then white text in the top-right corner
 		Int barH = 18;
 		Int barW = 220;
@@ -3864,8 +3863,9 @@ void InGameUI::postDraw( void )
 
 		// Use the same font as superweapon timers (smallest available)
 		GameFont *font = TheFontLibrary ? TheFontLibrary->getFont(
-			AsciiString(TheGlobalData->m_superweaponNormalFont),
-			TheGlobalData->m_superweaponNormalFontSize, FALSE) : NULL;
+			m_superweaponNormalFont,
+			TheGlobalLanguageData ? TheGlobalLanguageData->adjustFontSize(m_superweaponNormalPointSize) : m_superweaponNormalPointSize,
+			m_superweaponNormalBold) : NULL;
 		if (font)
 		{
 			DisplayString *ds = TheDisplayStringManager->newDisplayString();

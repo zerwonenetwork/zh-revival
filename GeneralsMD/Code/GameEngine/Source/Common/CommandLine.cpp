@@ -27,6 +27,7 @@
 
 #include "Common/ArchiveFileSystem.h"
 #include "Common/CommandLine.h"
+#include "Common/ModManager.h"
 #include "Common/CRCDebug.h"
 #include "Common/LocalFileSystem.h"
 #include "Common/version.h"
@@ -1131,6 +1132,14 @@ Int parseMod(char *args[], Int num)
 	return 1;
 }
 
+// P4-05: --no-mods flag for vanilla play (bypasses ModManager entirely).
+Int parseNoMods(char *args[], Int /*num*/)
+{
+	ModManager::setNoMods(TRUE);
+	DEBUG_LOG(("parseNoMods - mod loading disabled\n"));
+	return 1;
+}
+
 static CommandLineParam params[] =
 {
 	{ "-noshellmap", parseNoShellMap },
@@ -1143,6 +1152,7 @@ static CommandLineParam params[] =
 	{ "-scriptDebug", parseScriptDebug },
 	{ "-playStats", parsePlayStats },
 	{ "-mod", parseMod },
+	{ "-noMods", parseNoMods },     // P4-05: skip all mod loading
 	{ "-noshaders", parseNoShaders },
 	{ "-quickstart", parseQuickStart },
 
@@ -1291,7 +1301,17 @@ void parseCommandLine(int argc, char *argv[])
 		}
 	}
 
-	TheArchiveFileSystem->loadMods();
+	// P4-05: delegate mod loading to ModManager (priority order + conflict log).
+	// The legacy TheArchiveFileSystem->loadMods() path (-mod <single-dir/file>)
+	// is superseded by ModManager for the /Mods/ folder; call it only when the
+	// user explicitly passed -mod to maintain backwards compatibility.
+	if (TheWritableGlobalData &&
+	    (TheWritableGlobalData->m_modBIG.isNotEmpty() ||
+	     TheWritableGlobalData->m_modDir.isNotEmpty()))
+	{
+		TheArchiveFileSystem->loadMods();
+	}
+	ModManager::loadMods();
 }
 
 
