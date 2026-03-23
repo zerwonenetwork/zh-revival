@@ -55,22 +55,27 @@ NetCommandRef * NetPacket::ConstructNetCommandMsgFromRawData(UnsignedByte *data,
 	while ((offset < (Int)dataLength) && notDone) {
 		if (data[offset] == 'T') {
 			++offset;
+			if (offset + (Int)sizeof(UnsignedByte) > (Int)dataLength) break; // VULN-005
 			memcpy(&commandType, data + offset, sizeof(UnsignedByte));
 			offset += sizeof(UnsignedByte);
 		} else if (data[offset] == 'R') {
 			++offset;
+			if (offset + (Int)sizeof(UnsignedByte) > (Int)dataLength) break; // VULN-005
 			memcpy(&relay, data + offset, sizeof(UnsignedByte));
 			offset += sizeof(UnsignedByte);
 		} else if (data[offset] == 'P') {
 			++offset;
+			if (offset + (Int)sizeof(UnsignedByte) > (Int)dataLength) break; // VULN-005
 			memcpy(&playerID, data + offset, sizeof(UnsignedByte));
 			offset += sizeof(UnsignedByte);
 		} else if (data[offset] == 'C') {
 			++offset;
+			if (offset + (Int)sizeof(UnsignedShort) > (Int)dataLength) break; // VULN-005
 			memcpy(&commandID, data + offset, sizeof(UnsignedShort));
 			offset += sizeof(UnsignedShort);
 		} else if (data[offset] == 'F') {
 			++offset;
+			if (offset + (Int)sizeof(UnsignedInt) > (Int)dataLength) break; // VULN-005
 			memcpy(&frame, data + offset, sizeof(UnsignedInt));
 			offset += sizeof(UnsignedInt);
 		} else if (data[offset] == 'D') {
@@ -5230,6 +5235,11 @@ NetCommandMsg * NetPacket::readGameMessage(UnsignedByte *data, Int &i)
 
 		parser->addArgType((GameMessageArgumentDataType)type, argCount);
 		totalArgCount += argCount;
+		if (totalArgCount > 10000) { // VULN-006: cap totalArgCount to prevent runaway loop
+			DEBUG_LOG(("NetPacket::readGameMessage - totalArgCount exceeded 10000, dropping remainder\n"));
+			totalArgCount = 10000;
+			break;
+		}
 	}
 
 	GameMessageParserArgumentType *parserArgType = parser->getFirstArgumentType();
@@ -5564,6 +5574,7 @@ NetCommandMsg * NetPacket::readDisconnectChatMessage(UnsignedByte *data, Int &i)
 	UnsignedByte length;
 	memcpy(&length, data + i, sizeof(UnsignedByte));
 	++i;
+	if (length >= 256) { length = 255; } // VULN-004: reject length that would overflow or write OOB null
 	memcpy(text, data + i, length * sizeof(UnsignedShort));
 	i += length * sizeof(UnsignedShort);
 	text[length] = 0;
@@ -5588,6 +5599,7 @@ NetCommandMsg * NetPacket::readChatMessage(UnsignedByte *data, Int &i) {
 	Int playerMask;
 	memcpy(&length, data + i, sizeof(UnsignedByte));
 	++i;
+	if (length >= 256) { length = 255; } // VULN-004: reject length that would overflow or write OOB null
 	memcpy(text, data + i, length * sizeof(UnsignedShort));
 	i += length * sizeof(UnsignedShort);
 	text[length] = 0;
@@ -5703,6 +5715,11 @@ NetCommandMsg * NetPacket::readFileMessage(UnsignedByte *data, Int &i) {
 	char *c = filename;
 
 	while (data[i] != 0) {
+		if ((c - filename) >= (_MAX_PATH - 1)) { // VULN-001: stop before overflowing filename buffer
+			// skip remaining bytes until null terminator
+			while (data[i] != 0) ++i;
+			break;
+		}
 		*c = data[i];
 		++c;
 		++i;
@@ -5715,7 +5732,14 @@ NetCommandMsg * NetPacket::readFileMessage(UnsignedByte *data, Int &i) {
 	memcpy(&dataLength, data + i, sizeof(dataLength));
 	i += sizeof(dataLength);
 
+	const UnsignedInt MAX_FILE_DATA = 50 * 1024 * 1024; // VULN-003: reject absurdly large file data
+	if (dataLength > MAX_FILE_DATA) {
+		DEBUG_LOG(("NetPacket::readFileMessage - dataLength %u exceeds 50MB limit, dropping packet\n", dataLength));
+		return msg;
+	}
+
 	UnsignedByte *buf = NEW UnsignedByte[dataLength];
+	if (!buf) return msg; // VULN-012 style: allocation failure guard
 	memcpy(buf, data + i, dataLength);
 	i += dataLength;
 
@@ -5730,6 +5754,10 @@ NetCommandMsg * NetPacket::readFileAnnounceMessage(UnsignedByte *data, Int &i) {
 	char *c = filename;
 
 	while (data[i] != 0) {
+		if ((c - filename) >= (_MAX_PATH - 1)) { // VULN-002: stop before overflowing filename buffer
+			while (data[i] != 0) ++i;
+			break;
+		}
 		*c = data[i];
 		++c;
 		++i;

@@ -189,6 +189,10 @@ Bool GetLocalChatConnectionAddress(AsciiString serverName, UnsignedShort serverP
 		return(false);
 	}
 
+	if (!host_info->h_addr_list || !host_info->h_addr_list[0]) { // VULN-009: guard malformed hostent
+		DEBUG_LOG(("gethostbyname returned empty h_addr_list\n"));
+		return(false);
+	}
 	memcpy(serverAddress, &host_info->h_addr_list[0][0], 4);
 	unsigned long temp = *((unsigned long*)(&serverAddress[0]));
 	temp = ntohl(temp);

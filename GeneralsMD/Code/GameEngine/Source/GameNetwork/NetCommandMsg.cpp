@@ -845,14 +845,22 @@ UnsignedByte * NetWrapperCommandMsg::getData() {
 	return m_data;
 }
 
-void NetWrapperCommandMsg::setData(UnsignedByte *data, UnsignedInt dataLength) 
+void NetWrapperCommandMsg::setData(UnsignedByte *data, UnsignedInt dataLength)
 {
 	if (m_data != NULL) {
 		delete m_data;
 		m_data = NULL;
 	}
 
+	const UnsignedInt MAX_WRAPPER_DATA = 50 * 1024 * 1024; // VULN-007: reject oversized wrapper data
+	if (dataLength > MAX_WRAPPER_DATA) {
+		DEBUG_LOG(("NetWrapperCommandMsg::setData - dataLength %u exceeds limit, ignoring\n", dataLength));
+		m_dataLength = 0;
+		return;
+	}
+
 	m_data = NEW UnsignedByte[dataLength];	// pool[]ify
+	if (!m_data) { m_dataLength = 0; return; } // VULN-012: allocation failure guard
 	memcpy(m_data, data, dataLength);
 	m_dataLength = dataLength;
 }
@@ -936,10 +944,17 @@ UnsignedByte * NetFileCommandMsg::getFileData() {
 	return m_data;
 }
 
-void NetFileCommandMsg::setFileData(UnsignedByte *data, UnsignedInt dataLength) 
+void NetFileCommandMsg::setFileData(UnsignedByte *data, UnsignedInt dataLength)
 {
+	const UnsignedInt MAX_FILE_DATA = 50 * 1024 * 1024; // VULN-007/VULN-003: reject oversized file data
+	if (dataLength > MAX_FILE_DATA) {
+		DEBUG_LOG(("NetFileCommandMsg::setFileData - dataLength %u exceeds limit, ignoring\n", dataLength));
+		m_dataLength = 0;
+		return;
+	}
 	m_dataLength = dataLength;
 	m_data = NEW UnsignedByte[dataLength];	// pool[]ify
+	if (!m_data) { m_dataLength = 0; return; } // VULN-012: allocation failure guard
 	memcpy(m_data, data, dataLength);
 }
 

@@ -29,6 +29,8 @@
 
 #include "PreRTS.h"	// This must go first in EVERY cpp file int the GameEngine
 #include <float.h>		// _fpreset, _controlfp, _MCW_RC, _MCW_PC, _PC_24
+#include <time.h>		// time, localtime — desync log timestamps (P2-02)
+#include <stdio.h>		// fopen, fprintf — desync log file I/O (P2-02)
 
 #include "Common/AudioAffect.h"
 #include "Common/AudioHandleSpecialValues.h"
@@ -2603,6 +2605,41 @@ void GameLogic::processCommandList( CommandList *list )
 					player?player->getPlayerDisplayName().str():L"<NONE>", crcIt->second));
 			}
 #endif DEBUG_LOGGING
+
+			// P2-02: write desync log to Logs/desync_YYYYMMDD_HHMMSS.log
+			{
+				time_t rawtime;
+				time(&rawtime);
+				struct tm *t = localtime(&rawtime);
+				char logpath[512];
+				snprintf(logpath, sizeof(logpath), "Logs/desync_%04d%02d%02d_%02d%02d%02d.log",
+					t->tm_year + 1900, t->tm_mon + 1, t->tm_mday,
+					t->tm_hour, t->tm_min, t->tm_sec);
+				FILE *fp = fopen(logpath, "a");
+				if (fp)
+				{
+					fprintf(fp, "DESYNC tick=%u localCRC=%08X numPlayers=%d\n", m_frame,
+						getCRC(), numPlayers);
+					for (std::map<Int, UnsignedInt>::const_iterator crcIt = m_cachedCRCs.begin();
+						crcIt != m_cachedCRCs.end(); ++crcIt)
+					{
+						Player *player = ThePlayerList->getNthPlayer(crcIt->first);
+						if (player)
+						{
+							char name[128] = "<NONE>";
+							const WideChar *wn = player->getPlayerDisplayName().str();
+							if (wn) wcstombs(name, wn, sizeof(name) - 1);
+							fprintf(fp, "  player=%d name=%s crc=%08X\n", crcIt->first, name, crcIt->second);
+						}
+						else
+						{
+							fprintf(fp, "  player=%d name=<NONE> crc=%08X\n", crcIt->first, crcIt->second);
+						}
+					}
+					fclose(fp);
+				}
+			}
+
 			TheNetwork->setSawCRCMismatch();
 		}
 	}

@@ -108,7 +108,13 @@ void NetCommandWrapperListNode::copyChunkData(NetWrapperCommandMsg *msg) {
 
 	m_chunksPresent[msg->getChunkNumber()] = TRUE;
 	UnsignedInt offset = msg->getDataOffset();
-	memcpy(m_data + offset, msg->getData(), msg->getDataLength());
+	UnsignedInt chunkLen = msg->getDataLength();
+	if (offset > m_dataLength || chunkLen > m_dataLength - offset) { // VULN-010: bounds check
+		DEBUG_LOG(("NetCommandWrapperListNode::copyChunkData - chunk [offset=%u len=%u] out of bounds [total=%u], dropping\n",
+			offset, chunkLen, m_dataLength));
+		return;
+	}
+	memcpy(m_data + offset, msg->getData(), chunkLen);
 	++m_numChunksPresent;
 }
 

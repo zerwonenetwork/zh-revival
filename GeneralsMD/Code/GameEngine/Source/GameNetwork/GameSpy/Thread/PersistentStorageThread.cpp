@@ -887,7 +887,7 @@ void PSThreadClass::Thread_Function()
 					if (tryConnect() && tryLogin(req.player.id, req.nick, req.password, req.email))
 					{
 						char kvbuf[256];
-						sprintf(kvbuf, "\\locale\\%d", req.player.locale);
+						snprintf(kvbuf, sizeof(kvbuf), "\\locale\\%d", req.player.locale); // VULN-011
 						incrOpCount();
 						SetPersistDataValues(0, req.player.id, pd_public_rw, 0, kvbuf, setPersistentDataLocaleCallback, this);
 					}
@@ -1298,7 +1298,7 @@ PSPlayerStats GameSpyPSMessageQueueInterface::parsePlayerKVPairs( std::string kv
 { \
 	if (it->second > 0) \
 	{ \
-		sprintf(kvbuf, "\\" #x "%d\\%d", it->first, it->second); \
+		snprintf(kvbuf, sizeof(kvbuf), "\\" #x "%d\\%d", it->first, it->second); /* VULN-011 */ \
 		s.append(kvbuf); \
 	} \
 }
@@ -1335,7 +1335,7 @@ std::string GameSpyPSMessageQueueInterface::formatPlayerKVPairs( PSPlayerStats s
 //		if( !isReported )
 //			continue;  //don't report unplayable templates (observer, boss, etc.)
 
-		sprintf(kvbuf, "\\discons%d\\%d", ptIdx, stats.discons[ptIdx]);
+		snprintf(kvbuf, sizeof(kvbuf), "\\discons%d\\%d", ptIdx, stats.discons[ptIdx]); // VULN-011
 		s.append(kvbuf);
 	}
 
@@ -1353,124 +1353,124 @@ std::string GameSpyPSMessageQueueInterface::formatPlayerKVPairs( PSPlayerStats s
 	
 	if (stats.locale > 0)
 	{
-		sprintf(kvbuf, "\\locale\\%d", stats.locale);
+		snprintf(kvbuf, sizeof(kvbuf), "\\locale\\%d", stats.locale); // VULN-011
 		s.append(kvbuf);
 	}
 
 	if (stats.gamesAsRandom > 0)
 	{
-		sprintf(kvbuf, "\\random\\%d", stats.gamesAsRandom);
+		snprintf(kvbuf, sizeof(kvbuf), "\\random\\%d", stats.gamesAsRandom); // VULN-011
 		s.append(kvbuf);
 	}
 
 	if (stats.options.length())
 	{
-		_snprintf(kvbuf, 256, "\\options\\%s", stats.options.c_str());
-		kvbuf[255] = 0;
+		snprintf(kvbuf, sizeof(kvbuf), "\\options\\%s", stats.options.c_str()); // VULN-011
+		kvbuf[sizeof(kvbuf)-1] = 0;
 		s.append(kvbuf);
 	}
 
 	if (stats.systemSpec.length())
 	{
-		_snprintf(kvbuf, 256, "\\systemSpec\\%s", stats.systemSpec.c_str());
-		kvbuf[255] = 0;
+		snprintf(kvbuf, sizeof(kvbuf), "\\systemSpec\\%s", stats.systemSpec.c_str()); // VULN-011
+		kvbuf[sizeof(kvbuf)-1] = 0;
 		s.append(kvbuf);
 	}
 
 	if (stats.lastFPS > 0.0f)
 	{
-		sprintf(kvbuf, "\\fps\\%g", stats.lastFPS);
+		snprintf(kvbuf, sizeof(kvbuf), "\\fps\\%g", stats.lastFPS); // VULN-011
 		s.append(kvbuf);
 	}
 	if (stats.lastGeneral >= 0)
 	{
-		sprintf(kvbuf, "\\lastGeneral\\%d", stats.lastGeneral);
+		snprintf(kvbuf, sizeof(kvbuf), "\\lastGeneral\\%d", stats.lastGeneral); // VULN-011
 		s.append(kvbuf);
 	}
 	if (stats.gamesInRowWithLastGeneral >= 0)
 	{
-		sprintf(kvbuf, "\\genInRow\\%d", stats.gamesInRowWithLastGeneral);
+		snprintf(kvbuf, sizeof(kvbuf), "\\genInRow\\%d", stats.gamesInRowWithLastGeneral); // VULN-011
 		s.append(kvbuf);
 	}
 	if (stats.builtParticleCannon >= 0)
 	{
-		sprintf(kvbuf, "\\builtCannon\\%d", stats.builtParticleCannon);
+		snprintf(kvbuf, sizeof(kvbuf), "\\builtCannon\\%d", stats.builtParticleCannon); // VULN-011
 		s.append(kvbuf);
 	}
 	if (stats.builtNuke >= 0)
 	{
-		sprintf(kvbuf, "\\builtNuke\\%d", stats.builtNuke);
+		snprintf(kvbuf, sizeof(kvbuf), "\\builtNuke\\%d", stats.builtNuke); // VULN-011
 		s.append(kvbuf);
 	}
 	if (stats.builtSCUD >= 0)
 	{
-		sprintf(kvbuf, "\\builtSCUD\\%d", stats.builtSCUD);
+		snprintf(kvbuf, sizeof(kvbuf), "\\builtSCUD\\%d", stats.builtSCUD); // VULN-011
 		s.append(kvbuf);
 	}
 	if (stats.challengeMedals > 0)
 	{
-		sprintf(kvbuf, "\\challenge\\%d", stats.challengeMedals);
+		snprintf(kvbuf, sizeof(kvbuf), "\\challenge\\%d", stats.challengeMedals); // VULN-011
 		s.append(kvbuf);
 	}
 	if (stats.battleHonors > 0)
 	{
-		sprintf(kvbuf, "\\battle\\%d", stats.battleHonors);
+		snprintf(kvbuf, sizeof(kvbuf), "\\battle\\%d", stats.battleHonors); // VULN-011
 		s.append(kvbuf);
 	}
 
 	//if (stats.winsInARow > 0)
 	{
-		sprintf(kvbuf, "\\WinRow\\%d", stats.winsInARow);
+		snprintf(kvbuf, sizeof(kvbuf), "\\WinRow\\%d", stats.winsInARow); // VULN-011
 		s.append(kvbuf);
 	}
 	if (stats.maxWinsInARow > 0)
 	{
-		sprintf(kvbuf, "\\WinRowMax\\%d", stats.maxWinsInARow);
+		snprintf(kvbuf, sizeof(kvbuf), "\\WinRowMax\\%d", stats.maxWinsInARow); // VULN-011
 		s.append(kvbuf);
 	}
 
 	//if (stats.lossesInARow > 0)
 	{
-		sprintf(kvbuf, "\\LossRow\\%d", stats.lossesInARow);
+		snprintf(kvbuf, sizeof(kvbuf), "\\LossRow\\%d", stats.lossesInARow); // VULN-011
 		s.append(kvbuf);
 	}
 	if (stats.maxLossesInARow > 0)
 	{
-		sprintf(kvbuf, "\\LossRowMax\\%d", stats.maxLossesInARow);
+		snprintf(kvbuf, sizeof(kvbuf), "\\LossRowMax\\%d", stats.maxLossesInARow); // VULN-011
 		s.append(kvbuf);
 	}
 
 	//if (stats.disconsInARow > 0)
 	{
-		sprintf(kvbuf, "\\DCRow\\%d", stats.disconsInARow);
+		snprintf(kvbuf, sizeof(kvbuf), "\\DCRow\\%d", stats.disconsInARow); // VULN-011
 		s.append(kvbuf);
 	}
 	if (stats.maxDisconsInARow > 0)
 	{
-		sprintf(kvbuf, "\\DCRowMax\\%d", stats.maxDisconsInARow);
+		snprintf(kvbuf, sizeof(kvbuf), "\\DCRowMax\\%d", stats.maxDisconsInARow); // VULN-011
 		s.append(kvbuf);
 	}
 
 	//if (stats.desyncsInARow > 0)
 	{
-		sprintf(kvbuf, "\\DSRow\\%d", stats.desyncsInARow);
+		snprintf(kvbuf, sizeof(kvbuf), "\\DSRow\\%d", stats.desyncsInARow); // VULN-011
 		s.append(kvbuf);
 	}
 	if (stats.maxDesyncsInARow > 0)
 	{
-		sprintf(kvbuf, "\\DSRowMax\\%d", stats.maxDesyncsInARow);
+		snprintf(kvbuf, sizeof(kvbuf), "\\DSRowMax\\%d", stats.maxDesyncsInARow); // VULN-011
 		s.append(kvbuf);
 	}
 
 	if (stats.lastLadderPort > 0)
 	{
-		sprintf(kvbuf, "\\ladderPort\\%d", stats.lastLadderPort);
+		snprintf(kvbuf, sizeof(kvbuf), "\\ladderPort\\%d", stats.lastLadderPort); // VULN-011
 		s.append(kvbuf);
 	}
 	if (stats.lastLadderHost.length())
 	{
-		_snprintf(kvbuf, 256, "\\ladderHost\\%s", stats.lastLadderHost.c_str());
-		kvbuf[255] = 0;
+		snprintf(kvbuf, sizeof(kvbuf), "\\ladderHost\\%s", stats.lastLadderHost.c_str()); // VULN-011
+		kvbuf[sizeof(kvbuf)-1] = 0;
 		s.append(kvbuf);
 	}
 

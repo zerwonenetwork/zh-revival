@@ -30,10 +30,25 @@
 
 #include "PreRTS.h"	// This must go first in EVERY cpp file int the GameEngine
 
+#include <stdio.h>
+#include <time.h>
 #include "GameClient/LoadScreen.h"
 #include "GameClient/Shell.h"
 #include "GameNetwork/FileTransfer.h"
 #include "GameNetwork/networkutil.h"
+
+// P2-03: append one line to the map transfer log
+static void logMapTransfer(const char *event, const char *filename, Bool ok)
+{
+	FILE *fp = fopen("Logs/map_transfer.log", "a");
+	if (!fp) return;
+	time_t rawtime; time(&rawtime);
+	struct tm *t = localtime(&rawtime);
+	fprintf(fp, "[%04d-%02d-%02d %02d:%02d:%02d] %s file=\"%s\" result=%s\n",
+		t->tm_year+1900, t->tm_mon+1, t->tm_mday, t->tm_hour, t->tm_min, t->tm_sec,
+		event, filename ? filename : "", ok ? "OK" : "FAIL");
+	fclose(fp);
+}
 
 //-------------------------------------------------------------------------------------
 //-------------------------------------------------------------------------------------
@@ -241,6 +256,26 @@ AsciiString GetReadmeFromMap( AsciiString path )
 //-------------------------------------------------------------------------------------
 //-------------------------------------------------------------------------------------
 
+// P2-03: attempt a file transfer up to maxAttempts times (2s delay between retries)
+static Bool doFileTransferWithRetry(AsciiString filename, MapTransferLoadScreen *ls, Int mask,
+	Int maxAttempts = 3)
+{
+	for (Int attempt = 1; attempt <= maxAttempts; ++attempt)
+	{
+		Bool ok = doFileTransfer(filename, ls, mask);
+		logMapTransfer(attempt == 1 ? "TRANSFER_ATTEMPT" : "TRANSFER_RETRY", filename.str(), ok);
+		if (ok)
+			return TRUE;
+		if (attempt < maxAttempts)
+		{
+			DEBUG_LOG(("Map transfer failed (attempt %d/%d), retrying in 2s...\n", attempt, maxAttempts));
+			Sleep(2000);
+		}
+	}
+	DEBUG_LOG(("Map transfer failed after %d attempts: %s\n", maxAttempts, filename.str()));
+	return FALSE;
+}
+
 Bool DoAnyMapTransfers(GameInfo *game)
 {
 	TheGameInfo = game;
@@ -262,19 +297,19 @@ Bool DoAnyMapTransfers(GameInfo *game)
 	ls->init(TheGameInfo);
 	Bool ok = TRUE;
 	if (TheGameInfo->getMapContentsMask() & 2)
-		ok = doFileTransfer(GetPreviewFromMap(game->getMap()), ls, mask);
+		ok = doFileTransferWithRetry(GetPreviewFromMap(game->getMap()), ls, mask);
 	if (ok && TheGameInfo->getMapContentsMask() & 4)
-		ok = doFileTransfer(GetINIFromMap(game->getMap()), ls, mask);
+		ok = doFileTransferWithRetry(GetINIFromMap(game->getMap()), ls, mask);
 	if (ok && TheGameInfo->getMapContentsMask() & 8)
-		ok = doFileTransfer(GetStrFileFromMap(game->getMap()), ls, mask);
+		ok = doFileTransferWithRetry(GetStrFileFromMap(game->getMap()), ls, mask);
 	if (ok && TheGameInfo->getMapContentsMask() & 16)
-		ok = doFileTransfer(GetSoloINIFromMap(game->getMap()), ls, mask);
+		ok = doFileTransferWithRetry(GetSoloINIFromMap(game->getMap()), ls, mask);
 	if (ok && TheGameInfo->getMapContentsMask() & 32)
-		ok = doFileTransfer(GetAssetUsageFromMap(game->getMap()), ls, mask);
+		ok = doFileTransferWithRetry(GetAssetUsageFromMap(game->getMap()), ls, mask);
 	if (ok && TheGameInfo->getMapContentsMask() & 64)
-		ok = doFileTransfer(GetReadmeFromMap(game->getMap()), ls, mask);
+		ok = doFileTransferWithRetry(GetReadmeFromMap(game->getMap()), ls, mask);
 	if (ok)
-		ok = doFileTransfer(game->getMap(), ls, mask);
+		ok = doFileTransferWithRetry(game->getMap(), ls, mask);
 	delete ls;
 	ls = NULL;
 	if (!ok)
