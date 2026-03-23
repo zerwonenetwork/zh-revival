@@ -29,7 +29,11 @@
 #include "PreRTS.h"	// This must go first in EVERY cpp file in the GameEngine
 
 #include "Common/GameEngine.h"
+#include "Common/GlobalData.h"
 
+// P3-01: defined in WinMain.cpp — applies -width/-height overrides to TheGlobalData
+// after engine init, so command-line resolution takes priority over Options.ini
+extern void ApplyResolutionOverride( void );
 
 /**
  * This is the entry point for the game system.
@@ -39,6 +43,9 @@ void GameMain( int argc, char *argv[] )
 	// initialize the game engine using factory function
 	TheGameEngine = CreateGameEngine();
 	TheGameEngine->init(argc, argv);
+
+	// P3-01: apply command-line resolution overrides now that TheGlobalData is valid
+	ApplyResolutionOverride();
 
 	// run it
 	TheGameEngine->execute();

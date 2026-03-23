@@ -94,6 +94,14 @@ static HANDLE GeneralsMutex = NULL;
 #define DEFAULT_XRESOLUTION 800
 #define DEFAULT_YRESOLUTION 600
 
+// P3-01: window mode flags — set during argument parse, used by initializeAppWindows
+static Bool ApplicationIsBorderless = false; // -borderless: WS_POPUP at desktop resolution
+static Int  ApplicationWidthOverride  = 0;   // -width N
+static Int  ApplicationHeightOverride = 0;   // -height N
+
+// P3-01: registry key for persisting window mode under HKCU (P1-05 path)
+#define ZH_REGKEY_WINDOWMODE "Software\\zh-revival\\Options"
+
 extern void Reset_D3D_Device(bool active);
 
 static Bool gInitializing = false;
@@ -688,62 +696,90 @@ static Bool initializeAppWindows( HINSTANCE hInstance, Int nCmdShow, Bool runWin
 	Int startWidth = DEFAULT_XRESOLUTION,
 			startHeight = DEFAULT_YRESOLUTION;
 
+	// P3-01: apply resolution override from -width/-height or HKCU
+	if (ApplicationWidthOverride > 0)  startWidth  = ApplicationWidthOverride;
+	if (ApplicationHeightOverride > 0) startHeight = ApplicationHeightOverride;
+
+	// P3-01: borderless fullscreen — WS_POPUP at desktop resolution, no border/chrome
+	if (ApplicationIsBorderless)
+	{
+		startWidth  = GetSystemMetrics(SM_CXSCREEN);
+		startHeight = GetSystemMetrics(SM_CYSCREEN);
+		// respect -width/-height overrides even in borderless (e.g. for multi-monitor)
+		if (ApplicationWidthOverride > 0)  startWidth  = ApplicationWidthOverride;
+		if (ApplicationHeightOverride > 0) startHeight = ApplicationHeightOverride;
+		runWindowed = false; // treat like fullscreen for DX init purposes
+	}
+
 	// register the window class
 
   WNDCLASS wndClass = { CS_HREDRAW | CS_VREDRAW | CS_DBLCLKS, WndProc, 0, 0, hInstance,
                        LoadIcon (hInstance, MAKEINTRESOURCE(IDI_ApplicationIcon)),
-                       NULL/*LoadCursor(NULL, IDC_ARROW)*/, 
+                       NULL/*LoadCursor(NULL, IDC_ARROW)*/,
                        (HBRUSH)GetStockObject(BLACK_BRUSH), NULL,
 	                     TEXT("Game Window") };
   RegisterClass( &wndClass );
 
-   // Create our main window
-	windowStyle =  WS_POPUP|WS_VISIBLE;
-	if (runWindowed) 
-		windowStyle |= WS_DLGFRAME | WS_CAPTION | WS_SYSMENU;
+	// Create our main window
+	// P3-01: borderless = WS_POPUP only (no title bar, no TOPMOST — lets Alt-Tab work)
+	//        windowed    = WS_POPUP + frame/caption
+	//        fullscreen  = WS_POPUP + TOPMOST (original behaviour)
+	if (ApplicationIsBorderless)
+	{
+		windowStyle = WS_POPUP | WS_VISIBLE;
+		// Note: no WS_EX_TOPMOST — allows Alt-Tab and multi-monitor use
+	}
 	else
-		windowStyle |= WS_EX_TOPMOST | WS_SYSMENU;
+	{
+		windowStyle = WS_POPUP | WS_VISIBLE;
+		if (runWindowed)
+			windowStyle |= WS_DLGFRAME | WS_CAPTION | WS_SYSMENU;
+		else
+			windowStyle |= WS_EX_TOPMOST | WS_SYSMENU;
+	}
 
 	RECT rect;
 	rect.left = 0;
 	rect.top = 0;
 	rect.right = startWidth;
 	rect.bottom = startHeight;
-	AdjustWindowRect (&rect, windowStyle, FALSE);
-	if (runWindowed) {
-		// Makes the normal debug 800x600 window center in the screen.
-		startWidth = DEFAULT_XRESOLUTION;
-		startHeight= DEFAULT_YRESOLUTION;
+	if (runWindowed && !ApplicationIsBorderless)
+		AdjustWindowRect (&rect, windowStyle, FALSE);
+
+	// window position: centered for windowed, 0,0 for fullscreen/borderless
+	Int posX = 0, posY = 0;
+	if (runWindowed && !ApplicationIsBorderless)
+	{
+		posX = (GetSystemMetrics(SM_CXSCREEN) / 2) - (startWidth / 2);
+		posY = (GetSystemMetrics(SM_CYSCREEN) / 2) - (startHeight / 2);
 	}
 
 	gInitializing = true;
 
-  HWND hWnd = CreateWindow( TEXT("Game Window"),
-                            TEXT("Command and Conquer Generals"),
-                            windowStyle, 
-														(GetSystemMetrics( SM_CXSCREEN ) / 2) - (startWidth / 2), // original position X
-														(GetSystemMetrics( SM_CYSCREEN ) / 2) - (startHeight / 2),// original position Y
-														// Lorenzen nudged the window higher
-														// so the constantdebug report would 
-														// not get obliterated by assert windows, thank you.
-														//(GetSystemMetrics( SM_CXSCREEN ) / 2) - (startWidth / 2),   //this works with any screen res
-														//(GetSystemMetrics( SM_CYSCREEN ) / 25) - (startHeight / 25),//this works with any screen res
-														rect.right-rect.left,
-														rect.bottom-rect.top,
-														0L, 
-														0L, 
-														hInstance, 
-														0L );
+	HWND hWnd = CreateWindow( TEXT("Game Window"),
+	                          TEXT("zh-revival"),
+	                          windowStyle,
+	                          posX, posY,
+	                          rect.right - rect.left,
+	                          rect.bottom - rect.top,
+	                          0L, 0L, hInstance, 0L );
 
 
-	if (!runWindowed)
-	{	SetWindowPos(hWnd, HWND_TOPMOST, 0, 0, 0, 0,SWP_NOSIZE |SWP_NOMOVE);
+	if (ApplicationIsBorderless)
+	{
+		// Borderless: sit at HWND_TOP, no TOPMOST, position exactly at 0,0
+		SetWindowPos(hWnd, HWND_TOP, 0, 0, startWidth, startHeight, SWP_FRAMECHANGED);
 	}
-	else 
-		SetWindowPos(hWnd, HWND_TOP, 0, 0, 0, 0,SWP_NOSIZE |SWP_NOMOVE);
+	else if (!runWindowed)
+	{
+		SetWindowPos(hWnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE);
+	}
+	else
+	{
+		SetWindowPos(hWnd, HWND_TOP, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE);
+	}
 
 	SetFocus(hWnd);
-
 	SetForegroundWindow(hWnd);
 	ShowWindow( hWnd, nCmdShow );
 	UpdateWindow( hWnd );
@@ -925,6 +961,27 @@ Int APIENTRY WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance,
 		char * argv[20];
 		argv[0] = NULL;
 
+		// P3-01: read window mode defaults from HKCU before arg parse
+		{
+			HKEY hk;
+			if (RegOpenKeyExA(HKEY_CURRENT_USER, ZH_REGKEY_WINDOWMODE, 0, KEY_READ, &hk) == ERROR_SUCCESS)
+			{
+				DWORD val = 0, sz = sizeof(val);
+				if (RegQueryValueExA(hk, "Borderless", NULL, NULL, (LPBYTE)&val, &sz) == ERROR_SUCCESS && val)
+					ApplicationIsBorderless = true;
+				sz = sizeof(val);
+				if (RegQueryValueExA(hk, "WidthOverride", NULL, NULL, (LPBYTE)&val, &sz) == ERROR_SUCCESS && val > 0)
+					ApplicationWidthOverride = (Int)val;
+				sz = sizeof(val);
+				if (RegQueryValueExA(hk, "HeightOverride", NULL, NULL, (LPBYTE)&val, &sz) == ERROR_SUCCESS && val > 0)
+					ApplicationHeightOverride = (Int)val;
+				sz = sizeof(val);
+				if (RegQueryValueExA(hk, "Windowed", NULL, NULL, (LPBYTE)&val, &sz) == ERROR_SUCCESS && val)
+					ApplicationIsWindowed = true;
+				RegCloseKey(hk);
+			}
+		}
+
 		char *token;
 		token = nextParam(lpCmdLine, "\" ");
 		while (argc < 20 && token != NULL) {
@@ -932,7 +989,54 @@ Int APIENTRY WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance,
 			//added a preparse step for this flag because it affects window creation style
 			if (stricmp(token,"-win")==0)
 				ApplicationIsWindowed=true;
-			token = nextParam(NULL, "\" ");	   
+			// P3-01: additional window mode flags
+			if (stricmp(token,"-windowed")==0)
+				ApplicationIsWindowed=true;
+			if (stricmp(token,"-borderless")==0)
+			{
+				ApplicationIsBorderless=true;
+				ApplicationIsWindowed=false; // borderless overrides -win
+			}
+			if (stricmp(token,"-fullscreen")==0)
+			{
+				ApplicationIsWindowed=false;
+				ApplicationIsBorderless=false;
+			}
+			if (stricmp(token,"-width")==0 && argc < 20)
+			{
+				token = nextParam(NULL, "\" ");
+				if (token) { argv[argc++] = strtrim(token); ApplicationWidthOverride = atoi(token); }
+				token = nextParam(NULL, "\" ");
+				continue;
+			}
+			if (stricmp(token,"-height")==0 && argc < 20)
+			{
+				token = nextParam(NULL, "\" ");
+				if (token) { argv[argc++] = strtrim(token); ApplicationHeightOverride = atoi(token); }
+				token = nextParam(NULL, "\" ");
+				continue;
+			}
+			token = nextParam(NULL, "\" ");
+		}
+
+		// P3-01: persist window mode choice to HKCU so it survives restarts
+		{
+			HKEY hk;
+			DWORD disp;
+			if (RegCreateKeyExA(HKEY_CURRENT_USER, ZH_REGKEY_WINDOWMODE, 0, NULL,
+				REG_OPTION_NON_VOLATILE, KEY_WRITE, NULL, &hk, &disp) == ERROR_SUCCESS)
+			{
+				DWORD v;
+				v = ApplicationIsBorderless ? 1 : 0;
+				RegSetValueExA(hk, "Borderless", 0, REG_DWORD, (LPBYTE)&v, sizeof(v));
+				v = ApplicationIsWindowed ? 1 : 0;
+				RegSetValueExA(hk, "Windowed", 0, REG_DWORD, (LPBYTE)&v, sizeof(v));
+				v = (DWORD)ApplicationWidthOverride;
+				RegSetValueExA(hk, "WidthOverride", 0, REG_DWORD, (LPBYTE)&v, sizeof(v));
+				v = (DWORD)ApplicationHeightOverride;
+				RegSetValueExA(hk, "HeightOverride", 0, REG_DWORD, (LPBYTE)&v, sizeof(v));
+				RegCloseKey(hk);
+			}
 		}
 
 		if (argc>2 && strcmp(argv[1],"-DX")==0) {
@@ -1155,3 +1259,19 @@ GameEngine *CreateGameEngine( void )
 	return engine;
 
 }  // end CreateGameEngine
+
+// P3-01: ApplyResolutionOverride =============================================
+// Called from GameMain.cpp after TheGameEngine->init() so that -width/-height
+// overrides win over the resolution loaded from Options.ini / registry.
+// TheGlobalData is valid at that point; the DX device picks up the values on
+// the next display reset (or at first init if called before first frame).
+//=============================================================================
+void ApplyResolutionOverride( void )
+{
+	if (TheGlobalData == NULL)
+		return;
+	if (ApplicationWidthOverride > 0)
+		TheGlobalData->m_xResolution = ApplicationWidthOverride;
+	if (ApplicationHeightOverride > 0)
+		TheGlobalData->m_yResolution = ApplicationHeightOverride;
+}  // end ApplyResolutionOverride
