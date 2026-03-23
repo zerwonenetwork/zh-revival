@@ -810,7 +810,7 @@ void NAT::sendMangledSourcePort() {
 
 	// get the address of the mangler we need to talk to.
 	Char manglerName[256];
-	FirewallHelperClass::getManglerName(1, manglerName);
+	FirewallHelperClass::getManglerName(1, manglerName, sizeof(manglerName)); // P5-07 MEM-H03
 	DEBUG_LOG(("NAT::sendMangledSourcePort - about to call gethostbyname for mangler at %s\n", manglerName));
 	struct hostent *hostInfo = gethostbyname(manglerName);
 

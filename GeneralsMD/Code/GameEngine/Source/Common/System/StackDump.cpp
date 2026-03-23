@@ -295,7 +295,8 @@ void GetFunctionDetails(void *pointer, char*name, char*filename, unsigned int* l
     {
 		if (name)
 		{
-			strcpy(name, psymbol->Name);
+			// P5-07 MEM-C04: function_name[516] — 512 name + "();" + NUL
+		strncpy(name, psymbol->Name, 512); name[512] = '\0';
 			strcat(name, "();");
 		}
 
@@ -313,7 +314,7 @@ void GetFunctionDetails(void *pointer, char*name, char*filename, unsigned int* l
 			{
 				if (filename)
 				{
-					strcpy(filename, line.FileName);
+					strncpy(filename, line.FileName, MAX_PATH - 1); filename[MAX_PATH - 1] = '\0'; // P5-07 MEM-H02
 				}
 				if (linenumber)
 				{
@@ -463,14 +464,15 @@ AsciiString g_LastErrorDump;
 //*****************************************************************************
 void WriteStackLine(void*address, void (*callback)(const char*))
 {
-	static char line[MAX_PATH];
-	static char function_name[512];
+	// P5-07 MEM-H01: line must hold filename(MAX_PATH) + function_name(512) + extras
+	static char line[MAX_PATH + 512 + 32];
+	static char function_name[516]; // 512 name + "();" + NUL (MEM-C04)
 	static char filename[MAX_PATH];
 	unsigned int linenumber;
 	unsigned int addr;
 
 	GetFunctionDetails(address, function_name, filename, &linenumber, &addr);
-    sprintf(line, "  %s(%d) : %s 0x%08p", filename, linenumber, function_name, address);
+	snprintf(line, sizeof(line), "  %s(%d) : %s 0x%08p", filename, linenumber, function_name, address); // P5-07 MEM-H01
 		if (g_LastErrorDump.isNotEmpty()) {
 			g_LastErrorDump.concat(line);
 			g_LastErrorDump.concat("\n");

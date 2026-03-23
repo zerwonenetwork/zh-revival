@@ -614,12 +614,12 @@ Short FirewallHelperClass::getSourcePortAllocationDelta() {
 	return m_sourcePortAllocationDelta;
 }
 
-/* static */ void FirewallHelperClass::getManglerName(Int manglerIndex, Char *nameBuf)
+/* static */ void FirewallHelperClass::getManglerName(Int manglerIndex, Char *nameBuf, Int nameBufLen)
 {
 	AsciiString host;
 	UnsignedShort port;
 	TheGameSpyConfig->getManglerLocation(manglerIndex, host, port);
-	strcpy(nameBuf, host.str());
+	strncpy(nameBuf, host.str(), nameBufLen - 1); nameBuf[nameBufLen - 1] = '\0'; // P5-07 MEM-H03
 }
 
 Bool FirewallHelperClass::detectionBeginUpdate() {
@@ -686,7 +686,7 @@ Bool FirewallHelperClass::detectionBeginUpdate() {
 		** Do the lookup.
 		*/
 		char temp_name[256];
-		strcpy(temp_name, mangler_name_ptr);
+		strncpy(temp_name, mangler_name_ptr, sizeof(temp_name) - 1); temp_name[sizeof(temp_name) - 1] = '\0'; // P5-07 MEM-H04
 		struct hostent *host_info = gethostbyname(temp_name);
 
 		if (!host_info) {

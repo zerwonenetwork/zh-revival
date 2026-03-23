@@ -1246,9 +1246,10 @@ WindowMsgHandledType WOLLoginMenuSystem( GameWindow *window, UnsignedInt msg,
 							loginAttemptTime = timeGetTime();
 							BuddyRequest req;
 							req.buddyRequestType = BuddyRequest::BUDDYREQUEST_LOGINNEW;
-							strcpy(req.arg.login.nick, login.str());
-							strcpy(req.arg.login.email, email.str());
-							strcpy(req.arg.login.password, password.str());
+							// P5-07 MEM-C01: strncpy to avoid overflow on long user input
+							strncpy(req.arg.login.nick,     login.str(),    GP_NICK_LEN - 1);     req.arg.login.nick[GP_NICK_LEN - 1]         = 0;
+							strncpy(req.arg.login.email,    email.str(),    GP_EMAIL_LEN - 1);    req.arg.login.email[GP_EMAIL_LEN - 1]       = 0;
+							strncpy(req.arg.login.password, password.str(), GP_PASSWORD_LEN - 1); req.arg.login.password[GP_PASSWORD_LEN - 1] = 0;
 							req.arg.login.hasFirewall = TRUE;
 							
 							TheGameSpyInfo->setLocalBaseName( login );
@@ -1335,9 +1336,10 @@ WindowMsgHandledType WOLLoginMenuSystem( GameWindow *window, UnsignedInt msg,
 							loginAttemptTime = timeGetTime();
 							BuddyRequest req;
 							req.buddyRequestType = BuddyRequest::BUDDYREQUEST_LOGIN;
-							strcpy(req.arg.login.nick, login.str());
-							strcpy(req.arg.login.email, email.str());
-							strcpy(req.arg.login.password, password.str());
+							// P5-07 MEM-C01: strncpy to avoid overflow on long user input
+							strncpy(req.arg.login.nick,     login.str(),    GP_NICK_LEN - 1);     req.arg.login.nick[GP_NICK_LEN - 1]         = 0;
+							strncpy(req.arg.login.email,    email.str(),    GP_EMAIL_LEN - 1);    req.arg.login.email[GP_EMAIL_LEN - 1]       = 0;
+							strncpy(req.arg.login.password, password.str(), GP_PASSWORD_LEN - 1); req.arg.login.password[GP_PASSWORD_LEN - 1] = 0;
 							req.arg.login.hasFirewall = true;
 							
 							TheGameSpyInfo->setLocalBaseName( login );

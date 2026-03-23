@@ -2331,8 +2331,8 @@ void GameLogic::startNewGame( Bool loadingSaveGame )
 		BuddyRequest req;
 		req.buddyRequestType = BuddyRequest::BUDDYREQUEST_SETSTATUS;
 		req.arg.status.status = GP_PLAYING;
-		strcpy(req.arg.status.statusString, "Playing");
-		sprintf(req.arg.status.locationString, "%s", WideCharStringToMultiByte(TheGameSpyGame->getGameName().str()).c_str());
+		strncpy(req.arg.status.statusString, "Playing", GP_STATUS_STRING_LEN - 1); req.arg.status.statusString[GP_STATUS_STRING_LEN - 1] = '\0'; // P5-07 MEM-H06
+		snprintf(req.arg.status.locationString, GP_LOCATION_STRING_LEN, "%s", WideCharStringToMultiByte(TheGameSpyGame->getGameName().str()).c_str()); // P5-07 MEM-H06
 		TheGameSpyBuddyMessageQueue->addRequest(req);
 	}	
 	
@@ -2405,7 +2405,7 @@ void GameLogic::loadMapINI( AsciiString mapName )
 	char fullFledgeFilename[_MAX_PATH];
 
 	memset(filename, 0, _MAX_PATH);
-	strcpy(filename, mapName.str());
+	snprintf(filename, _MAX_PATH, "%s", mapName.str()); // P5-07 MEM-H05
 
 	//
 	// if map name begins with a "SAVE_DIRECTORY\", then the map refers to a map
@@ -2414,7 +2414,7 @@ void GameLogic::loadMapINI( AsciiString mapName )
 	// for that map from it's original location
 	//
 	if (TheGameState->isInSaveDirectory(filename))
-		strcpy( filename, TheGameState->getSaveGameInfo()->pristineMapName.str() );
+		snprintf(filename, _MAX_PATH, "%s", TheGameState->getSaveGameInfo()->pristineMapName.str()); // P5-07 MEM-H05
 
 	// sanity
 	int length = strlen(filename);

@@ -1045,13 +1045,13 @@ AsciiString SpeechManager::getFilenameForPlay( Speech *speech )
 	char name[_MAX_PATH];
 
 	if (soundToPlay < regularSamples) {
-		strcpy(name, speechInfo->m_dialogFiles[soundToPlay].str());
+		snprintf(name, _MAX_PATH, "%s", speechInfo->m_dialogFiles[soundToPlay].str()); // P5-07 MEM-H07
 	}	else if (soundToPlay < (regularSamples + eveningSamples)) {
-		strcpy(name, speechInfo->m_dialogFilesEvening[soundToPlay - regularSamples].str());
+		snprintf(name, _MAX_PATH, "%s", speechInfo->m_dialogFilesEvening[soundToPlay - regularSamples].str()); // P5-07 MEM-H07
 	} else if (soundToPlay < (regularSamples + eveningSamples + morningSamples)) {
-		strcpy(name, speechInfo->m_dialogFilesMorning[soundToPlay - regularSamples - eveningSamples].str());
+		snprintf(name, _MAX_PATH, "%s", speechInfo->m_dialogFilesMorning[soundToPlay - regularSamples - eveningSamples].str()); // P5-07 MEM-H07
 	} else if (soundToPlay < numSamples) {
-		strcpy(name, speechInfo->m_dialogFilesNight[soundToPlay - regularSamples - eveningSamples - morningSamples].str());
+		snprintf(name, _MAX_PATH, "%s", speechInfo->m_dialogFilesNight[soundToPlay - regularSamples - eveningSamples - morningSamples].str()); // P5-07 MEM-H07
 	}	else {
 		return AsciiString::TheEmptyString;
 	}

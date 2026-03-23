@@ -193,7 +193,7 @@ class FirewallHelperClass {
 
 		void flagNeedToRefresh(Bool flag);
 
-		static void getManglerName(Int manglerIndex, Char *nameBuf);
+		static void getManglerName(Int manglerIndex, Char *nameBuf, Int nameBufLen); // P5-07 MEM-H03: added nameBufLen
 		Bool sendToManglerFromPort(UnsignedInt address, UnsignedShort port, UnsignedShort packetID, Bool blitzme = FALSE);
 		UnsignedShort getManglerResponse(UnsignedShort packetID, Int time = 0);
 		Bool openSpareSocket(UnsignedShort port);
