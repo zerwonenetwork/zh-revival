@@ -29,23 +29,25 @@
 
 // ---------------------------------------------------------------------------
 //  Basic integer types
+//  Match Windows SDK definitions exactly (uses unsigned long for DWORD etc.)
+//  so the game's own bittype.h / wintype.h don't conflict.
 // ---------------------------------------------------------------------------
-typedef uint8_t   BYTE;
-typedef uint8_t   UCHAR;
-typedef int8_t    CHAR;
-typedef uint16_t  WORD;
-typedef int16_t   SHORT;
-typedef uint32_t  DWORD;
-typedef int32_t   LONG;
-typedef uint32_t  ULONG;
-typedef int32_t   INT;
-typedef uint32_t  UINT;
-typedef uint64_t  LONGLONG;
-typedef uint64_t  ULONGLONG;
-typedef uint64_t  DWORD64;
-typedef uint64_t  QWORD;
-typedef int       BOOL;
-typedef float     FLOAT;
+typedef unsigned char    BYTE;
+typedef unsigned char    UCHAR;
+typedef char             CHAR;
+typedef unsigned short   WORD;
+typedef short            SHORT;
+typedef unsigned long    DWORD;   // matches Windows SDK + game bittype.h
+typedef long             LONG;    // matches Windows SDK + game bittype.h
+typedef unsigned long    ULONG;   // matches Windows SDK + game bittype.h
+typedef int              INT;
+typedef unsigned int     UINT;
+typedef long long        LONGLONG;
+typedef unsigned long long ULONGLONG;
+typedef unsigned long long DWORD64;
+typedef unsigned long long QWORD;
+typedef int              BOOL;
+typedef float            FLOAT;
 
 // ---------------------------------------------------------------------------
 //  Pointer-size integer (matches pointer width on the target)

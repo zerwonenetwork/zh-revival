@@ -4,6 +4,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdarg.h>
+#include <wchar.h>
 
 #ifndef _TCHAR_DEFINED
 #define _TCHAR_DEFINED
@@ -17,6 +18,7 @@ typedef char _TCHAR;
 #endif
 
 #define _tcslen     strlen
+#define _tcsclen    strlen  // MBCS "char count" — same as strlen in ANSI mode
 #define _tcscpy     strcpy
 #define _tcsncpy    strncpy
 #define _tcscat     strcat
