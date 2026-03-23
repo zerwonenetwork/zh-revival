@@ -3,7 +3,7 @@
 > Repo: [https://github.com/ZerwOne/zh-revival](https://github.com/ZerwOne/zh-revival)
 > Forked from: [https://github.com/electronicarts/CnC_Generals_Zero_Hour](https://github.com/electronicarts/CnC_Generals_Zero_Hour)
 > Updated by Claude Code at the end of every session.
-> Last updated: 2026-03-22 (Phase 2 complete)
+> Last updated: 2026-03-22 (Phase 3 complete)
 
 ---
 
@@ -39,13 +39,13 @@
 
 ## Phase 3 — Quality of Life
 
-- P3-01 — Borderless fullscreen and widescreen support
-- P3-02 — Replay format specification
-- P3-03 — libzhreplay: replay parser library
-- P3-04 — zh-replay-validate: CLI validator
-- P3-05 — zh-replay-info: JSON metadata extractor
-- P3-06 — Replay HUD improvements
-- P3-FINAL — Tag v0.3-qol
+- [x] P3-01 — Borderless fullscreen and widescreen support — completed 2026-03-22
+- [x] P3-02 — Replay format specification — completed 2026-03-22
+- [x] P3-03 — libzhreplay: replay parser library — completed 2026-03-22
+- [x] P3-04 — zh-replay-validate: CLI validator — completed 2026-03-22
+- [x] P3-05 — zh-replay-info: JSON metadata extractor — completed 2026-03-22
+- [x] P3-06 — Replay HUD improvements — completed 2026-03-22
+- [x] P3-FINAL — Tag v0.3-qol — completed 2026-03-22
 
 ## Phase 4 — Ecosystem
 
@@ -99,5 +99,11 @@
 | 2026-03-22 | P2-08 Version CRC enforcement      | task/P2-02-05-06-...      | done   | Uncommented + enabled the CRC check in LANAPI::handleRequestJoin(). exeCRC+iniCRC mismatch now rejects join with RET_CRC_MISMATCH → LAN:ErrorCRCMismatch message. |
 | 2026-03-22 | P2-09 Headless replay CI           | task/P2-02-05-06-...      | done   | Added --headless-replay flag to WinMain.cpp. CI step added to ci-build.yml. Full simulation requires P5-03 headless renderer. |
 | 2026-03-22 | P2-10 DC-bug recovery              | task/P2-02-05-06-...      | done   | DisconnectManager: 10s auto-recovery attempt after disconnect screen appears. Logs/disconnect.log event logging added. |
+| 2026-03-22 | P3-01 Borderless fullscreen        | task/P3-phase3-all        | done   | -borderless/-windowed/-fullscreen/-width/-height flags; WS_POPUP borderless window; HKCU persistence; ApplyResolutionOverride() after engine init. |
+| 2026-03-22 | P3-02 Replay format spec           | task/P3-phase3-all        | done   | docs/REPLAY_FORMAT.md: complete binary format from Recorder.cpp read/write paths. Bool=Int32 and sizeof(time_t) caveats documented. |
+| 2026-03-22 | P3-03 libzhreplay                  | task/P3-phase3-all        | done   | tools/libzhreplay/zhreplay.h + zhreplay.c: C API for parsing .rep files. Handles truncated/malformed input without crash. |
+| 2026-03-22 | P3-04 zh-replay-validate           | task/P3-phase3-all        | done   | tools/zh-replay-validate/main.c: VALID/INVALID output, exit 0/1/2. Walks full command stream. |
+| 2026-03-22 | P3-05 zh-replay-info               | task/P3-phase3-all        | done   | tools/zh-replay-info/main.c: JSON metadata output with schema_version, version, date_iso, duration_ticks, players, winner=null, build_version. |
+| 2026-03-22 | P3-06 Replay HUD                   | task/P3-phase3-all        | done   | Tick counter/elapsed time/speed overlay in postDraw(); MSG_META_REPLAY_SPEED_UP/DOWN for ]/[ keys (0.5x/1x/2x/4x); ControlBarObserver crash fix (NULL guard + slot index bug). |
 
 
