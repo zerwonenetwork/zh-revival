@@ -1,5 +1,10 @@
 cmake_minimum_required(VERSION 3.25)
-project(zh-revival VERSION 0.1.0 LANGUAGES C CXX RC)
+project(zh-revival VERSION 0.1.0 LANGUAGES C CXX)
+# RC (Windows resource compiler) is Windows-only — enable after project() so
+# non-Windows toolchains (macOS/Linux) don't fail looking for windres/rc.
+if(WIN32)
+  enable_language(RC)
+endif()
 
 # ─────────────────────────────────────────────
 #  C++ standard

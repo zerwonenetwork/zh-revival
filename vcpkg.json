@@ -9,12 +9,13 @@
     "zlib",
     {
       "name": "openal-soft",
-      "platform": "!osx"
+      "platform": "windows"
     },
     {
       "name": "ffmpeg",
       "features": ["avcodec", "avformat", "swscale"],
-      "default-features": false
+      "default-features": false,
+      "platform": "!mingw"
     },
     "sdl3"
   ]

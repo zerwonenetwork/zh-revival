@@ -174,6 +174,7 @@ jobs:
             -DVCPKG_TARGET_TRIPLET=x86-mingw-static \
             -DCMAKE_TOOLCHAIN_FILE=.github/toolchains/mingw32.cmake \
             -DZH_USE_STUBS=ON \
+            -DZH_FFMPEG_VIDEO=OFF \
             -DCMAKE_BUILD_TYPE=Release
 
       # ── Build ─────────────────────────────────────────────────────────────
@@ -218,6 +219,7 @@ jobs:
             gcc g++ cmake ninja-build \
             nasm \
             libgl-dev \
+            libopenal-dev \
             curl zip unzip tar pkg-config
 
       # SDL3 is not in Ubuntu 22.04 apt repos — build from source (takes ~90s, cached below)
