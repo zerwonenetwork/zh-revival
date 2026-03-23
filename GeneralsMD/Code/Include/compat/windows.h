@@ -119,6 +119,7 @@ typedef void*  HBRUSH;
 typedef void*  HPEN;
 typedef void*  HFONT;
 typedef void*  HGDIOBJ;
+typedef DWORD  COLORREF;        // RGB color value (Windows GDI)
 // HKEY is 32-bit on all our stub builds — the legacy registry code (registry.cpp)
 // stores HKEY in an int field.  Using void* causes a pointer-truncation hard error on
 // 64-bit Clang.  Since stubs never use real registry handles, unsigned int is fine.
