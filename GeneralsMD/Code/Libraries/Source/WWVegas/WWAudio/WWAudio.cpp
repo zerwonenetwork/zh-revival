@@ -2760,7 +2760,7 @@ WWAudioClass::File_Open_Callback (char const *filename, U32 *file_handle)
 		//
 		FileClass *file = Get_Instance ()->Get_File (filename);
 		if (file != NULL && file->Open ()) {
-			(*file_handle) = (U32)file;
+			(*file_handle) = (U32)(uintptr_t)file;
 			retval = true;
 		}
 	}

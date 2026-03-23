@@ -594,13 +594,25 @@ typedef struct _CRITICAL_SECTION {
 static inline int lstrcmpiA(LPCSTR s1, LPCSTR s2) { return strcasecmp(s1?s1:"", s2?s2:""); }
 static inline int lstrcmpA(LPCSTR s1, LPCSTR s2)  { return strcmp(s1?s1:"", s2?s2:""); }
 static inline LPSTR lstrcpyA(LPSTR dst, LPCSTR src) { if(dst&&src) strcpy(dst,src); return dst; }
+static inline LPSTR lstrcpynA(LPSTR dst, LPCSTR src, int n) {
+    if(dst&&src&&n>0){strncpy(dst,src,n-1);dst[n-1]='\0';} return dst;
+}
 static inline LPSTR lstrcatA(LPSTR dst, LPCSTR src) { if(dst&&src) strcat(dst,src); return dst; }
 static inline int lstrlenA(LPCSTR s) { return s?(int)strlen(s):0; }
 #define lstrcmpi  lstrcmpiA
 #define lstrcmp   lstrcmpA
 #define lstrcpy   lstrcpyA
+#define lstrcpyn  lstrcpynA
 #define lstrcat   lstrcatA
 #define lstrlen   lstrlenA
+
+// _strdup — MSVC alias for POSIX strdup
+#ifndef _strdup
+#define _strdup strdup
+#endif
+#ifndef _wcsdup
+#define _wcsdup wcsdup
+#endif
 
 // _strlwr / _strupr — MSVC in-place case-convert functions
 #include <ctype.h>
@@ -1216,6 +1228,19 @@ static inline UINT GetSystemDirectoryA(LPSTR lpBuffer, UINT uSize) {
 }
 #define GetSystemDirectory  GetSystemDirectoryA
 #define GetSystemDirectoryW GetSystemDirectoryA
+// GetCurrentDirectory stub — returns process CWD
+static inline DWORD GetCurrentDirectoryA(DWORD nBuf, LPSTR lpBuf) {
+    if(!lpBuf||nBuf==0) return 0;
+    if(getcwd(lpBuf,(size_t)nBuf)) return (DWORD)strlen(lpBuf);
+    lpBuf[0]='\0'; return 0;
+}
+#define GetCurrentDirectory  GetCurrentDirectoryA
+#define GetCurrentDirectoryW GetCurrentDirectoryA
+static inline BOOL SetCurrentDirectoryA(LPCSTR lpPathName) {
+    return (lpPathName && chdir(lpPathName)==0) ? TRUE : FALSE;
+}
+#define SetCurrentDirectory  SetCurrentDirectoryA
+#define SetCurrentDirectoryW SetCurrentDirectoryA
 // GetTempPath stub (if not already defined above)
 #ifndef _zh_gettemppath_defined_
 #define _zh_gettemppath_defined_
