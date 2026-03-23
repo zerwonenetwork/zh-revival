@@ -103,6 +103,28 @@ option(ZH_USE_STUBS
     ON)
 
 # ─────────────────────────────────────────────
+#  SDL3 window + input backend (P5-03a/b)
+#  When ON: SDL3 creates the window; HWND is extracted and subclassed with the
+#  existing WndProc.  D3D8/DXVK uses the same HWND — no rendering changes.
+#  SDL3 event pump replaces the Win32-only message loop so the game can
+#  eventually run on Linux/macOS after DXVK and platform layers are in place.
+# ─────────────────────────────────────────────
+option(ZH_SDL3_WINDOW
+    "Use SDL3 for window creation and event pumping (requires SDL3 via vcpkg)"
+    OFF)
+
+# ─────────────────────────────────────────────
+#  DXVK D3D8-to-Vulkan translation layer (P5-03c)
+#  No code changes required — dx8wrapper.cpp uses LoadLibrary("D3D8.DLL").
+#  When ON and DXVK_DLL_DIR is set, CMake copies d3d8.dll + d3d9.dll from
+#  the specified directory to the build output alongside the game binary.
+#  At runtime Windows loads DXVK's d3d8.dll instead of the system one.
+# ─────────────────────────────────────────────
+option(ZH_DXVK
+    "Copy DXVK D3D8→Vulkan translation DLLs to build output (requires DXVK_DLL_DIR)"
+    OFF)
+
+# ─────────────────────────────────────────────
 #  OpenAL audio backend (P5-01)
 #  Requires ZH_USE_STUBS=ON.  When ON, the no-op Miles stubs are replaced
 #  with real OpenAL-backed implementations via OpenALMilesShim.cpp.
@@ -178,6 +200,30 @@ if(ZH_USE_STUBS)
     endif()
 else()
     message(STATUS "[zh-revival] Stub mode OFF — expecting real proprietary SDKs on include path")
+endif()
+
+# ─────────────────────────────────────────────
+#  SDL3 window + input (P5-03a/b)
+# ─────────────────────────────────────────────
+if(ZH_SDL3_WINDOW)
+    message(STATUS "[zh-revival] SDL3 window backend ON (P5-03a/b)")
+    find_package(SDL3 REQUIRED CONFIG)
+    add_compile_definitions(ZH_SDL3_WINDOW)
+endif()
+
+# ─────────────────────────────────────────────
+#  DXVK runtime DLL copy (P5-03c)
+#  Set -DDXVK_DLL_DIR=<path/to/dxvk/x32> on the cmake command line.
+#  Expected files: d3d8.dll (DXVK) and optionally d3d9.dll.
+# ─────────────────────────────────────────────
+if(ZH_DXVK)
+    if(NOT DEFINED DXVK_DLL_DIR OR NOT EXISTS "${DXVK_DLL_DIR}")
+        message(WARNING
+            "[zh-revival] ZH_DXVK=ON but DXVK_DLL_DIR is not set or does not exist. "
+            "Pass -DDXVK_DLL_DIR=<path/to/dxvk/x32> containing d3d8.dll.")
+    else()
+        message(STATUS "[zh-revival] DXVK DLL copy ON — source: ${DXVK_DLL_DIR}")
+    endif()
 endif()
 
 # ─────────────────────────────────────────────
@@ -554,6 +600,26 @@ target_link_libraries(zh-revival PRIVATE
     $<$<AND:$<NOT:$<BOOL:${ZH_USE_STUBS}>>,$<EXISTS:${ZH}/Libraries/Lib/binkw32.lib>>:${ZH}/Libraries/Lib/binkw32.lib>
     $<$<AND:$<NOT:$<BOOL:${ZH_USE_STUBS}>>,$<EXISTS:${ZH}/Libraries/Lib/mss32.lib>>:${ZH}/Libraries/Lib/mss32.lib>
 )
+
+# SDL3 (P5-03a/b)
+if(ZH_SDL3_WINDOW)
+    target_link_libraries(zh-revival PRIVATE SDL3::SDL3)
+    target_link_libraries(gameenginedevice PUBLIC SDL3::SDL3)
+endif()
+
+# DXVK DLL copy (P5-03c) — post-build copy to the binary output directory
+if(ZH_DXVK AND DEFINED DXVK_DLL_DIR AND EXISTS "${DXVK_DLL_DIR}")
+    foreach(_dxvk_dll d3d8.dll d3d9.dll)
+        if(EXISTS "${DXVK_DLL_DIR}/${_dxvk_dll}")
+            add_custom_command(TARGET zh-revival POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                    "${DXVK_DLL_DIR}/${_dxvk_dll}"
+                    "$<TARGET_FILE_DIR:zh-revival>/${_dxvk_dll}"
+                COMMENT "[zh-revival] Copying DXVK ${_dxvk_dll} to output"
+            )
+        endif()
+    endforeach()
+endif()
 
 # Output directory mirrors original .dsp: ../Run/ relative to Code/
 set_target_properties(zh-revival PROPERTIES

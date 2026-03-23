@@ -30,6 +30,9 @@
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 #include <windows.h>
+#ifdef ZH_SDL3_WINDOW
+#include <SDL3/SDL.h>
+#endif
 #include "Win32Device/Common/Win32GameEngine.h"
 #include "Common/PerfTimer.h"
 
@@ -162,8 +165,30 @@ void Win32GameEngine::serviceWindowsOS( void )
 		TranslateMessage( &msg );
 		DispatchMessage( &msg );
 		TheMessageTime = 0;
-			
+
 	}  // end while
+
+#ifdef ZH_SDL3_WINDOW
+	// P5-03b: pump the SDL3 event queue so window management events (close,
+	// focus, resize) are processed.  Since WndProc is subclassed onto the SDL
+	// window's HWND, keyboard/mouse input already flows through the Win32
+	// message path above.  We only need SDL's queue for window-level events
+	// that SDL handles before forwarding to Win32.
+	{
+		SDL_Event sdlEvent;
+		while (SDL_PollEvent(&sdlEvent))
+		{
+			if (sdlEvent.type == SDL_EVENT_QUIT)
+			{
+				// Mirror to Win32 message queue so the existing quit path fires.
+				PostQuitMessage(0);
+			}
+			// All other SDL events (SDL_EVENT_WINDOW_*) are translated to
+			// Win32 WM_* and delivered via WndProc by SDL's internal Win32
+			// message hook, so no extra handling is needed here.
+		}
+	}
+#endif
 
 }  // end ServiceWindowsOS
 

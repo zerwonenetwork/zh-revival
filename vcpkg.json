@@ -12,6 +12,7 @@
       "name": "ffmpeg",
       "features": ["avcodec", "avformat", "swscale"],
       "default-features": false
-    }
+    },
+    "sdl3"
   ]
 }

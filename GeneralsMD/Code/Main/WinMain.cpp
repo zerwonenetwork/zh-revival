@@ -39,6 +39,11 @@
 #include <ole2.h>
 #include <dbt.h>
 
+// P5-03a: optional SDL3 window backend
+#ifdef ZH_SDL3_WINDOW
+#include <SDL3/SDL.h>
+#endif
+
 // USER INCLUDES //////////////////////////////////////////////////////////////
 #include "WinMain.h"
 #include "Lib/BaseType.h"
@@ -101,6 +106,12 @@ static Int  ApplicationHeightOverride = 0;   // -height N
 
 // P3-01: registry key for persisting window mode under HKCU (P1-05 path)
 #define ZH_REGKEY_WINDOWMODE "Software\\zh-revival\\Options"
+
+#ifdef ZH_SDL3_WINDOW
+// P5-03a: SDL3 window state
+static SDL_Window* g_sdlWindow        = NULL;
+static WNDPROC     g_sdlOrigWndProc   = NULL; // SDL's own WndProc, called from ours as fallback
+#endif
 
 extern void Reset_D3D_Device(bool active);
 
@@ -683,6 +694,12 @@ LRESULT CALLBACK WndProc( HWND hWnd, UINT message,
 	}
 	return 0;*/
 
+#ifdef ZH_SDL3_WINDOW
+	// Forward unhandled messages to SDL's WndProc so SDL's internal state
+	// (DPI, IME, resize bookkeeping) stays consistent.
+	if (g_sdlOrigWndProc)
+		return CallWindowProc(g_sdlOrigWndProc, hWnd, message, wParam, lParam);
+#endif
 	return DefWindowProc( hWnd, message, wParam, lParam );
 
 }  // end WndProc
@@ -756,18 +773,81 @@ static Bool initializeAppWindows( HINSTANCE hInstance, Int nCmdShow, Bool runWin
 
 	gInitializing = true;
 
-	HWND hWnd = CreateWindow( TEXT("Game Window"),
-	                          TEXT("zh-revival"),
-	                          windowStyle,
-	                          posX, posY,
-	                          rect.right - rect.left,
-	                          rect.bottom - rect.top,
-	                          0L, 0L, hInstance, 0L );
+	HWND hWnd = NULL;
 
+#ifdef ZH_SDL3_WINDOW
+	// P5-03a — SDL3 window creation path.
+	// SDL3 creates a real Win32 HWND internally; we subclass it with WndProc
+	// so the rest of the engine (WM_ACTIVATE, device-loss handling, etc.) is
+	// unaffected.  D3D8 / DXVK receives the same HWND and works identically.
+	if (!SDL_Init(SDL_INIT_VIDEO))
+	{
+		DEBUG_LOG(("P5-03a: SDL_Init failed: %s\n", SDL_GetError()));
+		return false;
+	}
+
+	SDL_WindowFlags sdlFlags = SDL_WINDOW_HIDDEN;
+	if (ApplicationIsBorderless)
+		sdlFlags |= SDL_WINDOW_BORDERLESS;
+	else if (runWindowed)
+		sdlFlags |= SDL_WINDOW_RESIZABLE;
+
+	g_sdlWindow = SDL_CreateWindow("zh-revival", startWidth, startHeight, sdlFlags);
+	if (!g_sdlWindow)
+	{
+		DEBUG_LOG(("P5-03a: SDL_CreateWindow failed: %s\n", SDL_GetError()));
+		SDL_Quit();
+		return false;
+	}
+
+	// Extract the Win32 HWND from the SDL window
+	SDL_PropertiesID sdlProps = SDL_GetWindowProperties(g_sdlWindow);
+	hWnd = (HWND)SDL_GetPointerProperty(sdlProps,
+	                                     SDL_PROP_WINDOW_WIN32_HWND_POINTER, NULL);
+	if (!hWnd)
+	{
+		DEBUG_LOG(("P5-03a: SDL_GetPointerProperty(HWND) returned NULL\n"));
+		SDL_DestroyWindow(g_sdlWindow); g_sdlWindow = NULL;
+		SDL_Quit();
+		return false;
+	}
+
+	// Subclass: save SDL's WndProc, install ours.  Our WndProc calls
+	// CallWindowProc(g_sdlOrigWndProc, ...) in the default case so SDL's
+	// internal bookkeeping (resize, DPI, IME) continues to work.
+	g_sdlOrigWndProc = (WNDPROC)SetWindowLongPtr(hWnd, GWLP_WNDPROC,
+	                                              (LONG_PTR)WndProc);
+
+	// Position / fullscreen
+	if (ApplicationIsBorderless)
+		SDL_SetWindowPosition(g_sdlWindow, 0, 0);
+	else if (!runWindowed)
+		SDL_SetWindowFullscreen(g_sdlWindow, true);
+
+	SDL_ShowWindow(g_sdlWindow);
+	SetFocus(hWnd);
+	SetForegroundWindow(hWnd);
+
+#else
+	// Original Win32 window creation path
+	// register the window class
+	WNDCLASS wndClass = { CS_HREDRAW | CS_VREDRAW | CS_DBLCLKS, WndProc, 0, 0, hInstance,
+	                     LoadIcon (hInstance, MAKEINTRESOURCE(IDI_ApplicationIcon)),
+	                     NULL/*LoadCursor(NULL, IDC_ARROW)*/,
+	                     (HBRUSH)GetStockObject(BLACK_BRUSH), NULL,
+	                     TEXT("Game Window") };
+	RegisterClass( &wndClass );
+
+	hWnd = CreateWindow( TEXT("Game Window"),
+	                     TEXT("zh-revival"),
+	                     windowStyle,
+	                     posX, posY,
+	                     rect.right - rect.left,
+	                     rect.bottom - rect.top,
+	                     0L, 0L, hInstance, 0L );
 
 	if (ApplicationIsBorderless)
 	{
-		// Borderless: sit at HWND_TOP, no TOPMOST, position exactly at 0,0
 		SetWindowPos(hWnd, HWND_TOP, 0, 0, startWidth, startHeight, SWP_FRAMECHANGED);
 	}
 	else if (!runWindowed)
@@ -783,6 +863,7 @@ static Bool initializeAppWindows( HINSTANCE hInstance, Int nCmdShow, Bool runWin
 	SetForegroundWindow(hWnd);
 	ShowWindow( hWnd, nCmdShow );
 	UpdateWindow( hWnd );
+#endif // ZH_SDL3_WINDOW
 
 	// save our application instance and window handle for future use
 	ApplicationHInstance = hInstance;
