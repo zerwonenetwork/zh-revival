@@ -58,20 +58,28 @@ class STLSpecialAlloc;
 
 #include <assert.h>
 #include <ctype.h>
-#include <direct.h>
-#include <excpt.h>
+#ifdef _WIN32
+#include <direct.h>   // _mkdir, _getcwd — Windows-only; POSIX code uses <unistd.h>
+#include <excpt.h>    // Windows SEH (__try / __except) — not available on POSIX
+#endif
 #include <float.h>
 #include <fstream>     // fstream.h is deprecated; use standard <fstream>
-#include <imagehlp.h>
-#include <io.h>
+#ifdef _WIN32
+#include <imagehlp.h> // Windows ImageHlp API (SymGetSymFromAddr etc.) — stubs in P5-07
+#include <io.h>       // Windows low-level I/O (_read, _write) — POSIX uses <unistd.h>
+#endif
 #include <limits.h>
-#include <lmcons.h>
+#ifdef _WIN32
+#include <lmcons.h>   // Windows LAN Manager constants (UNLEN etc.)
+#endif
 // #include <mapicode.h>  // MAPI header — not in modern Windows SDK; MAPI codes unused by engine
 #include <math.h>
 #include <memory.h>
 #include <mmsystem.h>
 #include <objbase.h>
-#include <ocidl.h>
+#ifdef _WIN32
+#include <ocidl.h>    // Windows COM object interfaces — non-Windows uses compat/objbase.h
+#endif
 #include <process.h>
 #include <shellapi.h>
 #include <shlobj.h>
