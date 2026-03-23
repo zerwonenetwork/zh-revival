@@ -658,6 +658,14 @@ static inline BOOL    SetWindowPos(HWND a,HWND b,int c,int d,int e,int f,UINT g)
 static inline BOOL    GetClientRect(HWND h, LPRECT r)     { (void)h; if(r){r->left=r->top=r->right=r->bottom=0;} return FALSE; }
 static inline BOOL    GetWindowRect(HWND h, LPRECT r)     { (void)h; if(r){r->left=r->top=r->right=r->bottom=0;} return FALSE; }
 static inline BOOL    ClientToScreen(HWND h, LPPOINT p)   { (void)h; (void)p; return FALSE; }
+static inline BOOL    ScreenToClient(HWND h, LPPOINT p)   { (void)h; (void)p; return FALSE; }
+static inline int     ShowCursor(BOOL bShow)              { (void)bShow; return 0; }
+static inline BOOL    GetCursorPos(LPPOINT p)             { if(p){p->x=0;p->y=0;} return TRUE; }
+static inline BOOL    SetCursorPos(int x, int y)          { (void)x;(void)y; return TRUE; }
+static inline HCURSOR SetCursor(HCURSOR h)                { (void)h; return NULL; }
+static inline HCURSOR GetCursor(void)                     { return NULL; }
+static inline HCURSOR LoadCursorA(HINSTANCE h, LPCSTR n)  { (void)h;(void)n; return NULL; }
+#define LoadCursor LoadCursorA
 static inline BOOL    PeekMessageA(LPMSG m,HWND h,UINT a,UINT b,UINT c) { (void)m;(void)h;(void)a;(void)b;(void)c; return FALSE; }
 static inline BOOL    GetMessageA(LPMSG m,HWND h,UINT a,UINT b)         { (void)m;(void)h;(void)a;(void)b; return FALSE; }
 static inline BOOL    TranslateMessage(const MSG* m)      { (void)m; return FALSE; }
@@ -1056,6 +1064,8 @@ static inline DWORD GetFileSizeEx(HANDLE hFile, LARGE_INTEGER* lpFileSize) {
 #include "winreg.h"
 // winnls.h - NLS / codepage functions (MultiByteToWideChar, CP_ACP, etc.)
 #include "winnls.h"
+// mmsystem.h - multimedia timer (timeSetEvent/Kill, timeGetTime) — wwmouse.cpp etc.
+#include "mmsystem.h"
 
 // ---------------------------------------------------------------------------
 //  System information stubs (GetComputerName, GetUserName, GetDiskFreeSpace)

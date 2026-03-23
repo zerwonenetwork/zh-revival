@@ -134,5 +134,29 @@ static inline unsigned long timeGetTime(void) {
 static inline unsigned long timeBeginPeriod(unsigned int u) { (void)u; return 0; }
 static inline unsigned long timeEndPeriod(unsigned int u)   { (void)u; return 0; }
 
+// ---------------------------------------------------------------------------
+//  Multimedia timer (timeSetEvent / timeKillEvent) — used by wwmouse.cpp
+// ---------------------------------------------------------------------------
+#define TIME_ONESHOT    0x0000
+#define TIME_PERIODIC   0x0001
+#define TIME_CALLBACK_FUNCTION    0x0000
+#define TIME_CALLBACK_EVENT_SET   0x0010
+#define TIME_CALLBACK_EVENT_PULSE 0x0020
+
+#ifndef ZH_COMPAT_WINDOWS_H
+#  include "windows.h"  // for DWORD_PTR, UINT
+#endif
+typedef void (*TIMECALLBACK)(unsigned int uTimerID, unsigned int uMsg,
+                              unsigned long dwUser,
+                              unsigned long dw1, unsigned long dw2);
+typedef TIMECALLBACK *LPTIMECALLBACK;
+
+static inline unsigned int timeSetEvent(unsigned int uDelay, unsigned int uResolution,
+                                         TIMECALLBACK fptc, unsigned long dwUser,
+                                         unsigned int fuEvent) {
+    (void)uDelay;(void)uResolution;(void)fptc;(void)dwUser;(void)fuEvent; return 0;
+}
+static inline unsigned int timeKillEvent(unsigned int uTimerID) { (void)uTimerID; return 0; }
+
 #endif // !_WIN32
 #endif // ZH_COMPAT_MMSYSTEM_H
