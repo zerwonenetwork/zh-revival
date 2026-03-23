@@ -127,7 +127,26 @@ typedef LONG      HRESULT;
 #define IN
 #define OUT
 #define OPTIONAL
-#define FORCEINLINE  __attribute__((always_inline)) inline
+#define FORCEINLINE       __attribute__((always_inline)) inline
+// MSVC-specific decorated calling conventions — empty on GCC/Clang
+#ifndef __cdecl
+#define __cdecl
+#endif
+#ifndef __stdcall
+#define __stdcall
+#endif
+#ifndef __fastcall
+#define __fastcall
+#endif
+#ifndef __thiscall
+#define __thiscall
+#endif
+#ifndef __forceinline
+#define __forceinline     __attribute__((always_inline)) inline
+#endif
+#ifndef __declspec
+#define __declspec(x)
+#endif
 
 // ---------------------------------------------------------------------------
 //  Boolean constants
@@ -178,6 +197,87 @@ typedef LONG      HRESULT;
 #define SUCCEEDED(hr)         (((HRESULT)(hr)) >= 0)
 #define FAILED(hr)            (((HRESULT)(hr)) < 0)
 #define MAKE_HRESULT(sev,fac,code) ((HRESULT)(((DWORD)(sev)<<31)|((DWORD)(fac)<<16)|((DWORD)(code))))
+
+// ---------------------------------------------------------------------------
+//  FormatMessage flags
+// ---------------------------------------------------------------------------
+#define FORMAT_MESSAGE_ALLOCATE_BUFFER  0x00000100
+#define FORMAT_MESSAGE_FROM_SYSTEM      0x00001000
+#define FORMAT_MESSAGE_IGNORE_INSERTS   0x00000200
+#define FORMAT_MESSAGE_FROM_STRING      0x00000400
+#define FORMAT_MESSAGE_FROM_HMODULE     0x00000800
+#define FORMAT_MESSAGE_MAX_WIDTH_MASK   0x000000FF
+
+// ---------------------------------------------------------------------------
+//  File / registry / misc constants
+// ---------------------------------------------------------------------------
+#define GENERIC_READ                0x80000000u
+#define GENERIC_WRITE               0x40000000u
+#define GENERIC_EXECUTE             0x20000000u
+#define GENERIC_ALL                 0x10000000u
+#define FILE_SHARE_READ             0x00000001
+#define FILE_SHARE_WRITE            0x00000002
+#define OPEN_EXISTING               3
+#define CREATE_ALWAYS               2
+#define CREATE_NEW                  1
+#define OPEN_ALWAYS                 4
+#define FILE_ATTRIBUTE_NORMAL       0x00000080
+#define FILE_ATTRIBUTE_READONLY     0x00000001
+#define FILE_ATTRIBUTE_DIRECTORY    0x00000010
+#define FILE_BEGIN                  0
+#define FILE_CURRENT                1
+#define FILE_END                    2
+#define DRIVE_CDROM                 5
+#define DRIVE_FIXED                 3
+#define DRIVE_REMOVABLE             2
+#define DRIVE_REMOTE                4
+#define DRIVE_RAMDISK               6
+#define DRIVE_UNKNOWN               0
+#define DRIVE_NO_ROOT_DIR           1
+
+// WM_ message stubs (values from Windows SDK, needed by headers that define message maps)
+#define WM_NULL                     0x0000
+#define WM_CREATE                   0x0001
+#define WM_DESTROY                  0x0002
+#define WM_MOVE                     0x0003
+#define WM_SIZE                     0x0005
+#define WM_ACTIVATE                 0x0006
+#define WM_SETFOCUS                 0x0007
+#define WM_KILLFOCUS                0x0008
+#define WM_PAINT                    0x000F
+#define WM_CLOSE                    0x0010
+#define WM_QUIT                     0x0012
+#define WM_ACTIVATEAPP              0x001C
+#define WM_KEYDOWN                  0x0100
+#define WM_KEYUP                    0x0101
+#define WM_CHAR                     0x0102
+#define WM_SYSKEYDOWN               0x0104
+#define WM_SYSKEYUP                 0x0105
+#define WM_MOUSEMOVE                0x0200
+#define WM_LBUTTONDOWN              0x0201
+#define WM_LBUTTONUP                0x0202
+#define WM_RBUTTONDOWN              0x0204
+#define WM_RBUTTONUP                0x0205
+#define WM_MBUTTONDOWN              0x0207
+#define WM_MBUTTONUP                0x0208
+#define WM_MOUSEWHEEL               0x020A
+#define WM_USER                     0x0400
+
+// Virtual key codes
+#define VK_BACK         0x08
+#define VK_TAB          0x09
+#define VK_RETURN       0x0D
+#define VK_SHIFT        0x10
+#define VK_CONTROL      0x11
+#define VK_MENU         0x12
+#define VK_ESCAPE       0x1B
+#define VK_SPACE        0x20
+#define VK_LEFT         0x25
+#define VK_UP           0x26
+#define VK_RIGHT        0x27
+#define VK_DOWN         0x28
+#define VK_DELETE       0x2E
+#define VK_F1           0x70
 
 // ---------------------------------------------------------------------------
 //  Win32 error codes
