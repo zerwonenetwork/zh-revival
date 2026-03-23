@@ -3,7 +3,7 @@
 > Repo: [https://github.com/ZerwOne/zh-revival](https://github.com/ZerwOne/zh-revival)
 > Forked from: [https://github.com/electronicarts/CnC_Generals_Zero_Hour](https://github.com/electronicarts/CnC_Generals_Zero_Hour)
 > Updated by Claude Code at the end of every session.
-> Last updated: 2026-03-22 (Phase 3 complete)
+> Last updated: 2026-03-23 (Phase 4 complete)
 
 ---
 
@@ -49,12 +49,12 @@
 
 ## Phase 4 — Ecosystem
 
-- P4-01 — Anti-cheat security audit
-- P4-02 — Architecture documentation
-- P4-03 — INI modding reference
-- P4-04 — Contributor guide
-- P4-05 — Mod manager foundation
-- P4-FINAL — Tag v0.4-ecosystem
+- [x] P4-01 — Anti-cheat security audit — completed 2026-03-23
+- [x] P4-02 — Architecture documentation — completed 2026-03-23
+- [x] P4-03 — INI modding reference — completed 2026-03-23
+- [x] P4-04 — Contributor guide — completed 2026-03-23
+- [x] P4-05 — Mod manager foundation — completed 2026-03-23
+- [x] P4-FINAL — Tag v0.4-ecosystem — completed 2026-03-23
 
 ## Phase 5 — Next-Gen Engine
 
@@ -105,5 +105,9 @@
 | 2026-03-22 | P3-04 zh-replay-validate           | task/P3-phase3-all        | done   | tools/zh-replay-validate/main.c: VALID/INVALID output, exit 0/1/2. Walks full command stream. |
 | 2026-03-22 | P3-05 zh-replay-info               | task/P3-phase3-all        | done   | tools/zh-replay-info/main.c: JSON metadata output with schema_version, version, date_iso, duration_ticks, players, winner=null, build_version. |
 | 2026-03-22 | P3-06 Replay HUD                   | task/P3-phase3-all        | done   | Tick counter/elapsed time/speed overlay in postDraw(); MSG_META_REPLAY_SPEED_UP/DOWN for ]/[ keys (0.5x/1x/2x/4x); ControlBarObserver crash fix (NULL guard + slot index bug). |
-
+| 2026-03-23 | P4-01 Anti-cheat audit             | task/P4-ecosystem         | done   | docs/SECURITY_AUDIT_P4.md: 4 CRITICAL + 2 HIGH + 2 MEDIUM. Root cause: all MSG_CHEAT_* guards in CommandXlat (client layer only); GameLogicDispatch has no guards on remote commands. Audit only; no code changes. |
+| 2026-03-23 | P4-02 Architecture docs            | task/P4-ecosystem         | done   | docs/ARCHITECTURE.md: 5 subsystems, main loop flow, INI data flow, lockstep sync model, key singletons table, file tree. RTS3 custom engine confirmed (not SAGE). |
+| 2026-03-23 | P4-03 INI modding reference        | task/P4-ecosystem         | done   | docs/modding/INI_REFERENCE.md: Object/Weapon/Armor/CommandButton/CommandSet/SpecialPower/Upgrade block types, field tables, minimal working examples. |
+| 2026-03-23 | P4-04 Contributor guide            | task/P4-ecosystem         | done   | docs/CONTRIBUTING.md + .github/ISSUE_TEMPLATE/bug_report.md: fork setup, branch naming, commit format, PR requirements, code style, determinism rules, bug template. |
+| 2026-03-23 | P4-05 Mod manager                  | task/P4-ecosystem         | done   | ModManager class: scans <UserData>/Mods/, sorts .big files by numeric prefix, logs conflicts to Logs/mod_conflicts.log, HKCU ModsDir key, --no-mods flag. |
 
