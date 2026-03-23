@@ -111,6 +111,16 @@ option(ZH_OPENAL_AUDIO
     "Replace no-op Miles Sound stubs with real OpenAL audio (requires openal-soft via vcpkg)"
     OFF)
 
+# ─────────────────────────────────────────────
+#  FFmpeg video backend (P5-02)
+#  Requires ZH_USE_STUBS=ON.  When ON, the no-op Bink stubs are replaced
+#  with real FFmpeg-backed implementations via FFmpegBinkShim.cpp.
+#  FFmpeg's Bink decoder is LGPL 2.1+ — compatible with this project's GPLv3.
+# ─────────────────────────────────────────────
+option(ZH_FFMPEG_VIDEO
+    "Replace no-op Bink video stubs with real FFmpeg decoder (requires ffmpeg via vcpkg)"
+    OFF)
+
 if(ZH_USE_STUBS)
     message(STATUS "[zh-revival] Stub mode ON  — proprietary SDK stubs active (P1-03)")
     set(ZH_STUB_DIR ${ZH}/Libraries/Stubs)
@@ -124,11 +134,19 @@ if(ZH_USE_STUBS)
 
     if(ZH_OPENAL_AUDIO)
         message(STATUS "[zh-revival] OpenAL audio backend ON (P5-01)")
-        # Find openal-soft (supplied via vcpkg or system install)
         find_package(OpenAL REQUIRED)
-        # Replace the no-op Miles stub .cpp with the real OpenAL shim
         list(REMOVE_ITEM ZH_STUB_SOURCES ${ZH_STUB_DIR}/MilesSoundStub.cpp)
         list(APPEND      ZH_STUB_SOURCES ${ZH_STUB_DIR}/OpenALMilesShim.cpp)
+    endif()
+
+    if(ZH_FFMPEG_VIDEO)
+        message(STATUS "[zh-revival] FFmpeg video backend ON (P5-02)")
+        # FFmpeg is supplied via vcpkg (ffmpeg[avcodec,avformat,swscale])
+        find_package(PkgConfig REQUIRED)
+        pkg_check_modules(FFMPEG REQUIRED IMPORTED_TARGET
+            libavcodec libavformat libswscale libavutil)
+        list(REMOVE_ITEM ZH_STUB_SOURCES ${ZH_STUB_DIR}/BinkVideoStub.cpp)
+        list(APPEND      ZH_STUB_SOURCES ${ZH_STUB_DIR}/FFmpegBinkShim.cpp)
     endif()
 
     # Build a small stub library so the .cpp files get compiled.
@@ -145,10 +163,18 @@ if(ZH_USE_STUBS)
         target_link_libraries(zh_stubs PUBLIC OpenAL::OpenAL)
     endif()
 
-    # Propagate STUB_IMPL to all translation units in this build.
+    if(ZH_FFMPEG_VIDEO)
+        target_compile_definitions(zh_stubs PUBLIC ZH_FFMPEG_VIDEO)
+        target_link_libraries(zh_stubs PUBLIC PkgConfig::FFMPEG)
+    endif()
+
+    # Propagate STUB_IMPL (and optional backend flags) to all TUs in this build.
     add_compile_definitions(STUB_IMPL)
     if(ZH_OPENAL_AUDIO)
         add_compile_definitions(ZH_OPENAL_AUDIO)
+    endif()
+    if(ZH_FFMPEG_VIDEO)
+        add_compile_definitions(ZH_FFMPEG_VIDEO)
     endif()
 else()
     message(STATUS "[zh-revival] Stub mode OFF — expecting real proprietary SDKs on include path")
