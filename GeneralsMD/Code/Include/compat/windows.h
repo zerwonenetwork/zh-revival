@@ -316,6 +316,9 @@ typedef LRESULT (*WNDPROC)(HWND, UINT, WPARAM, LPARAM);
 #define DRIVE_NO_ROOT_DIR           1
 #define PM_NOREMOVE                 0x0000
 #define PM_REMOVE                   0x0001
+#define WAIT_OBJECT_0               0x00000000L
+#define WAIT_TIMEOUT                0x00000102L
+#define WAIT_FAILED                 0xFFFFFFFFL
 
 // WM_ message stubs (values from Windows SDK, needed by headers that define message maps)
 #define WM_NULL                     0x0000
@@ -761,6 +764,8 @@ static inline UINT    GetTempFileNameA(LPCSTR path, LPCSTR prefix, UINT unique, 
     return 0;
 }
 #define GetTempFileName GetTempFileNameA
+static inline HANDLE  CreateMutexA(void* sa, BOOL initial_owner, LPCSTR name) { (void)sa; (void)initial_owner; (void)name; return (HANDLE)1; }
+#define CreateMutex CreateMutexA
 static inline HANDLE  CreateEventA(void*,BOOL,BOOL,LPCSTR)            { return NULL; }
 #define CreateEvent CreateEventA
 typedef struct _STARTUPINFOA {
@@ -850,6 +855,7 @@ static inline BOOL    CreateProcessA(LPCSTR app, LPSTR cmd, void* proc_attr, voi
 #define CreateProcess CreateProcessA
 static inline BOOL    SetEvent(HANDLE h)                               { (void)h; return FALSE; }
 static inline BOOL    ResetEvent(HANDLE h)                             { (void)h; return FALSE; }
+static inline BOOL    ReleaseMutex(HANDLE h)                           { (void)h; return TRUE; }
 static inline DWORD   WaitForSingleObject(HANDLE h, DWORD ms)         { (void)h;(void)ms; return 0; }
 static inline BOOL    CloseHandle(HANDLE h)                            { (void)h; return TRUE; }
 static inline HANDLE  GetCurrentProcess(void)                          { return NULL; }

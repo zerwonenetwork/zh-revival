@@ -41,6 +41,31 @@
 #include	<ctype.h>
 #include	<string.h>
 
+static void ZhStrupr(char* text)
+{
+	if (!text) {
+		return;
+	}
+
+	for (; *text != '\0'; ++text) {
+		*text = (char)toupper((unsigned char)*text);
+	}
+}
+
+static void ZhStrrev(char* text)
+{
+	if (!text) {
+		return;
+	}
+
+	size_t length = strlen(text);
+	for (size_t index = 0; index < length / 2; ++index) {
+		char temp = text[index];
+		text[index] = text[length - 1 - index];
+		text[length - 1 - index] = temp;
+	}
+}
+
 /***********************************************************************************************
  * Obfuscate -- Sufficiently transform parameter to thwart casual hackers.                     *
  *                                                                                             *
@@ -88,7 +113,7 @@ long Obfuscate(char const * string)
 	/*
 	**	Only upper case letters are significant.
 	*/
-	strupr(buffer);
+	ZhStrupr(buffer);
 
 	/*
 	**	Ensure that only visible ASCII characters compose the key phrase. This
@@ -136,7 +161,7 @@ long Obfuscate(char const * string)
 	**	Reverse the character string and combine with the previous transformation.
 	**	This doubles the workload of trying to reverse engineer the CRC calculation.
 	*/
-	strrev(buffer);
+	ZhStrrev(buffer);
 	code ^= CRCEngine()(buffer, length);
 
 	/*
@@ -151,7 +176,7 @@ long Obfuscate(char const * string)
 	**	process, it gives the sophisticated hacker false hope since the strong
 	**	cypher process occurs later.
 	*/
-	strrev(buffer);		// Restore original string order.
+	ZhStrrev(buffer);		// Restore original string order.
 	for (int index2 = 0; index2 < length; index2++) {
 		code ^= (unsigned char)buffer[index2];
 		unsigned char temp = (unsigned char)code;
