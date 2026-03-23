@@ -705,7 +705,82 @@ static inline int     MessageBoxA(HWND,LPCSTR,LPCSTR,UINT) { return 0; }
 static inline BOOL    DestroyWindow(HWND h)               { (void)h; return FALSE; }
 static inline BOOL    ShowWindow(HWND h, int cmd)         { (void)h;(void)cmd; return FALSE; }
 static inline BOOL    UpdateWindow(HWND h)                { (void)h; return FALSE; }
+// SetWindowPos flags
+#define SWP_NOSIZE        0x0001
+#define SWP_NOMOVE        0x0002
+#define SWP_NOZORDER      0x0004
+#define SWP_NOREDRAW      0x0008
+#define SWP_NOACTIVATE    0x0010
+#define SWP_FRAMECHANGED  0x0020
+#define SWP_SHOWWINDOW    0x0040
+#define SWP_HIDEWINDOW    0x0080
+#define SWP_NOCOPYBITS    0x0100
+#define SWP_NOOWNERZORDER 0x0200
+#define SWP_NOSENDCHANGING 0x0400
+#define SWP_DRAWFRAME     SWP_FRAMECHANGED
+#define SWP_NOREPOSITION  SWP_NOOWNERZORDER
+// HWND Z-order constants
+#define HWND_TOP          ((HWND)0)
+#define HWND_BOTTOM       ((HWND)1)
+#define HWND_TOPMOST      ((HWND)(-1))
+#define HWND_NOTOPMOST    ((HWND)(-2))
 static inline BOOL    SetWindowPos(HWND a,HWND b,int c,int d,int e,int f,UINT g) { (void)a;(void)b;(void)c;(void)d;(void)e;(void)f;(void)g; return FALSE; }
+// Window long constants (GetWindowLong / SetWindowLong)
+#define GWL_WNDPROC       (-4)
+#define GWL_HINSTANCE     (-6)
+#define GWL_HWNDPARENT    (-8)
+#define GWL_STYLE         (-16)
+#define GWL_EXSTYLE       (-20)
+#define GWL_USERDATA      (-21)
+#define GWL_ID            (-12)
+// 64-bit GWLP variants
+#define GWLP_WNDPROC      (-4)
+#define GWLP_HINSTANCE    (-6)
+#define GWLP_HWNDPARENT   (-8)
+#define GWLP_USERDATA     (-21)
+#define GWLP_ID           (-12)
+// Extended window styles
+#define WS_EX_TOPMOST     0x00000008L
+#define WS_EX_TOOLWINDOW  0x00000080L
+#define WS_EX_LAYERED     0x00080000L
+// GetWindowLong / SetWindowLong stubs
+static inline LONG GetWindowLongA(HWND h, int n) { (void)h;(void)n; return 0; }
+static inline LONG SetWindowLongA(HWND h, int n, LONG v) { (void)h;(void)n;(void)v; return 0; }
+#define GetWindowLong  GetWindowLongA
+#define SetWindowLong  SetWindowLongA
+static inline LONG_PTR GetWindowLongPtrA(HWND h, int n) { (void)h;(void)n; return 0; }
+static inline LONG_PTR SetWindowLongPtrA(HWND h, int n, LONG_PTR v) { (void)h;(void)n;(void)v; return 0; }
+#define GetWindowLongPtr  GetWindowLongPtrA
+#define SetWindowLongPtr  SetWindowLongPtrA
+// AdjustWindowRect stub
+static inline BOOL AdjustWindowRect(LPRECT r, DWORD style, BOOL menu) { (void)style;(void)menu; return r!=NULL; }
+static inline BOOL AdjustWindowRectEx(LPRECT r, DWORD style, BOOL menu, DWORD exStyle) { (void)style;(void)menu;(void)exStyle; return r!=NULL; }
+// GetDesktopWindow — returns NULL stub handle
+static inline HWND GetDesktopWindow(void) { return NULL; }
+static inline HWND GetForegroundWindow(void) { return NULL; }
+static inline HWND GetParent(HWND h) { (void)h; return NULL; }
+static inline HWND SetParent(HWND h, HWND p) { (void)h;(void)p; return NULL; }
+// GetDlgCtrlID
+static inline int GetDlgCtrlID(HWND h) { (void)h; return 0; }
+static inline HWND GetDlgItem(HWND h, int id) { (void)h;(void)id; return NULL; }
+static inline BOOL EnableWindow(HWND h, BOOL e) { (void)h;(void)e; return FALSE; }
+static inline BOOL IsWindowEnabled(HWND h) { (void)h; return TRUE; }
+static inline BOOL IsWindowVisible(HWND h) { (void)h; return FALSE; }
+static inline BOOL IsWindow(HWND h) { (void)h; return FALSE; }
+static inline BOOL MoveWindow(HWND h,int x,int y,int w,int ht,BOOL rep) { (void)h;(void)x;(void)y;(void)w;(void)ht;(void)rep; return FALSE; }
+static inline int  GetWindowTextA(HWND h, LPSTR b, int n) { (void)h; if(b&&n>0)b[0]=0; return 0; }
+static inline int  GetWindowTextLengthA(HWND h) { (void)h; return 0; }
+static inline BOOL SetWindowTextA(HWND h, LPCSTR t) { (void)h;(void)t; return FALSE; }
+#define GetWindowText       GetWindowTextA
+#define GetWindowTextLength GetWindowTextLengthA
+#define SetWindowText       SetWindowTextA
+static inline BOOL InvalidateRect(HWND h, const LPRECT r, BOOL e) { (void)h;(void)r;(void)e; return FALSE; }
+static inline BOOL ValidateRect(HWND h, const LPRECT r) { (void)h;(void)r; return FALSE; }
+// Display gamma ramp (needs D3D/display device, stub no-op)
+typedef WORD RAMP3[256];
+typedef struct tagRAMPDATA { RAMP3 red, green, blue; } RAMPDATA;
+static inline BOOL SetDeviceGammaRamp(HDC hdc, LPVOID ramp) { (void)hdc;(void)ramp; return FALSE; }
+static inline BOOL GetDeviceGammaRamp(HDC hdc, LPVOID ramp) { (void)hdc;(void)ramp; return FALSE; }
 static inline BOOL    GetClientRect(HWND h, LPRECT r)     { (void)h; if(r){r->left=r->top=r->right=r->bottom=0;} return FALSE; }
 static inline BOOL    GetWindowRect(HWND h, LPRECT r)     { (void)h; if(r){r->left=r->top=r->right=r->bottom=0;} return FALSE; }
 static inline BOOL    ClientToScreen(HWND h, LPPOINT p)   { (void)h; (void)p; return FALSE; }
@@ -1119,6 +1194,70 @@ static inline DWORD GetFileSizeEx(HANDLE hFile, LARGE_INTEGER* lpFileSize) {
 #include "mmsystem.h"
 // winnt.h - PE image structures (IMAGE_DOS_HEADER, IMAGE_FILE_HEADER, etc.)
 #include "winnt.h"
+// objbase.h - COM base interfaces (IUnknown, IDispatch, LPDISPATCH, CoInitialize etc.)
+#include "objbase.h"
+
+// ---------------------------------------------------------------------------
+//  Control window messages (used by windowsx.h macros and direct SendMessage)
+// ---------------------------------------------------------------------------
+// Edit control messages
+#define EM_GETSEL           0x00B0
+#define EM_SETSEL           0x00B1
+#define EM_GETRECT          0x00B2
+#define EM_SETRECT          0x00B3
+#define EM_SETLIMITTEXT     0x00C5
+#define EM_LIMITTEXT        EM_SETLIMITTEXT
+// Static control messages
+#define STM_SETICON         0x0170
+#define STM_GETICON         0x0171
+#define STM_SETIMAGE        0x0172
+#define STM_GETIMAGE        0x0173
+// Button messages
+#define BM_GETCHECK         0x00F0
+#define BM_SETCHECK         0x00F1
+#define BM_GETSTATE         0x00F2
+#define BM_SETSTATE         0x00F3
+// ListBox messages
+#define LB_ADDSTRING        0x0180
+#define LB_INSERTSTRING     0x0181
+#define LB_DELETESTRING     0x0182
+#define LB_RESETCONTENT     0x0184
+#define LB_SETSEL           0x0185
+#define LB_SETCURSEL        0x0186
+#define LB_GETSEL           0x0187
+#define LB_GETCURSEL        0x0188
+#define LB_GETTEXT          0x0189
+#define LB_GETTEXTLEN       0x018A
+#define LB_GETCOUNT         0x018B
+#define LB_SETITEMDATA      0x019A
+#define LB_GETITEMDATA      0x0199
+// ComboBox messages
+#define CB_ADDSTRING        0x0143
+#define CB_DELETESTRING     0x0144
+#define CB_GETCOUNT         0x0146
+#define CB_GETCURSEL        0x0147
+#define CB_GETLBTEXT        0x0148
+#define CB_GETLBTEXTLEN     0x0149
+#define CB_INSERTSTRING     0x014A
+#define CB_RESETCONTENT     0x014B
+#define CB_SETCURSEL        0x014E
+#define CB_SETITEMDATA      0x0151
+#define CB_GETITEMDATA      0x0150
+
+// ---------------------------------------------------------------------------
+//  Undef POSIX constants that conflict with game engine enum member names.
+//  These come from system <limits.h> (pulled in transitively via <ctime>).
+//  The game engine uses these as enum identifiers, not as POSIX constants.
+// ---------------------------------------------------------------------------
+#ifdef PASS_MAX
+#undef PASS_MAX   // POSIX: max passes for sysconf — conflicts with ShaderClass::DepthCompareType
+#endif
+#ifdef PASS_NEVER
+#undef PASS_NEVER
+#endif
+#ifdef CHAR_MAX
+// CHAR_MAX is OK — don't undef it; just undef names that clash with game enums
+#endif
 
 // ---------------------------------------------------------------------------
 //  Non-underscore MSVC string helpers (used via ::strupr / ::strlwr)

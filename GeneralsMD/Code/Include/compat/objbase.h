@@ -44,5 +44,19 @@ static inline HRESULT CoCreateInstance(REFCLSID rclsid, void* pUnkOuter, DWORD d
 #define CLSCTX_LOCAL_SERVER   0x4
 #define CLSCTX_ALL            0x17
 
+// IDispatch — minimal COM automation interface
+#ifdef __cplusplus
+struct IDispatch : public IUnknown {
+    virtual HRESULT GetTypeInfoCount(UINT* pctinfo) = 0;
+    virtual HRESULT GetTypeInfo(UINT iTInfo, DWORD lcid, void** ppTInfo) = 0;
+    virtual HRESULT GetIDsOfNames(REFIID riid, void** rgszNames, UINT cNames,
+                                   DWORD lcid, LONG* rgDispId) = 0;
+    virtual HRESULT Invoke(LONG dispIdMember, REFIID riid, DWORD lcid, WORD wFlags,
+                           void* pDispParams, void* pVarResult,
+                           void* pExcepInfo, UINT* puArgErr) = 0;
+};
+typedef IDispatch* LPDISPATCH;
+#endif
+
 #endif // !_WIN32
 #endif // ZH_COMPAT_OBJBASE_H
