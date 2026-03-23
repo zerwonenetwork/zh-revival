@@ -314,6 +314,8 @@ typedef LRESULT (*WNDPROC)(HWND, UINT, WPARAM, LPARAM);
 #define DRIVE_RAMDISK               6
 #define DRIVE_UNKNOWN               0
 #define DRIVE_NO_ROOT_DIR           1
+#define PM_NOREMOVE                 0x0000
+#define PM_REMOVE                   0x0001
 
 // WM_ message stubs (values from Windows SDK, needed by headers that define message maps)
 #define WM_NULL                     0x0000
@@ -643,11 +645,15 @@ static inline BOOL    ClientToScreen(HWND h, LPPOINT p)   { (void)h; (void)p; re
 static inline BOOL    PeekMessageA(LPMSG m,HWND h,UINT a,UINT b,UINT c) { (void)m;(void)h;(void)a;(void)b;(void)c; return FALSE; }
 static inline BOOL    GetMessageA(LPMSG m,HWND h,UINT a,UINT b)         { (void)m;(void)h;(void)a;(void)b; return FALSE; }
 static inline BOOL    TranslateMessage(const MSG* m)      { (void)m; return FALSE; }
+static inline int     TranslateAcceleratorA(HWND h, HACCEL accel, LPMSG msg) { (void)h; (void)accel; (void)msg; return 0; }
+static inline BOOL    IsDialogMessageA(HWND h, LPMSG msg) { (void)h; (void)msg; return FALSE; }
 static inline LRESULT DispatchMessageA(const MSG* m)      { (void)m; return 0; }
 static inline LRESULT DefWindowProcA(HWND h,UINT msg,WPARAM w,LPARAM l){ (void)h;(void)msg;(void)w;(void)l; return 0; }
 #define DefWindowProc DefWindowProcA
 #define PeekMessage   PeekMessageA
 #define GetMessage    GetMessageA
+#define TranslateAccelerator TranslateAcceleratorA
+#define IsDialogMessage IsDialogMessageA
 #define DispatchMessage DispatchMessageA
 static inline void    PostQuitMessage(int code)           { (void)code; }
 static inline HMODULE GetModuleHandleA(LPCSTR n)          { (void)n; return NULL; }
