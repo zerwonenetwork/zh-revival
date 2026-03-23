@@ -169,6 +169,7 @@ typedef LRESULT (*WNDPROC)(HWND, UINT, WPARAM, LPARAM);
 #define WINAPI
 #define CALLBACK
 #define APIENTRY
+#define STDMETHODCALLTYPE WINAPI
 #define CDECL
 #define PASCAL
 #define FAR
@@ -558,6 +559,11 @@ static inline LRESULT DefWindowProcA(HWND h,UINT msg,WPARAM w,LPARAM l){ (void)h
 static inline void    PostQuitMessage(int code)           { (void)code; }
 static inline HMODULE GetModuleHandleA(LPCSTR n)          { (void)n; return NULL; }
 #define GetModuleHandle GetModuleHandleA
+typedef INT_PTR (WINAPI *FARPROC)(void);
+static inline HMODULE LoadLibraryA(LPCSTR n)              { (void)n; return NULL; }
+static inline FARPROC GetProcAddress(HMODULE h, LPCSTR n) { (void)h; (void)n; return NULL; }
+static inline BOOL    FreeLibrary(HMODULE h)              { (void)h; return FALSE; }
+#define LoadLibrary  LoadLibraryA
 static inline BOOL    SetForegroundWindow(HWND h)         { (void)h; return FALSE; }
 static inline HWND    SetFocus_w(HWND h)                  { return h; }
 #define SetFocus SetFocus_w
@@ -583,8 +589,70 @@ static inline BOOL    QueryPerformanceCounter(LARGE_INTEGER* p)        { if(p) p
 static inline BOOL    QueryPerformanceFrequency(LARGE_INTEGER* p)      { if(p) p->QuadPart=1000000; return TRUE; }
 static inline void    GetSystemTime(SYSTEMTIME* st)                    { if(st) memset(st,0,sizeof(*st)); }
 static inline void    GetLocalTime(SYSTEMTIME* st)                     { if(st) memset(st,0,sizeof(*st)); }
+static inline DWORD   GetWindowsDirectoryA(LPSTR path, DWORD size)     {
+    if (path && size > 0) { path[0] = '.'; if (size > 1) path[1] = '\0'; }
+    return 1;
+}
+#define GetWindowsDirectory GetWindowsDirectoryA
+static inline UINT    GetTempFileNameA(LPCSTR path, LPCSTR prefix, UINT unique, LPSTR buffer) {
+    (void)path; (void)prefix; (void)unique;
+    if (buffer) {
+        strcpy(buffer, "zh_compat.tmp");
+        return 1;
+    }
+    return 0;
+}
+#define GetTempFileName GetTempFileNameA
 static inline HANDLE  CreateEventA(void*,BOOL,BOOL,LPCSTR)            { return NULL; }
 #define CreateEvent CreateEventA
+typedef struct _STARTUPINFOA {
+    DWORD  cb;
+    LPSTR  lpReserved;
+    LPSTR  lpDesktop;
+    LPSTR  lpTitle;
+    DWORD  dwX;
+    DWORD  dwY;
+    DWORD  dwXSize;
+    DWORD  dwYSize;
+    DWORD  dwXCountChars;
+    DWORD  dwYCountChars;
+    DWORD  dwFillAttribute;
+    DWORD  dwFlags;
+    WORD   wShowWindow;
+    WORD   cbReserved2;
+    BYTE*  lpReserved2;
+    HANDLE hStdInput;
+    HANDLE hStdOutput;
+    HANDLE hStdError;
+} STARTUPINFOA, STARTUPINFO, *LPSTARTUPINFOA, *LPSTARTUPINFO;
+typedef struct _PROCESS_INFORMATION {
+    HANDLE hProcess;
+    HANDLE hThread;
+    DWORD  dwProcessId;
+    DWORD  dwThreadId;
+} PROCESS_INFORMATION, *LPPROCESS_INFORMATION;
+static inline HANDLE  CreateFileA(LPCSTR path, DWORD access, DWORD share, void* sa,
+                                  DWORD creation, DWORD flags, HANDLE template_file) {
+    (void)path; (void)access; (void)share; (void)sa; (void)creation; (void)flags; (void)template_file;
+    return INVALID_HANDLE_VALUE;
+}
+#define CreateFile CreateFileA
+static inline BOOL    WriteFile(HANDLE h, LPCVOID buffer, DWORD bytes, DWORD* written, LPOVERLAPPED overlapped) {
+    (void)h; (void)buffer; (void)bytes; (void)overlapped;
+    if (written) *written = 0;
+    return FALSE;
+}
+static inline BOOL    DeleteFileA(LPCSTR path)                        { (void)path; return FALSE; }
+#define DeleteFile DeleteFileA
+static inline BOOL    CreateProcessA(LPCSTR app, LPSTR cmd, void* proc_attr, void* thread_attr,
+                                     BOOL inherit_handles, DWORD creation_flags, void* env,
+                                     LPCSTR current_dir, LPSTARTUPINFOA startup, LPPROCESS_INFORMATION process) {
+    (void)app; (void)cmd; (void)proc_attr; (void)thread_attr; (void)inherit_handles;
+    (void)creation_flags; (void)env; (void)current_dir; (void)startup;
+    if (process) memset(process, 0, sizeof(*process));
+    return FALSE;
+}
+#define CreateProcess CreateProcessA
 static inline BOOL    SetEvent(HANDLE h)                               { (void)h; return FALSE; }
 static inline BOOL    ResetEvent(HANDLE h)                             { (void)h; return FALSE; }
 static inline DWORD   WaitForSingleObject(HANDLE h, DWORD ms)         { (void)h;(void)ms; return 0; }
