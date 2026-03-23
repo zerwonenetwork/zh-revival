@@ -25,6 +25,8 @@
 
 #include "PreRTS.h"	// This must go first in EVERY cpp file int the GameEngine
 
+#include <stdio.h>
+#include <time.h>
 #include "Common/Recorder.h"
 #include "GameClient/DisconnectMenu.h"
 #include "GameClient/InGameUI.h"
@@ -34,6 +36,20 @@
 #include "GameNetwork/networkutil.h"
 #include "GameNetwork/GameSpy/PingThread.h"
 #include "GameNetwork/GameSpy/GSConfig.h"
+
+// P2-10: append one disconnect event to Logs/disconnect.log
+static void logDisconnectEvent(const char *event, UnsignedInt frame)
+{
+	FILE *fp = fopen("Logs/disconnect.log", "a");
+	if (!fp) return;
+	time_t rawtime; time(&rawtime);
+	struct tm *t = localtime(&rawtime);
+	fprintf(fp, "[%04d-%02d-%02d %02d:%02d:%02d] %s frame=%u\n",
+		t->tm_year+1900, t->tm_mon+1, t->tm_mday,
+		t->tm_hour, t->tm_min, t->tm_sec,
+		event, frame);
+	fclose(fp);
+}
 
 #ifdef _INTERNAL
 // for occasional debugging...
@@ -52,6 +68,8 @@ DisconnectManager::DisconnectManager()
 	m_lastKeepAliveSendTime = 0;
 	m_haveNotifiedOtherPlayersOfCurrentFrame = FALSE;
 	m_timeOfDisconnectScreenOn = 0;
+	m_recoveryAttemptTime = 0;
+	m_recoveryAttempted = FALSE;
 
 	for( i = 0; i < MAX_SLOTS; ++i) {
 		m_packetRouterFallback[i] = 0;
@@ -81,6 +99,8 @@ void DisconnectManager::init() {
 	m_disconnectState = DISCONNECTSTATETYPE_SCREENOFF;
 	m_currentPacketRouterIndex = 0;
 	m_timeOfDisconnectScreenOn = 0;
+	m_recoveryAttemptTime = 0; // P2-10: time when we should attempt auto-recovery
+	m_recoveryAttempted = FALSE; // P2-10: have we already tried once?
 
 	for (Int i = 0; i < MAX_SLOTS; ++i) {
 		for (Int j = 0; j < MAX_SLOTS; ++j) {
@@ -120,6 +140,24 @@ void DisconnectManager::update(ConnectionManager *conMgr) {
 	}
 
 	if (m_disconnectState != DISCONNECTSTATETYPE_SCREENOFF) {
+		// P2-10: attempt auto-recovery once after 10s on the disconnect screen
+		if (!m_recoveryAttempted && m_recoveryAttemptTime > 0)
+		{
+			time_t curTime = timeGetTime();
+			if (curTime >= (time_t)m_recoveryAttemptTime)
+			{
+				m_recoveryAttempted = TRUE;
+				logDisconnectEvent("RECOVERY_ATTEMPT", (UnsignedInt)TheGameLogic->getFrame());
+				DEBUG_LOG(("DisconnectManager::update - 10s elapsed on disconnect screen, attempting auto-recovery\n"));
+				// Attempt: reset keep-alive and allow the normal reconnect path one more chance.
+				// If peers have reconnected in the meantime, the next allowedToContinue() check will
+				// let the game resume. If not, the screen stays up with the normal vote/quit options.
+				m_lastKeepAliveSendTime = -1;
+				sendKeepAlive(conMgr);
+				// If still stuck after this, the player must manually quit — logged below.
+			}
+		}
+
 		updateDisconnectStatus(conMgr);
 
 		// check to see if we need to send pings
@@ -540,7 +578,12 @@ void DisconnectManager::turnOnScreen(ConnectionManager *conMgr) {
 	m_haveNotifiedOtherPlayersOfCurrentFrame = FALSE;
 
 	m_timeOfDisconnectScreenOn = timeGetTime();
+	m_recoveryAttemptTime = m_timeOfDisconnectScreenOn + 10000; // P2-10: try recovery after 10s
+	m_recoveryAttempted = FALSE;
 	DEBUG_LOG(("DisconnectManager::turnOnScreen - turned on screen at time %d\n", m_timeOfDisconnectScreenOn));
+
+	// P2-10: log disconnect event
+	logDisconnectEvent("DISCONNECT_SCREEN_ON", (UnsignedInt)TheGameLogic->getFrame());
 }
 
 void DisconnectManager::disconnectPlayer(Int slot, ConnectionManager *conMgr) {

@@ -126,6 +126,10 @@ protected:
 	Int m_pingsSent;
 	Int m_pingsRecieved;
 	UnsignedInt m_pingFrame;
+
+	// P2-10: auto-recovery state
+	UnsignedInt m_recoveryAttemptTime; // timeGetTime() value when we should attempt recovery
+	Bool m_recoveryAttempted;          // TRUE after first recovery attempt fires
 };
 
 
