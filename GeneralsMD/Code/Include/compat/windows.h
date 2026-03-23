@@ -149,9 +149,15 @@ typedef struct _GUID {
     unsigned short Data3;
     unsigned char  Data4[8];
 } GUID, IID, CLSID;
+#ifdef __cplusplus
+typedef const GUID& REFGUID;
+typedef const IID&  REFIID;
+typedef const CLSID& REFCLSID;
+#else
 typedef const GUID* REFGUID;
 typedef const IID*  REFIID;
 typedef const CLSID* REFCLSID;
+#endif
 
 #ifndef IsEqualGUID
 #define IsEqualGUID(a,b) (memcmp(&(a),&(b),sizeof(GUID))==0)
