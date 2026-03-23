@@ -60,16 +60,38 @@ typedef uintptr_t UINT_PTR;
 typedef uintptr_t SIZE_T;
 
 // ---------------------------------------------------------------------------
+//  MSVC intrinsic integer types
+// ---------------------------------------------------------------------------
+#ifndef __int8
+#define __int8    char
+#endif
+#ifndef __int16
+#define __int16   short
+#endif
+#ifndef __int32
+#define __int32   int
+#endif
+#ifndef __int64
+#define __int64   long long
+#endif
+#ifndef __uint64
+#define __uint64  unsigned long long
+#endif
+// _int64 — used in some SAGE headers alongside __int64
+typedef long long          _int64;
+typedef unsigned long long _uint64;
+
+// ---------------------------------------------------------------------------
 //  Character types
 // ---------------------------------------------------------------------------
 typedef char      TCHAR;
-typedef uint16_t  WCHAR;
+typedef wchar_t   WCHAR;    // use wchar_t so wcslen/wcscpy etc. accept WCHAR*
 typedef char*     LPSTR;
 typedef char*     LPTSTR;
 typedef const char*    LPCSTR;
 typedef const char*    LPCTSTR;
-typedef uint16_t* LPWSTR;
-typedef const uint16_t* LPCWSTR;
+typedef wchar_t*       LPWSTR;
+typedef const wchar_t* LPCWSTR;
 
 // ---------------------------------------------------------------------------
 //  Void pointer aliases
@@ -384,16 +406,26 @@ typedef struct _CRITICAL_SECTION {
 } CRITICAL_SECTION, *LPCRITICAL_SECTION, *PCRITICAL_SECTION;
 
 // ---------------------------------------------------------------------------
-//  Stub inline implementations — all static inline, no extern "C" needed
-//  (static inline has internal linkage; no name mangling issues)
+//  Standard C includes needed by many game files
 // ---------------------------------------------------------------------------
 #ifdef __cplusplus
 #  include <cstdio>
 #  include <cstring>
+#  include <cctype>
+#  include <cwchar>
+#  include <cstdlib>
 #else
 #  include <stdio.h>
 #  include <string.h>
+#  include <ctype.h>
+#  include <wchar.h>
+#  include <stdlib.h>
 #endif
+
+// ---------------------------------------------------------------------------
+//  Stub inline implementations — all static inline, no extern "C" needed
+//  (static inline has internal linkage; no name mangling issues)
+// ---------------------------------------------------------------------------
 
 // ---------------------------------------------------------------------------
 //  WNDCLASS / WNDCLASSEX (needed by any header referencing window registration)

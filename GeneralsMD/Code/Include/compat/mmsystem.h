@@ -118,5 +118,21 @@ static inline MMRESULT waveOutGetDevCapsA(unsigned int id, LPWAVEOUTCAPSA caps, 
 }
 static inline unsigned int waveOutGetNumDevs(void)       { return 0; }
 
+// ---------------------------------------------------------------------------
+//  Multimedia Timer (timeGetTime used by systimer.h)
+// ---------------------------------------------------------------------------
+#ifdef __cplusplus
+#  include <ctime>
+#else
+#  include <time.h>
+#endif
+static inline unsigned long timeGetTime(void) {
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return (unsigned long)(ts.tv_sec * 1000UL + ts.tv_nsec / 1000000UL);
+}
+static inline unsigned long timeBeginPeriod(unsigned int u) { (void)u; return 0; }
+static inline unsigned long timeEndPeriod(unsigned int u)   { (void)u; return 0; }
+
 #endif // !_WIN32
 #endif // ZH_COMPAT_MMSYSTEM_H
