@@ -3,7 +3,7 @@
 > Repo: [https://github.com/ZerwOne/zh-revival](https://github.com/ZerwOne/zh-revival)
 > Forked from: [https://github.com/electronicarts/CnC_Generals_Zero_Hour](https://github.com/electronicarts/CnC_Generals_Zero_Hour)
 > Updated by Claude Code at the end of every session.
-> Last updated: 2026-03-23 (Phase 4 complete)
+> Last updated: 2026-03-23 (Phase 5 P5-01 through P5-06 complete)
 
 ---
 
@@ -58,14 +58,14 @@
 
 ## Phase 5 — Next-Gen Engine
 
-- P5-01 — Replace Miles Sound System with OpenAL
-- P5-02 — Replace Bink video with open decoder
-- P5-03 — DXVK + SDL3 graphics and windowing layer
-- P5-04 — Win64 build
-- P5-05 — Linux native build
-- P5-06 — macOS ARM64 build
-- P5-07 — Full memory safety audit
-- P5-FINAL — Tag v1.0-revival
+- [x] P5-01 — Replace Miles Sound System with OpenAL — completed 2026-03-23
+- [x] P5-02 — Replace Bink video with FFmpeg open decoder — completed 2026-03-23
+- [x] P5-03 — DXVK + SDL3 graphics and windowing layer — completed 2026-03-23
+- [x] P5-04 — Win64 build — completed 2026-03-23
+- [x] P5-05 — Linux native build — completed 2026-03-23
+- [x] P5-06 — macOS ARM64 build — completed 2026-03-23
+- [ ] P5-07 — Full memory safety audit
+- [ ] P5-FINAL — Tag v1.0-revival
 
 ---
 
@@ -110,4 +110,10 @@
 | 2026-03-23 | P4-03 INI modding reference        | task/P4-ecosystem         | done   | docs/modding/INI_REFERENCE.md: Object/Weapon/Armor/CommandButton/CommandSet/SpecialPower/Upgrade block types, field tables, minimal working examples. |
 | 2026-03-23 | P4-04 Contributor guide            | task/P4-ecosystem         | done   | docs/CONTRIBUTING.md + .github/ISSUE_TEMPLATE/bug_report.md: fork setup, branch naming, commit format, PR requirements, code style, determinism rules, bug template. |
 | 2026-03-23 | P4-05 Mod manager                  | task/P4-ecosystem         | done   | ModManager class: scans <UserData>/Mods/, sorts .big files by numeric prefix, logs conflicts to Logs/mod_conflicts.log, HKCU ModsDir key, --no-mods flag. |
+| 2026-03-23 | P5-01 OpenAL Miles shim            | main (direct)             | done   | OpenALMilesShim.cpp: full ~40 AIL_ function implementation via openal-soft. Thin-shim pattern: ZH_OPENAL_AUDIO=ON swaps inline stubs for OpenAL backend. OALObjectType enum tag for H3DPOBJECT dispatch. IMA ADPCM decode. Double-buffer streaming thread. |
+| 2026-03-23 | P5-02 FFmpeg Bink shim             | main (direct)             | done   | FFmpegBinkShim.cpp: BinkOpen/BinkDoFrame/BinkCopyToBuffer/BinkGoto via libavcodec+libavformat+libswscale. ZH_FFMPEG_VIDEO=OFF fallback: zh_bink_log_skip() logs skip to Logs/video_skip.log. |
+| 2026-03-23 | P5-03 SDL3 + DXVK platform layer   | main (direct)             | done   | P5-03a: SDL3 window + HWND extraction + WndProc subclassing. P5-03b: SDL_PollEvent pump in serviceWindowsOS(). P5-03c: DXVK — LoadLibrary("D3D8.DLL") already dynamic; CMake post-build copies DLLs from DXVK_DLL_DIR when ZH_DXVK=ON. |
+| 2026-03-23 | P5-04 Win64 build                  | main (direct)             | done   | DWORD_PTR for pointer casts in StackDump.cpp. getVersionNumber() sets bit 15 on _WIN64 (multiplayer channel separation). /wd4311 /wd4312 for legacy Tools/ code. |
+| 2026-03-23 | P5-05 Linux native build           | main (direct)             | done   | #ifdef _WIN32 guards on windows.h includes in AsciiString.h and URLLaunch.h. build-linux-native CI job (GCC x86_64 + SDL3, x64-linux triplet, headless smoke test). docs/modding/LINUX_BUILD.md. |
+| 2026-03-23 | P5-06 macOS ARM64 build            | main (direct)             | done   | build-macos-arm64 CI job (macos-14, Clang ARM64, Homebrew SDL3+MoltenVK, arm64-osx triplet, headless smoke test). docs/modding/MACOS_BUILD.md. |
 

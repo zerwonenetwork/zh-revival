@@ -1,10 +1,11 @@
 # ci-build.yml — zh-revival continuous integration
 #
 # Triggers on every pull request targeting main and on every push to main.
-# Runs three jobs in parallel:
+# Runs four jobs in parallel:
 #   build-windows      — MSVC x86 Release via Visual Studio 2022
 #   build-linux-cross  — GCC cross-compile (mingw-w64 → Windows x86), validates GCC compat
-#   build-linux-native — GCC native Linux x86_64 (P5-05), with headless smoke test via Wine
+#   build-linux-native — GCC native Linux x86_64 (P5-05), with headless smoke test
+#   build-macos-arm64  — Clang ARM64 macOS (P5-06), with headless smoke test
 #
 # All jobs use vcpkg (manifest mode) and the P1-03 stubs so no
 # proprietary SDKs are required.
@@ -275,6 +276,88 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: zh-revival-linux-native-x64-${{ github.sha }}
+          path: |
+            GeneralsMD/Run/zh-revival
+          if-no-files-found: warn
+          retention-days: 7
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # P5-06: macOS ARM64 — Clang + SDL3 + MoltenVK (Vulkan→Metal)
+  # ─────────────────────────────────────────────────────────────────────────
+  build-macos-arm64:
+    name: macOS ARM64 (Clang Release + headless test)
+    runs-on: macos-14   # Apple M1 runner
+
+    env:
+      VCPKG_ROOT: ${{ github.workspace }}/vcpkg
+      VCPKG_DEFAULT_BINARY_CACHE: ${{ github.workspace }}/.vcpkg-cache
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install build dependencies (Homebrew)
+        run: |
+          brew install cmake ninja sdl3 molten-vk pkg-config
+
+      # ── vcpkg ─────────────────────────────────────────────────────────────
+      - name: Cache vcpkg binary cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.VCPKG_DEFAULT_BINARY_CACHE }}
+          key: vcpkg-macos-arm64-${{ hashFiles('vcpkg.json') }}
+          restore-keys: vcpkg-macos-arm64-
+
+      - name: Bootstrap vcpkg
+        run: |
+          git clone --depth=1 https://github.com/microsoft/vcpkg.git $VCPKG_ROOT
+          $VCPKG_ROOT/bootstrap-vcpkg.sh -disableMetrics
+          mkdir -p $VCPKG_DEFAULT_BINARY_CACHE
+
+      - name: Install vcpkg dependencies (arm64-osx triplet)
+        run: |
+          $VCPKG_ROOT/vcpkg install --triplet arm64-osx \
+            --vcpkg-root $VCPKG_ROOT
+
+      # ── CMake configure ───────────────────────────────────────────────────
+      - name: Configure (CMake macOS ARM64)
+        run: |
+          cmake -B build -S . \
+            -G Ninja \
+            --toolchain "$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" \
+            -DVCPKG_TARGET_TRIPLET=arm64-osx \
+            -DCMAKE_OSX_ARCHITECTURES=arm64 \
+            -DZH_USE_STUBS=ON \
+            -DZH_SDL3_WINDOW=ON \
+            -DCMAKE_BUILD_TYPE=Release
+
+      # ── Build ─────────────────────────────────────────────────────────────
+      - name: Build (Release)
+        run: cmake --build build --config Release --parallel
+
+      # ── P5-06 headless smoke test ─────────────────────────────────────────
+      - name: Headless smoke test (P5-06)
+        run: |
+          EXE="GeneralsMD/Run/zh-revival"
+          REP="tests/replays/smoke.rep"
+          if [ -f "$REP" ]; then
+            "$EXE" --headless-replay "$REP"
+            STATUS=$?
+            if [ $STATUS -ne 0 ]; then
+              echo "ERROR: headless replay exited $STATUS" >&2
+              exit 1
+            fi
+          else
+            echo "No smoke.rep — skipping headless test (add tests/replays/smoke.rep to enable)"
+          fi
+
+      # ── Upload artifact ───────────────────────────────────────────────────
+      - name: Upload macOS ARM64 build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: zh-revival-macos-arm64-${{ github.sha }}
           path: |
             GeneralsMD/Run/zh-revival
           if-no-files-found: warn
