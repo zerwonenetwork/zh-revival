@@ -675,6 +675,7 @@ static inline HRSRC   FindResourceA(HINSTANCE, LPCSTR, LPCSTR)        { return N
 #define FindResource FindResourceA
 static inline HGLOBAL LoadResource(HINSTANCE, HRSRC)                  { return NULL; }
 static inline LPVOID  LockResource(HGLOBAL)                           { return NULL; }
+static inline DWORD   SizeofResource(HINSTANCE, HRSRC)                { return 0; }
 static inline BOOL    SetForegroundWindow(HWND h)         { (void)h; return FALSE; }
 static inline HWND    GetActiveWindow(void)               { return NULL; }
 static inline HWND    SetFocus_w(HWND h)                  { return h; }
