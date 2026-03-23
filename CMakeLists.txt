@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.25)
-project(zh-revival VERSION 0.1.0 LANGUAGES CXX RC)
+project(zh-revival VERSION 0.1.0 LANGUAGES C CXX RC)
 
 # ─────────────────────────────────────────────
 #  C++ standard

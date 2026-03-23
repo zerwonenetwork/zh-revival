@@ -139,6 +139,7 @@ jobs:
             g++-mingw-w64-i686 \
             cmake \
             ninja-build \
+            nasm \
             curl \
             zip \
             unzip \
@@ -215,6 +216,7 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends \
             gcc g++ cmake ninja-build \
+            nasm \
             libgl-dev \
             curl zip unzip tar pkg-config
 
@@ -328,7 +330,8 @@ jobs:
 
       - name: Install build dependencies (Homebrew)
         run: |
-          brew install cmake ninja sdl3 molten-vk pkg-config
+          # openal-soft installed via brew — vcpkg 1.25.1 fails on Xcode 15 (template deduction bug)
+          brew install cmake ninja sdl3 molten-vk openal-soft pkg-config
 
       # ── vcpkg ─────────────────────────────────────────────────────────────
       - name: Cache vcpkg binary cache
@@ -352,11 +355,14 @@ jobs:
       # ── CMake configure ───────────────────────────────────────────────────
       - name: Configure (CMake macOS ARM64)
         run: |
+          # Point CMake at Homebrew prefix so it finds brew's openal-soft (not vcpkg's broken 1.25.1)
+          BREW_PREFIX="$(brew --prefix)"
           cmake -B build -S . \
             -G Ninja \
             --toolchain "$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" \
             -DVCPKG_TARGET_TRIPLET=arm64-osx \
             -DCMAKE_OSX_ARCHITECTURES=arm64 \
+            -DCMAKE_PREFIX_PATH="$BREW_PREFIX" \
             -DZH_USE_STUBS=ON \
             -DZH_SDL3_WINDOW=ON \
             -DCMAKE_BUILD_TYPE=Release

@@ -7,7 +7,10 @@
   "supports": "windows & x86",
   "dependencies": [
     "zlib",
-    "openal-soft",
+    {
+      "name": "openal-soft",
+      "platform": "!osx"
+    },
     {
       "name": "ffmpeg",
       "features": ["avcodec", "avformat", "swscale"],
