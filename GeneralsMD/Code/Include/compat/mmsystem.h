@@ -56,6 +56,18 @@ typedef unsigned int  UINT_PTR_MM;
 #define CALLBACK_THREAD      0x00020000
 #define CALLBACK_EVENT       0x00050000
 
+// WAVEFORMAT — older struct (pre-WAVEFORMATEX), used by some WW audio code
+#pragma pack(push, 1)
+typedef struct tWAVEFORMAT {
+    unsigned short wFormatTag;
+    unsigned short nChannels;
+    unsigned long  nSamplesPerSec;
+    unsigned long  nAvgBytesPerSec;
+    unsigned short nBlockAlign;
+} WAVEFORMAT, *PWAVEFORMAT, *LPWAVEFORMAT;
+typedef const WAVEFORMAT* LPCWAVEFORMAT;
+#pragma pack(pop)
+
 // WAVEFORMATEX
 #pragma pack(push, 1)
 typedef struct tWAVEFORMATEX {
