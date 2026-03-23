@@ -1086,6 +1086,16 @@ static inline UINT GetWindowsDirectoryA(LPSTR lpBuffer, UINT uSize) {
 }
 #define GetWindowsDirectory  GetWindowsDirectoryA
 #define GetWindowsDirectoryW GetWindowsDirectoryA
+// GetTempFileName stub
+static inline UINT GetTempFileNameA(LPCSTR lpPathName, LPCSTR lpPrefixString, UINT uUnique, LPSTR lpTempFileName) {
+    if(!lpTempFileName) return 0;
+    snprintf(lpTempFileName, MAX_PATH, "%s/%sXXXXXX",
+             lpPathName ? lpPathName : "/tmp",
+             lpPrefixString ? lpPrefixString : "tmp");
+    return uUnique ? uUnique : 1;
+}
+#define GetTempFileName  GetTempFileNameA
+#define GetTempFileNameW GetTempFileNameA
 // GetSystemDirectory stub
 static inline UINT GetSystemDirectoryA(LPSTR lpBuffer, UINT uSize) {
     if(lpBuffer && uSize > 4) { strncpy(lpBuffer,"/usr",uSize-1); lpBuffer[uSize-1]='\0'; } return 4;
