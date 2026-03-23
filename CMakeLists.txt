@@ -102,25 +102,54 @@ option(ZH_USE_STUBS
     "Use no-op stub implementations for proprietary SDKs (Miles, Bink, SafeDisc, GameSpy)"
     ON)
 
+# ─────────────────────────────────────────────
+#  OpenAL audio backend (P5-01)
+#  Requires ZH_USE_STUBS=ON.  When ON, the no-op Miles stubs are replaced
+#  with real OpenAL-backed implementations via OpenALMilesShim.cpp.
+# ─────────────────────────────────────────────
+option(ZH_OPENAL_AUDIO
+    "Replace no-op Miles Sound stubs with real OpenAL audio (requires openal-soft via vcpkg)"
+    OFF)
+
 if(ZH_USE_STUBS)
     message(STATUS "[zh-revival] Stub mode ON  — proprietary SDK stubs active (P1-03)")
     set(ZH_STUB_DIR ${ZH}/Libraries/Stubs)
 
-    # Build a small stub library so the .cpp files get compiled.
-    # This catches any type or ABI errors in the stub headers at build time.
-    add_library(zh_stubs STATIC
+    set(ZH_STUB_SOURCES
         ${ZH_STUB_DIR}/MilesSoundStub.cpp
         ${ZH_STUB_DIR}/BinkVideoStub.cpp
         ${ZH_STUB_DIR}/SafeDiscStub.cpp
         ${ZH_STUB_DIR}/GameSpyStub.cpp
     )
+
+    if(ZH_OPENAL_AUDIO)
+        message(STATUS "[zh-revival] OpenAL audio backend ON (P5-01)")
+        # Find openal-soft (supplied via vcpkg or system install)
+        find_package(OpenAL REQUIRED)
+        # Replace the no-op Miles stub .cpp with the real OpenAL shim
+        list(REMOVE_ITEM ZH_STUB_SOURCES ${ZH_STUB_DIR}/MilesSoundStub.cpp)
+        list(APPEND      ZH_STUB_SOURCES ${ZH_STUB_DIR}/OpenALMilesShim.cpp)
+    endif()
+
+    # Build a small stub library so the .cpp files get compiled.
+    # This catches any type or ABI errors in the stub headers at build time.
+    add_library(zh_stubs STATIC ${ZH_STUB_SOURCES})
     # The stub dir must appear BEFORE the real SDK dirs so the forwarding
     # headers (MSS/MSS.h, bink.h, GameSpy/…, Common/SafeDisc/CdaPfn.h)
     # are found instead of the real (absent) SDK headers.
     target_include_directories(zh_stubs PUBLIC ${ZH_STUB_DIR})
     target_compile_definitions(zh_stubs PUBLIC STUB_IMPL)
+
+    if(ZH_OPENAL_AUDIO)
+        target_compile_definitions(zh_stubs PUBLIC ZH_OPENAL_AUDIO)
+        target_link_libraries(zh_stubs PUBLIC OpenAL::OpenAL)
+    endif()
+
     # Propagate STUB_IMPL to all translation units in this build.
     add_compile_definitions(STUB_IMPL)
+    if(ZH_OPENAL_AUDIO)
+        add_compile_definitions(ZH_OPENAL_AUDIO)
+    endif()
 else()
     message(STATUS "[zh-revival] Stub mode OFF — expecting real proprietary SDKs on include path")
 endif()
