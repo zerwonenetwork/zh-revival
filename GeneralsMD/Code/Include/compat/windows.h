@@ -113,6 +113,12 @@ typedef UINT_PTR  WPARAM;
 typedef LONG_PTR  LPARAM;
 typedef LONG      HRESULT;
 
+// ATOM — used as return value from RegisterClass
+typedef WORD ATOM;
+
+// WNDPROC — must be declared before WNDCLASS which uses it as a field
+typedef LRESULT (*WNDPROC)(HWND, UINT, WPARAM, LPARAM);
+
 // ---------------------------------------------------------------------------
 //  Calling conventions (no-ops on non-Windows)
 // ---------------------------------------------------------------------------
@@ -509,11 +515,6 @@ static inline HANDLE  GetStdHandle(DWORD n)                           { (void)n;
 static inline BOOL    WriteConsoleA(HANDLE,const void*,DWORD,DWORD*,void*) { return FALSE; }
 static inline UINT    GetDriveTypeA(LPCSTR p)                         { (void)p; return 0; }
 #define GetDriveType GetDriveTypeA
-
-// ---------------------------------------------------------------------------
-//  WNDPROC type (not functional on non-Windows, just satisfies the type system)
-// ---------------------------------------------------------------------------
-typedef LRESULT (*WNDPROC)(HWND, UINT, WPARAM, LPARAM);
 
 #endif  // !_WIN32
 #endif  // ZH_COMPAT_WINDOWS_H
