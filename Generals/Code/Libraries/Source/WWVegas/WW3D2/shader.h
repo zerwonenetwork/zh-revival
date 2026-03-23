@@ -44,8 +44,12 @@
 
 #include "always.h"
 
-#if defined (SR_OS_SOLARIS)
+#if defined (SR_OS_SOLARIS) || !defined(_WIN32)
+// On POSIX systems (Solaris, Linux, macOS) <sys/syslimits.h> defines
+// PASS_MAX=128 (max password length), which conflicts with the enum below.
+// always.h → <assert.h> → <sys/syslimits.h> pulls it in transitively.
 #undef PASS_MAX
+#undef PASS_NEVER
 #endif
 
 class DX8Wrapper;

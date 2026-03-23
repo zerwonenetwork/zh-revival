@@ -1513,6 +1513,203 @@ static inline BOOL EmptyClipboard(void)            { return FALSE; }
 static inline HANDLE GetClipboardData(UINT uFmt)   { (void)uFmt; return NULL; }
 static inline HANDLE SetClipboardData(UINT uFmt, HANDLE hMem) { (void)uFmt;(void)hMem; return NULL; }
 
+// ---------------------------------------------------------------------------
+//  GDI font / text / DC stubs (render2dsentence.cpp and related files)
+// ---------------------------------------------------------------------------
+
+// Font weight constants
+#ifndef FW_THIN
+#define FW_THIN       100
+#define FW_EXTRALIGHT 200
+#define FW_LIGHT      300
+#define FW_NORMAL     400
+#define FW_MEDIUM     500
+#define FW_SEMIBOLD   600
+#define FW_BOLD       700
+#define FW_EXTRABOLD  800
+#define FW_HEAVY      900
+#define FW_DONTCARE   0
+#endif
+
+// Font quality constants
+#ifndef DEFAULT_QUALITY
+#define DEFAULT_QUALITY         0
+#define DRAFT_QUALITY           1
+#define PROOF_QUALITY           2
+#define NONANTIALIASED_QUALITY  3
+#define ANTIALIASED_QUALITY     4
+#define CLEARTYPE_QUALITY       5
+#endif
+
+// Font charset / precision / pitch constants
+#ifndef DEFAULT_CHARSET
+#define DEFAULT_CHARSET         1
+#define ANSI_CHARSET            0
+#define OEM_CHARSET             255
+#endif
+#ifndef OUT_DEFAULT_PRECIS
+#define OUT_DEFAULT_PRECIS      0
+#define OUT_STRING_PRECIS       1
+#define OUT_CHARACTER_PRECIS    2
+#define OUT_STROKE_PRECIS       3
+#define OUT_TT_PRECIS           4
+#define OUT_DEVICE_PRECIS       5
+#define OUT_RASTER_PRECIS       6
+#define OUT_TT_ONLY_PRECIS      7
+#define OUT_OUTLINE_PRECIS      8
+#endif
+#ifndef CLIP_DEFAULT_PRECIS
+#define CLIP_DEFAULT_PRECIS     0
+#define CLIP_CHARACTER_PRECIS   1
+#define CLIP_STROKE_PRECIS      2
+#define CLIP_MASK               0xF
+#define CLIP_LH_ANGLES          (1<<4)
+#define CLIP_TT_ALWAYS          (2<<4)
+#define CLIP_EMBEDDED           (8<<4)
+#endif
+#ifndef DEFAULT_PITCH
+#define DEFAULT_PITCH           0
+#define FIXED_PITCH             1
+#define VARIABLE_PITCH          2
+#endif
+
+// ExtTextOut flags
+#ifndef ETO_OPAQUE
+#define ETO_OPAQUE              0x0002
+#define ETO_CLIPPED             0x0004
+#define ETO_GLYPH_INDEX         0x0010
+#define ETO_RTLREADING          0x0080
+#define ETO_NUMERICSLOCAL       0x0400
+#define ETO_NUMERICSLATIN       0x0800
+#define ETO_IGNORELANGUAGE      0x1000
+#define ETO_PDY                 0x2000
+#endif
+
+// LOGFONT structure
+#ifndef _LOGFONTA_DEFINED_
+#define _LOGFONTA_DEFINED_
+typedef struct tagLOGFONTA {
+    LONG  lfHeight;
+    LONG  lfWidth;
+    LONG  lfEscapement;
+    LONG  lfOrientation;
+    LONG  lfWeight;
+    BYTE  lfItalic;
+    BYTE  lfUnderline;
+    BYTE  lfStrikeOut;
+    BYTE  lfCharSet;
+    BYTE  lfOutPrecision;
+    BYTE  lfClipPrecision;
+    BYTE  lfQuality;
+    BYTE  lfPitchAndFamily;
+    char  lfFaceName[32];
+} LOGFONTA, *PLOGFONTA, *LPLOGFONTA;
+typedef LOGFONTA LOGFONT;
+typedef LOGFONTA* PLOGFONT;
+typedef LOGFONTA* LPLOGFONT;
+#endif
+
+// TEXTMETRIC structure
+#ifndef _TEXTMETRICA_DEFINED_
+#define _TEXTMETRICA_DEFINED_
+typedef struct tagTEXTMETRICA {
+    LONG  tmHeight;
+    LONG  tmAscent;
+    LONG  tmDescent;
+    LONG  tmInternalLeading;
+    LONG  tmExternalLeading;
+    LONG  tmAveCharWidth;
+    LONG  tmMaxCharWidth;
+    LONG  tmWeight;
+    LONG  tmOverhang;
+    LONG  tmDigitizedAspectX;
+    LONG  tmDigitizedAspectY;
+    BYTE  tmFirstChar;
+    BYTE  tmLastChar;
+    BYTE  tmDefaultChar;
+    BYTE  tmBreakChar;
+    BYTE  tmItalic;
+    BYTE  tmUnderlined;
+    BYTE  tmStruckOut;
+    BYTE  tmPitchAndFamily;
+    BYTE  tmCharSet;
+} TEXTMETRICA, *PTEXTMETRICA, *LPTEXTMETRICA;
+typedef TEXTMETRICA TEXTMETRIC;
+typedef TEXTMETRICA* PTEXTMETRIC;
+typedef TEXTMETRICA* LPTEXTMETRIC;
+#endif
+
+// MulDiv — multiply a * b then divide by c (rounded)
+static inline int MulDiv(int a, int b, int c) {
+    return c ? (int)(((long long)a * b + (c > 0 ? c/2 : -((-c)/2))) / c) : 0;
+}
+
+// Font / DC creation stubs — return NULL (rendering is no-op on non-Windows)
+static inline HFONT CreateFontA(int h, int w, int esc, int orient, int wt,
+                                  DWORD ital, DWORD uline, DWORD strike,
+                                  DWORD charset, DWORD outPrec, DWORD clipPrec,
+                                  DWORD quality, DWORD pitchAndFamily, LPCSTR face) {
+    (void)h;(void)w;(void)esc;(void)orient;(void)wt;(void)ital;(void)uline;
+    (void)strike;(void)charset;(void)outPrec;(void)clipPrec;(void)quality;
+    (void)pitchAndFamily;(void)face;
+    return (HFONT)NULL;
+}
+#define CreateFontW CreateFontA
+#define CreateFont  CreateFontA
+
+static inline HDC CreateCompatibleDC(HDC hdc) { (void)hdc; return (HDC)NULL; }
+static inline BOOL DeleteDC(HDC hdc) { (void)hdc; return FALSE; }
+
+static inline HGDIOBJ SelectObject(HDC hdc, HGDIOBJ h) {
+    (void)hdc;(void)h; return (HGDIOBJ)NULL;
+}
+
+// SetBkColor / SetTextColor / GetTextMetrics — no-ops
+static inline COLORREF SetBkColor(HDC hdc, COLORREF c)   { (void)hdc;(void)c; return 0; }
+static inline COLORREF SetTextColor(HDC hdc, COLORREF c) { (void)hdc;(void)c; return 0; }
+static inline BOOL GetTextMetricsA(HDC hdc, LPTEXTMETRIC lptm) {
+    (void)hdc;
+    if (lptm) {
+        lptm->tmHeight = 16; lptm->tmAscent = 12; lptm->tmDescent = 4;
+        lptm->tmInternalLeading = 2; lptm->tmExternalLeading = 0;
+        lptm->tmAveCharWidth = 8; lptm->tmMaxCharWidth = 16;
+    }
+    return TRUE;
+}
+#define GetTextMetricsW GetTextMetricsA
+#define GetTextMetrics  GetTextMetricsA
+
+// ExtTextOut / GetTextExtentPoint32 — stub output with zero metrics
+static inline BOOL ExtTextOutW(HDC hdc, int x, int y, UINT options,
+                                const RECT* lprect, const WCHAR* lpString,
+                                UINT c, const INT* lpDx) {
+    (void)hdc;(void)x;(void)y;(void)options;(void)lprect;
+    (void)lpString;(void)c;(void)lpDx;
+    return FALSE;
+}
+static inline BOOL ExtTextOutA(HDC hdc, int x, int y, UINT options,
+                                const RECT* lprect, const char* lpString,
+                                UINT c, const INT* lpDx) {
+    (void)hdc;(void)x;(void)y;(void)options;(void)lprect;
+    (void)lpString;(void)c;(void)lpDx;
+    return FALSE;
+}
+#define ExtTextOut ExtTextOutA
+
+static inline BOOL GetTextExtentPoint32W(HDC hdc, const WCHAR* lpString,
+                                          int c, SIZE* lpSize) {
+    (void)hdc;(void)lpString;(void)c;
+    if (lpSize) { lpSize->cx = c * 8; lpSize->cy = 16; }
+    return TRUE;
+}
+static inline BOOL GetTextExtentPoint32A(HDC hdc, const char* lpString,
+                                          int c, SIZE* lpSize) {
+    (void)hdc;(void)lpString;(void)c;
+    if (lpSize) { lpSize->cx = c * 8; lpSize->cy = 16; }
+    return TRUE;
+}
+#define GetTextExtentPoint32 GetTextExtentPoint32A
+
 #endif  // !_WIN32
 #endif  // ZH_COMPAT_WINDOWS_H
 
