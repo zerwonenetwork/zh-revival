@@ -200,6 +200,12 @@ typedef LRESULT (*WNDPROC)(HWND, UINT, WPARAM, LPARAM);
 #ifndef __thiscall
 #define __thiscall
 #endif
+#ifndef _snprintf
+#define _snprintf snprintf
+#endif
+#ifndef _vsnprintf
+#define _vsnprintf vsnprintf
+#endif
 #ifndef __forceinline
 #define __forceinline     __attribute__((always_inline)) inline
 #endif
@@ -268,6 +274,7 @@ typedef LRESULT (*WNDPROC)(HWND, UINT, WPARAM, LPARAM);
 #define FORMAT_MESSAGE_MAX_WIDTH_MASK   0x000000FF
 #define MB_OK                           0x00000000L
 #define MB_ICONEXCLAMATION              0x00000030L
+#define MB_ICONSTOP                     0x00000010L
 #define VER_PLATFORM_WIN32s             0
 #define VER_PLATFORM_WIN32_WINDOWS      1
 #define VER_PLATFORM_WIN32_NT           2
