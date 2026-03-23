@@ -577,6 +577,20 @@ typedef struct _CRITICAL_SECTION {
 #define _strcmpi strcasecmp
 #endif
 
+// _strlwr / _strupr — MSVC in-place case-convert functions
+#include <ctype.h>
+static inline char* _strlwr(char* s) {
+    if (s) { for (char* p = s; *p; ++p) *p = (char)tolower((unsigned char)*p); }
+    return s;
+}
+static inline char* _strupr(char* s) {
+    if (s) { for (char* p = s; *p; ++p) *p = (char)toupper((unsigned char)*p); }
+    return s;
+}
+// Wide-char versions — stub (return as-is)
+static inline wchar_t* _wcslwr(wchar_t* s) { return s; }
+static inline wchar_t* _wcsupr(wchar_t* s) { return s; }
+
 // ---------------------------------------------------------------------------
 //  Stub inline implementations — all static inline, no extern "C" needed
 //  (static inline has internal linkage; no name mangling issues)
