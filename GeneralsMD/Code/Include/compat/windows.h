@@ -566,6 +566,13 @@ typedef struct _CRITICAL_SECTION {
 #ifndef _wcsicmp
 #define _wcsicmp  wcscasecmp
 #endif
+// strcmpi / _strcmpi — non-POSIX variants used by some WW code
+#ifndef strcmpi
+#define strcmpi  strcasecmp
+#endif
+#ifndef _strcmpi
+#define _strcmpi strcasecmp
+#endif
 
 // ---------------------------------------------------------------------------
 //  Stub inline implementations — all static inline, no extern "C" needed
@@ -866,12 +873,47 @@ static inline UINT    GetDriveTypeA(LPCSTR p)                         { (void)p;
 #define GetDriveType GetDriveTypeA
 
 #ifndef REALTIME_PRIORITY_CLASS
-#define REALTIME_PRIORITY_CLASS 0x00000100
+#define REALTIME_PRIORITY_CLASS  0x00000100
+#define HIGH_PRIORITY_CLASS      0x00000080
+#define ABOVE_NORMAL_PRIORITY_CLASS 0x00008000
+#define NORMAL_PRIORITY_CLASS    0x00000020
+#define BELOW_NORMAL_PRIORITY_CLASS 0x00004000
+#define IDLE_PRIORITY_CLASS      0x00000040
 #endif
 
 #ifndef THREAD_PRIORITY_TIME_CRITICAL
-#define THREAD_PRIORITY_TIME_CRITICAL 15
+#define THREAD_PRIORITY_TIME_CRITICAL  15
+#define THREAD_PRIORITY_HIGHEST         2
+#define THREAD_PRIORITY_ABOVE_NORMAL    1
+#define THREAD_PRIORITY_NORMAL          0
+#define THREAD_PRIORITY_BELOW_NORMAL   (-1)
+#define THREAD_PRIORITY_LOWEST         (-2)
+#define THREAD_PRIORITY_IDLE           (-15)
+#define THREAD_PRIORITY_ERROR_RETURN    0x7fffffff
 #endif
+
+// Thread management stubs
+static inline BOOL TerminateThread(HANDLE hThread, DWORD dwExitCode) { (void)hThread;(void)dwExitCode; return FALSE; }
+static inline BOOL GetExitCodeThread(HANDLE hThread, DWORD* lpExitCode) { (void)hThread; if(lpExitCode)*lpExitCode=0; return TRUE; }
+static inline DWORD SuspendThread(HANDLE hThread) { (void)hThread; return 0; }
+static inline DWORD ResumeThread(HANDLE hThread)  { (void)hThread; return 0; }
+static inline HANDLE CreateThread(void* lpSA, SIZE_T dwStackSize, void* lpStartAddress,
+                                   void* lpParameter, DWORD dwCreationFlags, DWORD* lpThreadId) {
+    (void)lpSA;(void)dwStackSize;(void)lpStartAddress;(void)lpParameter;
+    (void)dwCreationFlags;(void)lpThreadId; return NULL;
+}
+static inline BOOL SetThreadPriorityBoost(HANDLE hThread, BOOL bDisablePriorityBoost) { (void)hThread;(void)bDisablePriorityBoost; return TRUE; }
+
+// Mutex/semaphore stubs
+static inline HANDLE OpenMutexA(DWORD desiredAccess, BOOL inheritHandle, LPCSTR name) {
+    (void)desiredAccess;(void)inheritHandle;(void)name; return NULL;
+}
+#define OpenMutex OpenMutexA
+static inline HANDLE CreateSemaphoreA(void* sa, LONG init, LONG max, LPCSTR name) {
+    (void)sa;(void)init;(void)max;(void)name; return NULL;
+}
+#define CreateSemaphore CreateSemaphoreA
+static inline BOOL ReleaseSemaphore(HANDLE h, LONG count, LONG* prev) { (void)h;(void)count;(void)prev; return FALSE; }
 
 // ---------------------------------------------------------------------------
 //  FILETIME and file-information structs (used by rawfile.cpp and others)

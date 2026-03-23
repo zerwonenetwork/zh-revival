@@ -69,14 +69,16 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
     add_link_options(-Wl,--allow-multiple-definition)
 endif()
 
-if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+if(CMAKE_CXX_COMPILER_ID MATCHES "Clang|AppleClang")
     # Clang-specific: suppress warnings from 25-year-old pointer/handle code that
     # stores HKEY (void*) in int fields.  Benign on stub builds; fix tracked in P5-07.
     add_compile_options(
-        -Wno-pointer-to-int-cast
-        -Wno-int-to-pointer-cast
+        -Wno-pointer-to-int-cast    # GCC-style pointer→int cast warning name
+        -Wno-int-to-pointer-cast    # GCC-style int→pointer cast warning name
+        -Wno-shorten-64-to-32       # Clang/AppleClang: 64-bit→32-bit truncation
         -Wno-non-pod-varargs        # StringClass passed through variadic (wwprofile.cpp)
         -Wno-deprecated-declarations
+        -Wno-int-conversion         # implicit integer conversions
     )
 endif()
 
