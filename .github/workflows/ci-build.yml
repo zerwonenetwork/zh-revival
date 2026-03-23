@@ -82,6 +82,25 @@ jobs:
         run: |
           cmake --build build --config Release --parallel
 
+      # ── P2-09: headless replay smoke test ─────────────────────────────────
+      # Verifies that --headless-replay flag is recognised and exits 0.
+      # Full simulation-level determinism testing requires P5-03 (headless renderer).
+      # When a real test replay is available, add: expected-crc=<hex> as third arg.
+      - name: Headless replay smoke test (P2-09)
+        shell: pwsh
+        run: |
+          $exe = "GeneralsMD/Run/zh-revival.exe"
+          $rep = "tests/replays/smoke.rep"
+          if (Test-Path $rep) {
+            & $exe --headless-replay $rep
+            if ($LASTEXITCODE -ne 0) {
+              Write-Error "Headless replay test failed (exit $LASTEXITCODE)"
+              exit 1
+            }
+          } else {
+            Write-Host "No smoke.rep found — skipping headless replay test (add tests/replays/smoke.rep to enable)"
+          }
+
       # ── Upload artifact ───────────────────────────────────────────────────
       - name: Upload Windows build artifact
         uses: actions/upload-artifact@v4
