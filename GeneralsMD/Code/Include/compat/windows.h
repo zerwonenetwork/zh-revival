@@ -35,6 +35,9 @@
 // ---------------------------------------------------------------------------
 typedef unsigned char    BYTE;
 typedef unsigned char    UCHAR;
+typedef unsigned char*   PBYTE;
+typedef unsigned char*   LPBYTE;
+typedef const unsigned char* LPCBYTE;
 typedef char             CHAR;
 typedef unsigned short   WORD;
 typedef short            SHORT;
@@ -1013,6 +1016,12 @@ static inline BOOL FlushFileBuffers(HANDLE hFile) { (void)hFile; return TRUE; }
 static inline DWORD GetFileSizeEx(HANDLE hFile, LARGE_INTEGER* lpFileSize) {
     (void)hFile; if (lpFileSize) lpFileSize->QuadPart = 0; return FALSE;
 }
+
+// ---------------------------------------------------------------------------
+//  Pull in sub-headers that Windows code expects windows.h to implicitly cover
+// ---------------------------------------------------------------------------
+// winreg.h - registry API (many files include only <windows.h> but use RegOpenKeyEx etc.)
+#include "winreg.h"
 
 #endif  // !_WIN32
 #endif  // ZH_COMPAT_WINDOWS_H
