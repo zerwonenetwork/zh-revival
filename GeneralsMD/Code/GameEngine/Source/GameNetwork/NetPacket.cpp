@@ -2437,8 +2437,14 @@ Bool NetPacket::addFileCommand(NetCommandRef *msg) {
 		++m_packetLen;
 
 		AsciiString filename = cmdMsg->getPortableFilename();		// PORTABLE
-		strcpy((char *)(m_packet + m_packetLen), filename.str());
-		m_packetLen += filename.getLength() + 1;
+		Int fnLen = filename.getLength();
+		if (m_packetLen + fnLen + 1 > MAX_PACKET_SIZE) { // P2-07: send-path bounds guard
+			DEBUG_LOG(("NetPacket: filename too long for packet, truncating\n"));
+			fnLen = MAX_PACKET_SIZE - m_packetLen - 1;
+		}
+		strncpy((char *)(m_packet + m_packetLen), filename.str(), fnLen);
+		m_packet[m_packetLen + fnLen] = 0;
+		m_packetLen += fnLen + 1;
 
 		UnsignedInt fileLength = cmdMsg->getFileLength();
 		memcpy(m_packet + m_packetLen, &fileLength, sizeof(fileLength));
@@ -2541,8 +2547,14 @@ Bool NetPacket::addFileAnnounceCommand(NetCommandRef *msg) {
 		++m_packetLen;
 
 		AsciiString filename = cmdMsg->getPortableFilename();	// PORTABLE
-		strcpy((char *)(m_packet + m_packetLen), filename.str());
-		m_packetLen += filename.getLength() + 1;
+		Int fnLen2 = filename.getLength();
+		if (m_packetLen + fnLen2 + 1 > MAX_PACKET_SIZE) { // P2-07: send-path bounds guard
+			DEBUG_LOG(("NetPacket: announce filename too long for packet, truncating\n"));
+			fnLen2 = MAX_PACKET_SIZE - m_packetLen - 1;
+		}
+		strncpy((char *)(m_packet + m_packetLen), filename.str(), fnLen2);
+		m_packet[m_packetLen + fnLen2] = 0;
+		m_packetLen += fnLen2 + 1;
 
 		UnsignedShort fileID = cmdMsg->getFileID();
 		memcpy(m_packet + m_packetLen, &fileID, sizeof(fileID));
