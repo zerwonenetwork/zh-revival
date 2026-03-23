@@ -24,6 +24,7 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include <stdarg.h>
 #include <string.h>   // memset, memcpy — backing ZeroMemory / CopyMemory
 #include <stdlib.h>
 
@@ -92,6 +93,8 @@ typedef const char*    LPCSTR;
 typedef const char*    LPCTSTR;
 typedef wchar_t*       LPWSTR;
 typedef const wchar_t* LPCWSTR;
+typedef BYTE*          PBYTE;
+typedef WORD*          LPWORD;
 
 // ---------------------------------------------------------------------------
 //  Void pointer aliases
@@ -329,10 +332,13 @@ typedef LRESULT (*WNDPROC)(HWND, UINT, WPARAM, LPARAM);
 #define WM_MOUSEMOVE                0x0200
 #define WM_LBUTTONDOWN              0x0201
 #define WM_LBUTTONUP                0x0202
+#define WM_LBUTTONDBLCLK            0x0203
 #define WM_RBUTTONDOWN              0x0204
 #define WM_RBUTTONUP                0x0205
+#define WM_RBUTTONDBLCLK            0x0206
 #define WM_MBUTTONDOWN              0x0207
 #define WM_MBUTTONUP                0x0208
+#define WM_MBUTTONDBLCLK            0x0209
 #define WM_MOUSEWHEEL               0x020A
 #define WM_USER                     0x0400
 
@@ -343,7 +349,9 @@ typedef LRESULT (*WNDPROC)(HWND, UINT, WPARAM, LPARAM);
 #define VK_SHIFT        0x10
 #define VK_CONTROL      0x11
 #define VK_MENU         0x12
+#define VK_CAPITAL      0x14
 #define VK_ESCAPE       0x1B
+#define VK_NUMLOCK      0x90
 #define VK_SPACE        0x20
 #define VK_LEFT         0x25
 #define VK_UP           0x26
@@ -627,6 +635,7 @@ static inline BOOL    UpdateWindow(HWND h)                { (void)h; return FALS
 static inline BOOL    SetWindowPos(HWND a,HWND b,int c,int d,int e,int f,UINT g) { (void)a;(void)b;(void)c;(void)d;(void)e;(void)f;(void)g; return FALSE; }
 static inline BOOL    GetClientRect(HWND h, LPRECT r)     { (void)h; if(r){r->left=r->top=r->right=r->bottom=0;} return FALSE; }
 static inline BOOL    GetWindowRect(HWND h, LPRECT r)     { (void)h; if(r){r->left=r->top=r->right=r->bottom=0;} return FALSE; }
+static inline BOOL    ClientToScreen(HWND h, LPPOINT p)   { (void)h; (void)p; return FALSE; }
 static inline BOOL    PeekMessageA(LPMSG m,HWND h,UINT a,UINT b,UINT c) { (void)m;(void)h;(void)a;(void)b;(void)c; return FALSE; }
 static inline BOOL    GetMessageA(LPMSG m,HWND h,UINT a,UINT b)         { (void)m;(void)h;(void)a;(void)b; return FALSE; }
 static inline BOOL    TranslateMessage(const MSG* m)      { (void)m; return FALSE; }
@@ -657,6 +666,18 @@ static inline BOOL    SetForegroundWindow(HWND h)         { (void)h; return FALS
 static inline HWND    GetActiveWindow(void)               { return NULL; }
 static inline HWND    SetFocus_w(HWND h)                  { return h; }
 #define SetFocus SetFocus_w
+static inline SHORT   GetKeyState(int)                    { return 0; }
+static inline SHORT   GetAsyncKeyState(int)               { return 0; }
+static inline UINT    MapVirtualKeyA(UINT code, UINT maptype) { (void)maptype; return code; }
+#define MapVirtualKey MapVirtualKeyA
+static inline int     ToAscii(UINT virt_key, UINT scan_code, const BYTE* key_state, LPWORD translated, UINT flags) {
+    (void)scan_code; (void)key_state; (void)flags;
+    if (translated) {
+        *translated = (WORD)(virt_key & 0xFF);
+        return 1;
+    }
+    return 0;
+}
 static inline BOOL    IsWindow(HWND h)                    { (void)h; return FALSE; }
 static inline BOOL    IsWindowVisible(HWND h)             { (void)h; return FALSE; }
 static inline LRESULT SendMessageA(HWND h,UINT m,WPARAM w,LPARAM l){ (void)h;(void)m;(void)w;(void)l; return 0; }
@@ -796,3 +817,4 @@ static inline UINT    GetDriveTypeA(LPCSTR p)                         { (void)p;
 
 #endif  // !_WIN32
 #endif  // ZH_COMPAT_WINDOWS_H
+
