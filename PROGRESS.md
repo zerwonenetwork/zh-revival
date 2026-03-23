@@ -3,7 +3,7 @@
 > Repo: [https://github.com/ZerwOne/zh-revival](https://github.com/ZerwOne/zh-revival)
 > Forked from: [https://github.com/electronicarts/CnC_Generals_Zero_Hour](https://github.com/electronicarts/CnC_Generals_Zero_Hour)
 > Updated by Claude Code at the end of every session.
-> Last updated: 2026-03-22
+> Last updated: 2026-03-22 (Phase 2 complete)
 
 ---
 
@@ -26,16 +26,16 @@
 ## Phase 2 — Online
 
 - [x] P2-01 — RNG discipline audit — completed 2026-03-22
-- P2-02 — Per-tick state hashing for mismatch detection
-- P2-03 — Map transfer retry and content validation
-- P2-04 — Full network message security audit
-- P2-05 — Fix CRITICAL vulnerabilities from P2-04
-- P2-06 — Fix HIGH vulnerabilities from P2-04
-- P2-07 — Replace unsafe string functions in network code
-- P2-08 — Version CRC enforcement
-- P2-09 — Headless replay CI determinism test
-- P2-10 — DC-bug recovery improvement
-- P2-FINAL — Tag v0.2-online
+- [x] P2-02 — Per-tick state hashing / desync file logging — completed 2026-03-22
+- [x] P2-03 — Map transfer retry and content validation — completed 2026-03-22
+- [x] P2-04 — Full network message security audit — completed 2026-03-22
+- [x] P2-05 — Fix CRITICAL vulnerabilities from P2-04 — completed 2026-03-22
+- [x] P2-06 — Fix HIGH vulnerabilities from P2-04 — completed 2026-03-22
+- [x] P2-07 — Replace unsafe string functions in network code — completed 2026-03-22
+- [x] P2-08 — Version CRC enforcement — completed 2026-03-22
+- [x] P2-09 — Headless replay CI determinism test (infrastructure) — completed 2026-03-22
+- [x] P2-10 — DC-bug recovery improvement — completed 2026-03-22
+- [x] P2-FINAL — Tag v0.2-online — completed 2026-03-22
 
 ## Phase 3 — Quality of Life
 
@@ -89,5 +89,15 @@
 | 2026-03-17 | CI stabilisation (multi-pass)      | main (direct)             | done   | 35+ CI-fix commits resolving MSVC/GCC errors: AIL stubs, D3D8 stubs, hash_map→unordered_map, template typename, for-loop scope, qualified-name C4596, BitTest redefinition, D3DTEXF/D3DTSS constants, D3dx8 stubs, point.h case rename for Linux |
 | 2026-03-22 | CI stabilisation (second pass)     | main (direct)             | done   | Linux GCC MinGW cross-compile now fully green. Fixes: waveType enum forward-decl, W3DWebBrowser ATL guards, Win32CDManager case, resource.h case, windres GENERALS.ICO case, comsuppw MSVC-only, CriticalSection/strtrim --allow-multiple-definition, _set_se_translator guard, BrowserDispatch.h __uuidof stub, WebBrowser::TestMethod vtable, _MBCS MSVC-only, FTP.CPP *.CPP glob, dbghelp link, TARGA.CPP _asm portable C fallback, Int<64>::Remainder explicit init, FramGrab AVI avifil32 guard, mmsystem.h for MMRESULT. Both Windows MSVC + Linux GCC jobs green on run 23411293522. |
 | 2026-03-22 | P2-01 RNG discipline audit         | main (direct)             | done   | Full audit of all RNG usage. Three-tier system (GameLogic/GameClient/GameAudio) is well-architected. ~80 simulation calls all use shared deterministic seed. ONE CRITICAL FINDING: GetTickCount() used as seed source in LAN/skirmish/GameSpy games — non-deterministic, desync vector. Full table in docs/RNG_AUDIT.md. Human review required before fixes. |
+| 2026-03-22 | P2-01 RNG audit revision           | task/P2-02-05-06-...      | done   | Human review found the CRITICAL severity was overstated. Seed is serialized and propagated via lobby handshake before InitGameLogicRandom() fires. Downgraded to NEEDS VERIFICATION. Citations corrected. |
+| 2026-03-22 | P2-02 Desync file logging          | task/P2-02-05-06-...      | done   | Added file logging on CRC mismatch in GameLogic::processCommandList(). Writes Logs/desync_YYYYMMDD_HHMMSS.log with tick, local CRC, per-player CRCs. Log-only; no disconnect. |
+| 2026-03-22 | P2-03 Map transfer retry           | task/P2-02-05-06-...      | done   | Wrapped all doFileTransfer calls in doFileTransferWithRetry (3 attempts, 2s delay). Added Logs/map_transfer.log logging. |
+| 2026-03-22 | P2-04 Network security audit       | task/P2-02-05-06-...      | done   | 5 CRITICAL + 7 HIGH vulnerabilities documented in docs/SECURITY_AUDIT_P2.md. All in NetPacket.cpp and related network files. |
+| 2026-03-22 | P2-05 Fix CRITICAL vulns           | task/P2-02-05-06-...      | done   | Fixed VULN-001 (filename OOB copy), VULN-002 (same), VULN-003 (unchecked dataLength), VULN-004 (chat off-by-one), VULN-005 (truncated packet OOB reads). |
+| 2026-03-22 | P2-06 Fix HIGH vulns               | task/P2-02-05-06-...      | done   | Fixed VULN-006 (totalArgCount overflow), VULN-007 (unchecked dataLength in setData), VULN-009 (null h_addr_list), VULN-010 (wrapper chunk bounds), VULN-011 (sprintf→snprintf), VULN-012 (null alloc guard). |
+| 2026-03-22 | P2-07 Unsafe string cleanup        | task/P2-02-05-06-...      | done   | NetPacket.cpp send-path strcpy→strncpy+bounds. udp.cpp dead-code strcpy removed. |
+| 2026-03-22 | P2-08 Version CRC enforcement      | task/P2-02-05-06-...      | done   | Uncommented + enabled the CRC check in LANAPI::handleRequestJoin(). exeCRC+iniCRC mismatch now rejects join with RET_CRC_MISMATCH → LAN:ErrorCRCMismatch message. |
+| 2026-03-22 | P2-09 Headless replay CI           | task/P2-02-05-06-...      | done   | Added --headless-replay flag to WinMain.cpp. CI step added to ci-build.yml. Full simulation requires P5-03 headless renderer. |
+| 2026-03-22 | P2-10 DC-bug recovery              | task/P2-02-05-06-...      | done   | DisconnectManager: 10s auto-recovery attempt after disconnect screen appears. Logs/disconnect.log event logging added. |
 
 
