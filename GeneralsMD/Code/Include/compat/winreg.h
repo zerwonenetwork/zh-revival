@@ -12,12 +12,13 @@
 // Registry key type
 typedef LONG LSTATUS;
 
-// Predefined root keys (opaque values)
-#define HKEY_CLASSES_ROOT   ((HKEY)(LONG_PTR)0x80000000)
-#define HKEY_CURRENT_USER   ((HKEY)(LONG_PTR)0x80000001)
-#define HKEY_LOCAL_MACHINE  ((HKEY)(LONG_PTR)0x80000002)
-#define HKEY_USERS          ((HKEY)(LONG_PTR)0x80000003)
-#define HKEY_CURRENT_CONFIG ((HKEY)(LONG_PTR)0x80000005)
+// Predefined root keys — cast directly to HKEY (unsigned int) to avoid
+// pointer-truncation errors on 64-bit Clang (no LONG_PTR intermediate)
+#define HKEY_CLASSES_ROOT   ((HKEY)0x80000000u)
+#define HKEY_CURRENT_USER   ((HKEY)0x80000001u)
+#define HKEY_LOCAL_MACHINE  ((HKEY)0x80000002u)
+#define HKEY_USERS          ((HKEY)0x80000003u)
+#define HKEY_CURRENT_CONFIG ((HKEY)0x80000005u)
 
 // Registry value types
 #define REG_NONE        0
@@ -56,7 +57,7 @@ typedef LONG LSTATUS;
 static inline LSTATUS RegOpenKeyExA(HKEY hKey, LPCSTR lpSubKey, DWORD ulOptions,
                                     DWORD samDesired, HKEY* phkResult) {
     (void)hKey;(void)lpSubKey;(void)ulOptions;(void)samDesired;
-    if(phkResult) *phkResult = NULL;
+    if(phkResult) *phkResult = 0;
     return (LSTATUS)ERROR_FILE_NOT_FOUND;
 }
 #define RegOpenKeyEx  RegOpenKeyExA
@@ -68,7 +69,7 @@ static inline LSTATUS RegCreateKeyExA(HKEY hKey, LPCSTR lpSubKey, DWORD Reserved
                                        DWORD* lpdwDisposition) {
     (void)hKey;(void)lpSubKey;(void)Reserved;(void)lpClass;(void)dwOptions;
     (void)samDesired;(void)lpSecurityAttributes;
-    if(phkResult) *phkResult = NULL;
+    if(phkResult) *phkResult = 0;
     if(lpdwDisposition) *lpdwDisposition = REG_CREATED_NEW_KEY;
     return (LSTATUS)ERROR_ACCESS_DENIED;
 }
@@ -161,7 +162,7 @@ static inline LSTATUS RegQueryInfoKeyA(HKEY hKey, LPSTR lpClass, DWORD* lpcchCla
 
 static inline LSTATUS RegOpenKeyA(HKEY hKey, LPCSTR lpSubKey, HKEY* phkResult) {
     (void)hKey;(void)lpSubKey;
-    if(phkResult) *phkResult = NULL;
+    if(phkResult) *phkResult = 0;
     return (LSTATUS)ERROR_FILE_NOT_FOUND;
 }
 #define RegOpenKey  RegOpenKeyA
@@ -169,7 +170,7 @@ static inline LSTATUS RegOpenKeyA(HKEY hKey, LPCSTR lpSubKey, HKEY* phkResult) {
 
 static inline LSTATUS RegCreateKeyA(HKEY hKey, LPCSTR lpSubKey, HKEY* phkResult) {
     (void)hKey;(void)lpSubKey;
-    if(phkResult) *phkResult = NULL;
+    if(phkResult) *phkResult = 0;
     return (LSTATUS)ERROR_ACCESS_DENIED;
 }
 #define RegCreateKey  RegCreateKeyA

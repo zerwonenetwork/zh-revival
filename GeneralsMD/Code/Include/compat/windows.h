@@ -119,7 +119,10 @@ typedef void*  HBRUSH;
 typedef void*  HPEN;
 typedef void*  HFONT;
 typedef void*  HGDIOBJ;
-typedef void*  HKEY;
+// HKEY is 32-bit on all our stub builds — the legacy registry code (registry.cpp)
+// stores HKEY in an int field.  Using void* causes a pointer-truncation hard error on
+// 64-bit Clang.  Since stubs never use real registry handles, unsigned int is fine.
+typedef unsigned int HKEY;
 typedef void*  HMENU;
 typedef void*  HICON;
 typedef void*  HCURSOR;
@@ -1051,6 +1054,8 @@ static inline DWORD GetFileSizeEx(HANDLE hFile, LARGE_INTEGER* lpFileSize) {
 // ---------------------------------------------------------------------------
 // winreg.h - registry API (many files include only <windows.h> but use RegOpenKeyEx etc.)
 #include "winreg.h"
+// winnls.h - NLS / codepage functions (MultiByteToWideChar, CP_ACP, etc.)
+#include "winnls.h"
 
 // ---------------------------------------------------------------------------
 //  System information stubs (GetComputerName, GetUserName, GetDiskFreeSpace)
@@ -1178,6 +1183,103 @@ static inline HMODULE LoadLibraryExA(LPCSTR n, HANDLE h, DWORD f) { (void)n;(voi
 #define LoadLibraryW   LoadLibraryA
 #endif
 #endif // _zh_sysinfo_stubs_
+
+// ---------------------------------------------------------------------------
+//  Wide-char printf helpers — map MSVC-specific names to POSIX equivalents
+// ---------------------------------------------------------------------------
+#ifndef _vsnwprintf
+#define _vsnwprintf vswprintf
+#endif
+#ifndef _snwprintf
+#define _snwprintf  swprintf
+#endif
+#ifndef _wcsnicmp
+#define _wcsnicmp   wcsncasecmp
+#endif
+#ifndef _wcsicmp
+#define _wcsicmp    wcscasecmp
+#endif
+// wcsncasecmp / wcscasecmp may need explicit declaration on some POSIX targets
+#include <wchar.h>
+
+// ---------------------------------------------------------------------------
+//  Global memory functions (used by verchk.cpp and other Win32 code)
+// ---------------------------------------------------------------------------
+#ifndef GMEM_MOVEABLE
+#define GMEM_MOVEABLE   0x0002
+#define GMEM_ZEROINIT   0x0040
+#define GHND            (GMEM_MOVEABLE | GMEM_ZEROINIT)
+#define GPTR            0x0040
+#endif
+static inline HGLOBAL GlobalAlloc(UINT uFlags, SIZE_T dwBytes) { (void)uFlags; return malloc(dwBytes); }
+static inline LPVOID  GlobalLock(HGLOBAL hMem)                 { return hMem; }
+static inline BOOL    GlobalUnlock(HGLOBAL hMem)               { (void)hMem; return TRUE; }
+static inline HGLOBAL GlobalFree(HGLOBAL hMem)                 { free(hMem); return NULL; }
+static inline SIZE_T  GlobalSize(HGLOBAL hMem)                 { (void)hMem; return 0; }
+
+static inline HLOCAL LocalAlloc(UINT uFlags, SIZE_T uBytes) { (void)uFlags; return malloc(uBytes); }
+static inline LPVOID LocalLock(HLOCAL hMem)                 { return hMem; }
+static inline BOOL   LocalUnlock(HLOCAL hMem)               { (void)hMem; return TRUE; }
+static inline HLOCAL LocalFree(HLOCAL hMem)                 { free(hMem); return NULL; }
+
+// ---------------------------------------------------------------------------
+//  Version-info structures and stubs (verchk.cpp, versioncheck.cpp)
+// ---------------------------------------------------------------------------
+#ifndef _VS_FIXEDFILEINFO_
+#define _VS_FIXEDFILEINFO_
+typedef struct tagVS_FIXEDFILEINFO {
+    DWORD dwSignature;
+    DWORD dwStrucVersion;
+    DWORD dwFileVersionMS;
+    DWORD dwFileVersionLS;
+    DWORD dwProductVersionMS;
+    DWORD dwProductVersionLS;
+    DWORD dwFileFlagsMask;
+    DWORD dwFileFlags;
+    DWORD dwFileOS;
+    DWORD dwFileType;
+    DWORD dwFileSubtype;
+    DWORD dwFileDateMS;
+    DWORD dwFileDateLS;
+} VS_FIXEDFILEINFO;
+#endif
+
+static inline DWORD GetFileVersionInfoSizeA(LPCSTR lptstrFilename, DWORD* lpdwHandle) {
+    (void)lptstrFilename; if(lpdwHandle) *lpdwHandle = 0; return 0;
+}
+#define GetFileVersionInfoSize  GetFileVersionInfoSizeA
+#define GetFileVersionInfoSizeW GetFileVersionInfoSizeA
+
+static inline BOOL GetFileVersionInfoA(LPCSTR lptstrFilename, DWORD dwHandle,
+                                        DWORD dwLen, LPVOID lpData) {
+    (void)lptstrFilename;(void)dwHandle;(void)dwLen;(void)lpData; return FALSE;
+}
+#define GetFileVersionInfo  GetFileVersionInfoA
+#define GetFileVersionInfoW GetFileVersionInfoA
+
+static inline BOOL VerQueryValueA(LPCVOID pBlock, LPCSTR lpSubBlock,
+                                   LPVOID* lplpBuffer, UINT* puLen) {
+    (void)pBlock;(void)lpSubBlock;
+    if(lplpBuffer) *lplpBuffer = NULL;
+    if(puLen) *puLen = 0;
+    return FALSE;
+}
+#define VerQueryValue  VerQueryValueA
+#define VerQueryValueW VerQueryValueA
+
+// ---------------------------------------------------------------------------
+//  Clipboard stubs (some UI code touches these)
+// ---------------------------------------------------------------------------
+#ifndef CF_TEXT
+#define CF_TEXT         1
+#define CF_BITMAP       2
+#define CF_UNICODETEXT  13
+#endif
+static inline BOOL OpenClipboard(HWND hWnd)        { (void)hWnd; return FALSE; }
+static inline BOOL CloseClipboard(void)            { return FALSE; }
+static inline BOOL EmptyClipboard(void)            { return FALSE; }
+static inline HANDLE GetClipboardData(UINT uFmt)   { (void)uFmt; return NULL; }
+static inline HANDLE SetClipboardData(UINT uFmt, HANDLE hMem) { (void)uFmt;(void)hMem; return NULL; }
 
 #endif  // !_WIN32
 #endif  // ZH_COMPAT_WINDOWS_H

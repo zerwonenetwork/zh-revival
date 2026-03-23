@@ -6,11 +6,23 @@
 #ifndef ZH_COMPAT_WINDOWS_H
 #include "windows.h"
 #endif
+// Types must come before functions that return them
+typedef DWORD LCID;
+typedef WORD  LANGID;
+
 #define CP_ACP      0
 #define CP_UTF8     65001
 #define CP_UTF7     65000
-#define MB_PRECOMPOSED  0x00000001
+#define CP_OEMCP    1
+#define MB_PRECOMPOSED    0x00000001
+#define MB_COMPOSITE      0x00000002
+#define MB_ERR_INVALID_CHARS 0x00000008
 #define WC_COMPOSITECHECK 0x00000200
+#define WC_NO_BEST_FIT_CHARS 0x00000400
+
+#include <string.h>
+#include <wchar.h>
+
 static inline int MultiByteToWideChar(UINT cp,DWORD flags,LPCSTR mb,int mbc,LPWSTR wc,int wcc){
     (void)cp;(void)flags;
     if(!mb)return 0;
@@ -35,7 +47,5 @@ static inline LCID GetSystemDefaultLCID(void){return 0x0409;}
 static inline LCID GetUserDefaultLCID(void){return 0x0409;}
 static inline LANGID GetSystemDefaultLangID(void){return 0x0409;}
 static inline LANGID GetUserDefaultLangID(void){return 0x0409;}
-typedef DWORD LCID;
-typedef WORD  LANGID;
 #endif
 #endif
