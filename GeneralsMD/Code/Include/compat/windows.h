@@ -149,6 +149,8 @@ typedef struct _GUID {
     unsigned short Data3;
     unsigned char  Data4[8];
 } GUID, IID, CLSID;
+typedef GUID*       LPGUID;
+typedef const GUID* LPCGUID;
 #ifdef __cplusplus
 typedef const GUID& REFGUID;
 typedef const IID&  REFIID;
@@ -264,9 +266,13 @@ typedef LRESULT (*WNDPROC)(HWND, UINT, WPARAM, LPARAM);
 #define FORMAT_MESSAGE_FROM_STRING      0x00000400
 #define FORMAT_MESSAGE_FROM_HMODULE     0x00000800
 #define FORMAT_MESSAGE_MAX_WIDTH_MASK   0x000000FF
+#define MB_OK                           0x00000000L
+#define MB_ICONEXCLAMATION              0x00000030L
 #define VER_PLATFORM_WIN32s             0
 #define VER_PLATFORM_WIN32_WINDOWS      1
 #define VER_PLATFORM_WIN32_NT           2
+#define BI_RGB                          0
+#define DIB_RGB_COLORS                  0
 
 // ---------------------------------------------------------------------------
 //  File / registry / misc constants
@@ -412,6 +418,32 @@ typedef struct _SYSTEMTIME {
     WORD wYear, wMonth, wDayOfWeek, wDay;
     WORD wHour, wMinute, wSecond, wMilliseconds;
 } SYSTEMTIME, *LPSYSTEMTIME;
+
+typedef struct tagRGBQUAD {
+    BYTE rgbBlue;
+    BYTE rgbGreen;
+    BYTE rgbRed;
+    BYTE rgbReserved;
+} RGBQUAD;
+
+typedef struct tagBITMAPINFOHEADER {
+    DWORD biSize;
+    LONG  biWidth;
+    LONG  biHeight;
+    WORD  biPlanes;
+    WORD  biBitCount;
+    DWORD biCompression;
+    DWORD biSizeImage;
+    LONG  biXPelsPerMeter;
+    LONG  biYPelsPerMeter;
+    DWORD biClrUsed;
+    DWORD biClrImportant;
+} BITMAPINFOHEADER, *LPBITMAPINFOHEADER, *PBITMAPINFOHEADER;
+
+typedef struct tagBITMAPINFO {
+    BITMAPINFOHEADER bmiHeader;
+    RGBQUAD          bmiColors[1];
+} BITMAPINFO, *LPBITMAPINFO, *PBITMAPINFO;
 
 typedef struct _MEMORYSTATUS {
     DWORD  dwLength;
@@ -580,6 +612,8 @@ static inline BOOL    UnregisterClassA(LPCSTR, HINSTANCE) { return TRUE; }
 static inline HWND    CreateWindowExA(DWORD,LPCSTR,LPCSTR,DWORD,int,int,int,int,HWND,HMENU,HINSTANCE,LPVOID) { return NULL; }
 #define CreateWindow(cls,wnd,sty,x,y,w,h,par,men,ins,par2) CreateWindowExA(0,cls,wnd,sty,x,y,w,h,par,men,ins,par2)
 #define CreateWindowEx CreateWindowExA
+static inline int     MessageBoxA(HWND,LPCSTR,LPCSTR,UINT) { return 0; }
+#define MessageBox MessageBoxA
 static inline BOOL    DestroyWindow(HWND h)               { (void)h; return FALSE; }
 static inline BOOL    ShowWindow(HWND h, int cmd)         { (void)h;(void)cmd; return FALSE; }
 static inline BOOL    UpdateWindow(HWND h)                { (void)h; return FALSE; }
@@ -603,6 +637,15 @@ static inline HMODULE LoadLibraryA(LPCSTR n)              { (void)n; return NULL
 static inline FARPROC GetProcAddress(HMODULE h, LPCSTR n) { (void)h; (void)n; return NULL; }
 static inline BOOL    FreeLibrary(HMODULE h)              { (void)h; return FALSE; }
 #define LoadLibrary  LoadLibraryA
+static inline int     LoadStringA(HINSTANCE, UINT, LPSTR buffer, int cchBufferMax) {
+    if (buffer && cchBufferMax > 0) buffer[0] = '\0';
+    return 0;
+}
+#define LoadString LoadStringA
+static inline HRSRC   FindResourceA(HINSTANCE, LPCSTR, LPCSTR)        { return NULL; }
+#define FindResource FindResourceA
+static inline HGLOBAL LoadResource(HINSTANCE, HRSRC)                  { return NULL; }
+static inline LPVOID  LockResource(HGLOBAL)                           { return NULL; }
 static inline BOOL    SetForegroundWindow(HWND h)         { (void)h; return FALSE; }
 static inline HWND    SetFocus_w(HWND h)                  { return h; }
 #define SetFocus SetFocus_w
@@ -633,6 +676,13 @@ static inline BOOL    QueryPerformanceCounter(LARGE_INTEGER* p)        { if(p) p
 static inline BOOL    QueryPerformanceFrequency(LARGE_INTEGER* p)      { if(p) p->QuadPart=1000000; return TRUE; }
 static inline void    GetSystemTime(SYSTEMTIME* st)                    { if(st) memset(st,0,sizeof(*st)); }
 static inline void    GetLocalTime(SYSTEMTIME* st)                     { if(st) memset(st,0,sizeof(*st)); }
+static inline HDC     GetDC(HWND)                                      { return NULL; }
+static inline int     ReleaseDC(HWND, HDC)                             { return 0; }
+static inline BOOL    DeleteObject(HGDIOBJ)                            { return TRUE; }
+static inline HBITMAP CreateDIBSection(HDC, const BITMAPINFO*, UINT, void** bits, HANDLE, DWORD) {
+    if (bits) *bits = NULL;
+    return NULL;
+}
 static inline void    GlobalMemoryStatus(LPMEMORYSTATUS ms)            { if(ms) memset(ms, 0, sizeof(*ms)); }
 static inline BOOL    GetVersionExA(LPOSVERSIONINFOA info)             {
     if (info) {
@@ -647,6 +697,17 @@ static inline DWORD   GetTimeZoneInformation(LPTIME_ZONE_INFORMATION tz) {
     if (tz) memset(tz, 0, sizeof(*tz));
     return 0;
 }
+static inline int     wsprintfA(LPSTR buffer, LPCSTR format, ...) {
+    int result = 0;
+    if (buffer && format) {
+        va_list args;
+        va_start(args, format);
+        result = vsprintf(buffer, format, args);
+        va_end(args);
+    }
+    return result;
+}
+#define wsprintf wsprintfA
 static inline DWORD   GetWindowsDirectoryA(LPSTR path, DWORD size)     {
     if (path && size > 0) { path[0] = '.'; if (size > 1) path[1] = '\0'; }
     return 1;

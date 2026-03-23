@@ -69,10 +69,12 @@ typedef struct _DDBLTFX {
 } DDBLTFX, *LPDDBLTFX;
 
 typedef struct _DDCAPS {
+    DWORD dwSize;
     DWORD dwCaps;
     DWORD dwSVBCaps;
     DWORD dwVSBCaps;
     DWORD dwSSBCaps;
+    DWORD dwVidMemFree;
 } DDCAPS, *LPDDCAPS;
 
 typedef struct tagPALETTEENTRY {
@@ -271,7 +273,7 @@ typedef IDirectDrawClipper*  LPDIRECTDRAWCLIPPER;
 
 static const IID IID_IDirectDraw2 = { 0, 0, 0, { 0, 0, 0, 0, 0, 0, 0, 0 } };
 
-static inline HRESULT DirectDrawCreate(REFGUID, LPDIRECTDRAW* dd, void*) {
+static inline HRESULT DirectDrawCreate(LPGUID, LPDIRECTDRAW* dd, void*) {
     if (dd) *dd = NULL;
     return DDERR_UNSUPPORTED;
 }
