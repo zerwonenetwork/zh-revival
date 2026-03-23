@@ -765,8 +765,7 @@ static inline int GetDlgCtrlID(HWND h) { (void)h; return 0; }
 static inline HWND GetDlgItem(HWND h, int id) { (void)h;(void)id; return NULL; }
 static inline BOOL EnableWindow(HWND h, BOOL e) { (void)h;(void)e; return FALSE; }
 static inline BOOL IsWindowEnabled(HWND h) { (void)h; return TRUE; }
-static inline BOOL IsWindowVisible(HWND h) { (void)h; return FALSE; }
-static inline BOOL IsWindow(HWND h) { (void)h; return FALSE; }
+// Note: IsWindow, IsWindowVisible already defined below — don't redefine here
 static inline BOOL MoveWindow(HWND h,int x,int y,int w,int ht,BOOL rep) { (void)h;(void)x;(void)y;(void)w;(void)ht;(void)rep; return FALSE; }
 static inline int  GetWindowTextA(HWND h, LPSTR b, int n) { (void)h; if(b&&n>0)b[0]=0; return 0; }
 static inline int  GetWindowTextLengthA(HWND h) { (void)h; return 0; }
