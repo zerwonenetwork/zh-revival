@@ -8,13 +8,19 @@ endif()
 
 # ─────────────────────────────────────────────
 #  Non-Windows compatibility shim
-#  On Linux/macOS, prepend GeneralsMD/Code/Include/compat/ to every
-#  target's include path so that #include <windows.h> and #include <new.h>
-#  resolve to our shim headers instead of failing with "file not found".
+#  On Linux/macOS (not cross-compiling to Windows via mingw which has its
+#  own windows.h), inject our compat header:
+#   1. include_directories(BEFORE) — so #include <windows.h> etc. resolve here
+#   2. add_compile_options(-include) — force-inject before EVERY .c/.cpp unit
+#      so __cdecl, __forceinline etc. are defined even in files that never
+#      explicitly include windows.h
 # ─────────────────────────────────────────────
-if(NOT WIN32)
+if(UNIX AND NOT CMAKE_CROSSCOMPILING)
   set(ZH_COMPAT_INCLUDE_DIR "${CMAKE_SOURCE_DIR}/GeneralsMD/Code/Include/compat")
-  include_directories(BEFORE SYSTEM "${ZH_COMPAT_INCLUDE_DIR}")
+  include_directories(BEFORE "${ZH_COMPAT_INCLUDE_DIR}")
+  add_compile_options(
+    "-include" "${ZH_COMPAT_INCLUDE_DIR}/windows.h"
+  )
 endif()
 
 # ─────────────────────────────────────────────

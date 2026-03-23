@@ -175,6 +175,8 @@ jobs:
             -DCMAKE_TOOLCHAIN_FILE=.github/toolchains/mingw32.cmake \
             -DZH_USE_STUBS=ON \
             -DZH_FFMPEG_VIDEO=OFF \
+            -DCMAKE_CXX_FLAGS="-fpermissive -Wno-error" \
+            -DCMAKE_C_FLAGS="-fpermissive -Wno-error" \
             -DCMAKE_BUILD_TYPE=Release
 
       # ── Build ─────────────────────────────────────────────────────────────

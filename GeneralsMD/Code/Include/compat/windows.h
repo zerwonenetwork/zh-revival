@@ -384,28 +384,131 @@ typedef struct _CRITICAL_SECTION {
 extern "C" {
 #endif
 
-static inline void  InitializeCriticalSection(LPCRITICAL_SECTION)     {}
-static inline void  DeleteCriticalSection(LPCRITICAL_SECTION)         {}
-static inline void  EnterCriticalSection(LPCRITICAL_SECTION)          {}
-static inline void  LeaveCriticalSection(LPCRITICAL_SECTION)          {}
-static inline BOOL  TryEnterCriticalSection(LPCRITICAL_SECTION)       { return TRUE; }
-static inline void  OutputDebugStringA(LPCSTR)                        {}
-static inline void  OutputDebugStringW(LPCWSTR)                       {}
-static inline DWORD GetLastError(void)                                { return 0; }
-static inline void  SetLastError(DWORD)                               {}
-static inline DWORD GetTickCount(void)                                { return 0; }
-static inline void  Sleep(DWORD)                                      {}
-static inline BOOL  QueryPerformanceCounter(LARGE_INTEGER* p)         { if(p) p->QuadPart=0; return TRUE; }
-static inline BOOL  QueryPerformanceFrequency(LARGE_INTEGER* p)       { if(p) p->QuadPart=1000000; return TRUE; }
+// ---------------------------------------------------------------------------
+//  WNDCLASS / WNDCLASSEX (needed by any header referencing window registration)
+// ---------------------------------------------------------------------------
+typedef struct tagWNDCLASSA {
+    UINT      style;
+    WNDPROC   lpfnWndProc;
+    int       cbClsExtra;
+    int       cbWndExtra;
+    HINSTANCE hInstance;
+    HICON     hIcon;
+    HCURSOR   hCursor;
+    HBRUSH    hbrBackground;
+    LPCSTR    lpszMenuName;
+    LPCSTR    lpszClassName;
+} WNDCLASSA, WNDCLASS, *LPWNDCLASSA, *LPWNDCLASS;
 
+typedef struct tagWNDCLASSEXA {
+    UINT      cbSize;
+    UINT      style;
+    WNDPROC   lpfnWndProc;
+    int       cbClsExtra;
+    int       cbWndExtra;
+    HINSTANCE hInstance;
+    HICON     hIcon;
+    HCURSOR   hCursor;
+    HBRUSH    hbrBackground;
+    LPCSTR    lpszMenuName;
+    LPCSTR    lpszClassName;
+    HICON     hIconSm;
+} WNDCLASSEXA, WNDCLASSEX, *LPWNDCLASSEXA, *LPWNDCLASSEX;
+
+typedef struct tagMSG {
+    HWND   hwnd;
+    UINT   message;
+    WPARAM wParam;
+    LPARAM lParam;
+    DWORD  time;
+    POINT  pt;
+} MSG, *LPMSG, *PMSG;
+
+// ---------------------------------------------------------------------------
+//  Stub inline implementations — all static inline, no extern "C" needed
+// ---------------------------------------------------------------------------
 #ifdef __cplusplus
-}
+#include <cstdio>
+#include <cstring>
+#else
+#include <stdio.h>
+#include <string.h>
 #endif
 
-// ---------------------------------------------------------------------------
-//  OutputDebugString alias
-// ---------------------------------------------------------------------------
+static inline DWORD FormatMessageA(DWORD fl, LPCVOID src, DWORD id, DWORD lang, LPSTR buf, DWORD sz, va_list* args) {
+    (void)fl;(void)src;(void)id;(void)lang;(void)args;
+    if(buf && sz > 0) buf[0] = '\0'; return 0;
+}
+#define FormatMessage  FormatMessageA
+#define FormatMessageW FormatMessageA
+
+static inline ATOM    RegisterClassA(const WNDCLASSA*)    { return (ATOM)1; }
+static inline ATOM    RegisterClassExA(const WNDCLASSEXA*){ return (ATOM)1; }
+#define RegisterClass    RegisterClassA
+#define RegisterClassEx  RegisterClassExA
+static inline BOOL    UnregisterClassA(LPCSTR, HINSTANCE) { return TRUE; }
+#define UnregisterClass  UnregisterClassA
+static inline HWND    CreateWindowExA(DWORD,LPCSTR,LPCSTR,DWORD,int,int,int,int,HWND,HMENU,HINSTANCE,LPVOID) { return NULL; }
+#define CreateWindow(cls,wnd,sty,x,y,w,h,par,men,ins,par2) CreateWindowExA(0,cls,wnd,sty,x,y,w,h,par,men,ins,par2)
+#define CreateWindowEx CreateWindowExA
+static inline BOOL    DestroyWindow(HWND h)               { (void)h; return FALSE; }
+static inline BOOL    ShowWindow(HWND h, int cmd)         { (void)h;(void)cmd; return FALSE; }
+static inline BOOL    UpdateWindow(HWND h)                { (void)h; return FALSE; }
+static inline BOOL    SetWindowPos(HWND a,HWND b,int c,int d,int e,int f,UINT g) { (void)a;(void)b;(void)c;(void)d;(void)e;(void)f;(void)g; return FALSE; }
+static inline BOOL    GetClientRect(HWND h, LPRECT r)     { (void)h; if(r){r->left=r->top=r->right=r->bottom=0;} return FALSE; }
+static inline BOOL    GetWindowRect(HWND h, LPRECT r)     { (void)h; if(r){r->left=r->top=r->right=r->bottom=0;} return FALSE; }
+static inline BOOL    PeekMessageA(LPMSG m,HWND h,UINT a,UINT b,UINT c) { (void)m;(void)h;(void)a;(void)b;(void)c; return FALSE; }
+static inline BOOL    GetMessageA(LPMSG m,HWND h,UINT a,UINT b)         { (void)m;(void)h;(void)a;(void)b; return FALSE; }
+static inline BOOL    TranslateMessage(const MSG* m)      { (void)m; return FALSE; }
+static inline LRESULT DispatchMessageA(const MSG* m)      { (void)m; return 0; }
+static inline LRESULT DefWindowProcA(HWND h,UINT msg,WPARAM w,LPARAM l){ (void)h;(void)msg;(void)w;(void)l; return 0; }
+#define DefWindowProc DefWindowProcA
+#define PeekMessage   PeekMessageA
+#define GetMessage    GetMessageA
+#define DispatchMessage DispatchMessageA
+static inline void    PostQuitMessage(int code)           { (void)code; }
+static inline HMODULE GetModuleHandleA(LPCSTR n)          { (void)n; return NULL; }
+#define GetModuleHandle GetModuleHandleA
+static inline BOOL    SetForegroundWindow(HWND h)         { (void)h; return FALSE; }
+static inline HWND    SetFocus_w(HWND h)                  { return h; }
+#define SetFocus SetFocus_w
+static inline BOOL    IsWindow(HWND h)                    { (void)h; return FALSE; }
+static inline BOOL    IsWindowVisible(HWND h)             { (void)h; return FALSE; }
+static inline LRESULT SendMessageA(HWND h,UINT m,WPARAM w,LPARAM l){ (void)h;(void)m;(void)w;(void)l; return 0; }
+#define SendMessage SendMessageA
+static inline BOOL    PostMessageA(HWND h,UINT m,WPARAM w,LPARAM l){ (void)h;(void)m;(void)w;(void)l; return FALSE; }
+#define PostMessage PostMessageA
+static inline void    InitializeCriticalSection(LPCRITICAL_SECTION p)  { (void)p; }
+static inline void    DeleteCriticalSection(LPCRITICAL_SECTION p)      { (void)p; }
+static inline void    EnterCriticalSection(LPCRITICAL_SECTION p)       { (void)p; }
+static inline void    LeaveCriticalSection(LPCRITICAL_SECTION p)       { (void)p; }
+static inline BOOL    TryEnterCriticalSection(LPCRITICAL_SECTION p)    { (void)p; return TRUE; }
+static inline void    OutputDebugStringA(LPCSTR s)                     { if(s) fprintf(stderr, "%s", s); }
+static inline void    OutputDebugStringW(LPCWSTR s)                    { (void)s; }
 #define OutputDebugString OutputDebugStringA
+static inline DWORD   GetLastError(void)                               { return 0; }
+static inline void    SetLastError(DWORD e)                            { (void)e; }
+static inline DWORD   GetTickCount(void)                               { return 0; }
+static inline void    Sleep(DWORD ms)                                  { (void)ms; }
+static inline BOOL    QueryPerformanceCounter(LARGE_INTEGER* p)        { if(p) p->QuadPart=0; return TRUE; }
+static inline BOOL    QueryPerformanceFrequency(LARGE_INTEGER* p)      { if(p) p->QuadPart=1000000; return TRUE; }
+static inline void    GetSystemTime(SYSTEMTIME* st)                    { if(st) memset(st,0,sizeof(*st)); }
+static inline void    GetLocalTime(SYSTEMTIME* st)                     { if(st) memset(st,0,sizeof(*st)); }
+static inline HANDLE  CreateEventA(void*,BOOL,BOOL,LPCSTR)            { return NULL; }
+#define CreateEvent CreateEventA
+static inline BOOL    SetEvent(HANDLE h)                               { (void)h; return FALSE; }
+static inline BOOL    ResetEvent(HANDLE h)                             { (void)h; return FALSE; }
+static inline DWORD   WaitForSingleObject(HANDLE h, DWORD ms)         { (void)h;(void)ms; return 0; }
+static inline BOOL    CloseHandle(HANDLE h)                            { (void)h; return TRUE; }
+static inline DWORD   GetCurrentThreadId(void)                        { return 1; }
+static inline DWORD   GetCurrentProcessId(void)                       { return 1; }
+static inline LONG    InterlockedIncrement(LONG* p)                   { return ++(*p); }
+static inline LONG    InterlockedDecrement(LONG* p)                   { return --(*p); }
+static inline LONG    InterlockedExchange(LONG* p, LONG v)            { LONG old=*p; *p=v; return old; }
+static inline HANDLE  GetStdHandle(DWORD n)                           { (void)n; return NULL; }
+static inline BOOL    WriteConsoleA(HANDLE,const void*,DWORD,DWORD*,void*) { return FALSE; }
+static inline UINT    GetDriveTypeA(LPCSTR p)                         { (void)p; return 0; }
+#define GetDriveType GetDriveTypeA
 
 // ---------------------------------------------------------------------------
 //  WNDPROC type (not functional on non-Windows, just satisfies the type system)
