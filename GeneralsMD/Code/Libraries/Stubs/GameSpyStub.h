@@ -814,10 +814,6 @@ inline void peerLeaveRoom(PEER peer, RoomType room, void* callback)
 {
     (void)peer; (void)room; (void)callback;
 }
-inline void peerLeaveRoom(PEER peer, RoomType room, int callback)
-{
-    (void)peer; (void)room; (void)callback;
-}
 inline void peerLeaveRoom(PEER peer, RoomType room, const char* reason)
 {
     (void)peer; (void)room; (void)reason;

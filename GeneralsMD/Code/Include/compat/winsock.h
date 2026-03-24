@@ -42,6 +42,8 @@ typedef struct hostent HOSTENT;
 #define WSAEADDRINUSE     EADDRINUSE
 #define WSAEHOSTUNREACH   EHOSTUNREACH
 #define WSAENOTCONN       ENOTCONN
+#define WSAEINVAL         EINVAL
+#define WSAEISCONN        EISCONN
 
 // sockaddr re-exported (already in sys/socket.h)
 // WSADATA stub
