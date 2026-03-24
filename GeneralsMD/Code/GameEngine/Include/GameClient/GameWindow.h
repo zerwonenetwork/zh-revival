@@ -50,6 +50,7 @@
 #define __GAMEWINDOW_H_
 
 // SYSTEM INCLUDES ////////////////////////////////////////////////////////////
+#include <cstdint>
 
 // USER INCLUDES //////////////////////////////////////////////////////////////
 #include "Lib/BaseType.h"
@@ -75,7 +76,11 @@ enum { WIN_COLOR_UNDEFINED = GAME_COLOR_UNDEFINED };
 
 // WindowMsgData --------------------------------------------------------------
 //-----------------------------------------------------------------------------
+#if defined(_WIN64) || defined(__x86_64__) || defined(__aarch64__)
+typedef uintptr_t WindowMsgData;
+#else
 typedef UnsignedInt WindowMsgData;
+#endif
 
 //-----------------------------------------------------------------------------
 enum WindowMsgHandledType { MSG_IGNORED, MSG_HANDLED };

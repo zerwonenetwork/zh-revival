@@ -38,7 +38,8 @@
 // On Linux/macOS: all Windows types come from compat/windows.h (force-included).
 // SOCKET on non-Windows:
 #ifndef _WIN32
-#  ifndef SOCKET
+#  ifndef ZH_COMPAT_SOCKET_DEFINED
+#  define ZH_COMPAT_SOCKET_DEFINED
 typedef unsigned int SOCKET;
 #  define INVALID_SOCKET ((SOCKET)(~0u))
 #  define SOCKET_ERROR   (-1)

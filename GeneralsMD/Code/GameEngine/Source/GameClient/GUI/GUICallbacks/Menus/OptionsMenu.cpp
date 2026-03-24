@@ -77,6 +77,8 @@
 // This is for non-RC builds only!!!
 #define VERBOSE_VERSION L"Release"
 
+static void FormatMenuInt(int value, char* buffer, size_t bufferSize);
+
 #ifdef _INTERNAL
 // for occasional debugging...
 //#pragma optimize("", off)
