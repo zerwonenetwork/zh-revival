@@ -20,9 +20,13 @@
 #include "win.h"
 #include "wwdebug.h"
 
+#ifdef _WIN32
+// On Windows these are true globals defined once here; win.h declares them extern.
+// On non-Windows (Linux/macOS) win.h provides static per-TU stubs instead.
 HINSTANCE	ProgramInstance;
-HWND			MainWindow;
+HWND		MainWindow;
 bool GameInFocus = false;
+#endif // _WIN32
 
 /***********************************************************************************************
  * Print_Win32Error -- Print the Win32 error message.                                          *
@@ -36,7 +40,7 @@ bool GameInFocus = false;
  * HISTORY:                                                                                    *
  *   6/21/01    DEL : Created.                                                                 *
  *=============================================================================================*/
-#ifdef _DEBUG
+#if defined(_WIN32) && defined(_DEBUG)
 void __cdecl Print_Win32Error(unsigned long win32Error)
 {
 	LPVOID lpMsgBuf;
@@ -47,5 +51,5 @@ void __cdecl Print_Win32Error(unsigned long win32Error)
 	WWDEBUG_SAY(("Win32 Error: %s\n", (const char*)lpMsgBuf));
 	LocalFree(lpMsgBuf);
 }
-#endif
+#endif // _WIN32 && _DEBUG
 

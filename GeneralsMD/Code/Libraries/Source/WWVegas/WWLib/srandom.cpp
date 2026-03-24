@@ -28,12 +28,10 @@
 #ifdef _UNIX
 #include "osdep.h"
 #ifdef __linux__
-// sysinfo() is Linux-specific; not available on macOS or other POSIX systems
-#include <linux/kernel.h>
-#include <linux/sys.h>
-extern "C" {
-	int sysinfo(struct sysinfo *info);
-}
+// sysinfo() is Linux-specific; <sys/sysinfo.h> declares it on Linux
+#include <sys/sysinfo.h>
+// clock_gettime also available on Linux
+#include <time.h>
 #else
 // macOS / other POSIX: use clock_gettime + getpid as entropy
 #include <time.h>
