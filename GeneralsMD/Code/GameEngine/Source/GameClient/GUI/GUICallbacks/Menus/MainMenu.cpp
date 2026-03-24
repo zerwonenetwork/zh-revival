@@ -30,6 +30,8 @@
 // INCLUDES ///////////////////////////////////////////////////////////////////////////////////////
 #include "PreRTS.h"	// This must go first in EVERY cpp file int the GameEngine
 
+#include <cstdint>
+
 #include "GameSpy/ghttp/ghttp.h"
 
 #include "Lib/BaseType.h"
@@ -322,7 +324,7 @@ static MessageBoxReturnType checkCDCallback( void *userData )
 	}
 	else
 	{
-		prepareCampaignGame((GameDifficulty)(Int)(Int *)userData);
+		prepareCampaignGame((GameDifficulty)(intptr_t)userData);
 		return MB_RETURN_CLOSE;
 	}
 }

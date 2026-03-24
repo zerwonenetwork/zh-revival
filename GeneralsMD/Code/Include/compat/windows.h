@@ -759,8 +759,11 @@ static inline DWORD FormatMessageA(DWORD fl, LPCVOID src, DWORD id, DWORD lang, 
     (void)fl;(void)src;(void)id;(void)lang;(void)args;
     if(buf && sz > 0) buf[0] = '\0'; return 0;
 }
+static inline DWORD FormatMessageW(DWORD fl, LPCVOID src, DWORD id, DWORD lang, LPWSTR buf, DWORD sz, va_list* args) {
+    (void)fl;(void)src;(void)id;(void)lang;(void)args;
+    if(buf && sz > 0) buf[0] = L'\0'; return 0;
+}
 #define FormatMessage  FormatMessageA
-#define FormatMessageW FormatMessageA
 
 static inline ATOM    RegisterClassA(const WNDCLASSA*)    { return (ATOM)1; }
 static inline ATOM    RegisterClassExA(const WNDCLASSEXA*){ return (ATOM)1; }
@@ -1028,6 +1031,10 @@ static inline DWORD   GetFileAttributesA(LPCSTR path)                 { (void)pa
 #define GetFileAttributes GetFileAttributesA
 static inline BOOL    DeleteFileA(LPCSTR path)                        { (void)path; return FALSE; }
 #define DeleteFile DeleteFileA
+static inline BOOL    CopyFileA(LPCSTR existing_name, LPCSTR new_name, BOOL fail_if_exists) {
+    (void)existing_name; (void)new_name; (void)fail_if_exists; return FALSE;
+}
+#define CopyFile CopyFileA
 static inline BOOL    MoveFileA(LPCSTR existing_name, LPCSTR new_name){ (void)existing_name; (void)new_name; return FALSE; }
 #define MoveFile MoveFileA
 static inline HANDLE  FindFirstFileA(LPCSTR path, LPWIN32_FIND_DATAA info) {
