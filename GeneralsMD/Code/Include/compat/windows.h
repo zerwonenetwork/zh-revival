@@ -870,6 +870,7 @@ static inline BOOL MoveWindow(HWND h,int x,int y,int w,int ht,BOOL rep) { (void)
 static inline int  GetWindowTextA(HWND h, LPSTR b, int n) { (void)h; if(b&&n>0)b[0]=0; return 0; }
 static inline int  GetWindowTextLengthA(HWND h) { (void)h; return 0; }
 static inline BOOL SetWindowTextA(HWND h, LPCSTR t) { (void)h;(void)t; return FALSE; }
+static inline BOOL SetWindowTextW(HWND h, LPCWSTR t) { (void)h;(void)t; return FALSE; }
 #define GetWindowText       GetWindowTextA
 #define GetWindowTextLength GetWindowTextLengthA
 #define SetWindowText       SetWindowTextA
@@ -922,6 +923,10 @@ static inline HRSRC   FindResourceA(HINSTANCE, LPCSTR, LPCSTR)        { return N
 static inline HGLOBAL LoadResource(HINSTANCE, HRSRC)                  { return NULL; }
 static inline LPVOID  LockResource(HGLOBAL)                           { return NULL; }
 static inline DWORD   SizeofResource(HINSTANCE, HRSRC)                { return 0; }
+static inline int     AddFontResourceA(LPCSTR file_name)              { (void)file_name; return 0; }
+static inline int     RemoveFontResourceA(LPCSTR file_name)           { (void)file_name; return 0; }
+#define AddFontResource AddFontResourceA
+#define RemoveFontResource RemoveFontResourceA
 static inline BOOL    SetForegroundWindow(HWND h)         { (void)h; return FALSE; }
 static inline HWND    GetActiveWindow(void)               { return NULL; }
 static inline HWND    SetFocus_w(HWND h)                  { return h; }

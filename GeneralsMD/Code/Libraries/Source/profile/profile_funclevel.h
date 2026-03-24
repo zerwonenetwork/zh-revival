@@ -32,6 +32,7 @@
 #ifndef PROFILE_FUNCLEVEL_H // Include guard
 #define PROFILE_FUNCLEVEL_H
 
+#include <cstdint>
 /**
   \brief The function level profiler.
 
@@ -185,7 +186,7 @@ public:
     */
     unsigned GetId(void) const
     {
-      return unsigned(m_threadID);
+      return (unsigned)(uintptr_t)m_threadID;
     }
 
   private:
@@ -221,3 +222,6 @@ private:
 };
 
 #endif // PROFILE_FUNCLEVEL_H
+
+
+

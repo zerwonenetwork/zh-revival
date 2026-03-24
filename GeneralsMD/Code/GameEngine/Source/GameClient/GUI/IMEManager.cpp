@@ -47,6 +47,7 @@
 
 #include "PreRTS.h"	// This must go first in EVERY cpp file int the GameEngine
 
+#include <cstdint>
 #include <windows.h>
 #include "mbstring.h"
 
@@ -1446,7 +1447,7 @@ void IMEManager::updateCandidateList( Int candidateFlags  )
 
 						for( i=0; i < m_candidateCount; i++ )
 						{
-							Char *string = (Char*) ((UnsignedInt) clist + (UnsignedInt) clist->dwOffset[i]);
+							Char *string = (Char*) ((uintptr_t)clist + (uintptr_t)clist->dwOffset[i]);
 							if ( unicode )
 							{
 								m_candidateString[i].set( (WideChar *) string);
@@ -1612,4 +1613,3 @@ void IMEManager::updateStatusWindow( void )
 {
 
 }
-
