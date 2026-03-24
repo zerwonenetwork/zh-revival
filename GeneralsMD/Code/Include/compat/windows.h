@@ -423,6 +423,16 @@ typedef LRESULT (*WNDPROC)(HWND, UINT, WPARAM, LPARAM);
 #define SecureZeroMemory(dst, len)    memset((dst), 0, (len))
 
 // ---------------------------------------------------------------------------
+//  __min / __max — MSVC intrinsics (not available on GCC/Clang)
+// ---------------------------------------------------------------------------
+#ifndef __min
+#define __min(a, b) ((a) < (b) ? (a) : (b))
+#endif
+#ifndef __max
+#define __max(a, b) ((a) > (b) ? (a) : (b))
+#endif
+
+// ---------------------------------------------------------------------------
 //  NOMINMAX — suppress min/max macros to avoid conflicts with C++ stdlib
 //  (GCC's <limits>/<cmath> use std::min with 3 args internally; our 2-arg
 //   macros cause hard errors when those headers are included without
