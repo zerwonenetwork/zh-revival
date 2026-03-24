@@ -275,6 +275,7 @@ typedef LRESULT (*WNDPROC)(HWND, UINT, WPARAM, LPARAM);
 #define _MAX_PATH       MAX_PATH  // MSVC-style alias for MAX_PATH
 #endif
 #define MAX_COMPUTERNAME_LENGTH 15
+#define UNLEN                 256
 #define _MAX_DRIVE      3
 #define _MAX_DIR        256
 #define _MAX_FNAME      256
