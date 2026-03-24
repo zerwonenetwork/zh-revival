@@ -722,6 +722,7 @@ static inline HWND    CreateWindowExA(DWORD,LPCSTR,LPCSTR,DWORD,int,int,int,int,
 #define CreateWindow(cls,wnd,sty,x,y,w,h,par,men,ins,par2) CreateWindowExA(0,cls,wnd,sty,x,y,w,h,par,men,ins,par2)
 #define CreateWindowEx CreateWindowExA
 static inline int     MessageBoxA(HWND,LPCSTR,LPCSTR,UINT) { return 0; }
+static inline int     MessageBoxW(HWND,LPCWSTR,LPCWSTR,UINT) { return 0; }
 #define MessageBox MessageBoxA
 static inline BOOL    DestroyWindow(HWND h)               { (void)h; return FALSE; }
 static inline BOOL    ShowWindow(HWND h, int cmd)         { (void)h;(void)cmd; return FALSE; }

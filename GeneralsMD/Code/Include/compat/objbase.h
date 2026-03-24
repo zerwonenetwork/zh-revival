@@ -9,7 +9,22 @@
 #include "windows.h"
 #endif
 
-// IUnknown — minimal COM base interface stub
+// ── COM method declaration macros ──────────────────────────────────────────
+// STDMETHOD / STDMETHOD_ are used in COM interface declarations to declare
+// virtual methods with the correct calling convention.
+#ifndef STDMETHOD
+#define STDMETHOD(method)        virtual HRESULT STDMETHODCALLTYPE method
+#define STDMETHOD_(type,method)  virtual type    STDMETHODCALLTYPE method
+#define STDMETHODIMP             HRESULT STDMETHODCALLTYPE
+#define STDMETHODIMP_(type)      type    STDMETHODCALLTYPE
+#define PURE                     = 0
+#define THIS_
+#define THIS                     void
+#define DECLARE_INTERFACE(iface)      struct iface
+#define DECLARE_INTERFACE_(iface, base) struct iface : public base
+#endif
+
+// ── IUnknown — minimal COM base interface stub ─────────────────────────────
 #ifdef __cplusplus
 struct IUnknown {
     virtual HRESULT QueryInterface(REFIID riid, void** ppvObject) = 0;
