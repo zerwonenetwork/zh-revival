@@ -1749,6 +1749,27 @@ static inline BOOL GetTextExtentPoint32A(HDC hdc, const char* lpString,
 }
 #define GetTextExtentPoint32 GetTextExtentPoint32A
 
+// ---------------------------------------------------------------------------
+//  Mouse / user-interface timing stubs
+// ---------------------------------------------------------------------------
+// GetDoubleClickTime — returns system double-click interval in milliseconds.
+// Windows default is 500ms; return a fixed default on non-Windows.
+static inline UINT GetDoubleClickTime(void) { return 500; }
+
+// ---------------------------------------------------------------------------
+//  Directory creation (CreateDirectory is Win32; POSIX uses mkdir)
+// ---------------------------------------------------------------------------
+// CreateDirectoryA(path, security_attributes) — creates a directory.
+// Returns TRUE on success, FALSE on error (already exists → FALSE but OK).
+#include <sys/stat.h>
+static inline BOOL CreateDirectoryA(LPCSTR lpPathName, void* lpSecurityAttributes) {
+    (void)lpSecurityAttributes;
+    if (!lpPathName) return FALSE;
+    return (mkdir(lpPathName, 0755) == 0) ? TRUE : FALSE;
+}
+#define CreateDirectory  CreateDirectoryA
+#define CreateDirectoryW CreateDirectoryA
+
 #endif  // !_WIN32
 #endif  // ZH_COMPAT_WINDOWS_H
 

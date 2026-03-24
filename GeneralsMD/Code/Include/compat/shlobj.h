@@ -57,5 +57,74 @@ static inline void CoTaskMemFree_shlobj_(void* p) { free(p); }
 #define CoTaskMemFree CoTaskMemFree_shlobj_
 #endif
 
+// ── CSIDL constants (special folder identifiers) ───────────────────────────
+#ifndef CSIDL_DESKTOP
+#define CSIDL_DESKTOP                 0x0000
+#define CSIDL_INTERNET                0x0001
+#define CSIDL_PROGRAMS                0x0002
+#define CSIDL_CONTROLS                0x0003
+#define CSIDL_PRINTERS                0x0004
+#define CSIDL_PERSONAL                0x0005   // "My Documents"
+#define CSIDL_FAVORITES               0x0006
+#define CSIDL_STARTUP                 0x0007
+#define CSIDL_RECENT                  0x0008
+#define CSIDL_SENDTO                  0x0009
+#define CSIDL_BITBUCKET               0x000A
+#define CSIDL_STARTMENU               0x000B
+#define CSIDL_MYDOCUMENTS             CSIDL_PERSONAL
+#define CSIDL_MYMUSIC                 0x000D
+#define CSIDL_MYVIDEO                 0x000E
+#define CSIDL_DESKTOPDIRECTORY        0x0010
+#define CSIDL_DRIVES                  0x0011
+#define CSIDL_NETWORK                 0x0012
+#define CSIDL_NETHOOD                 0x0013
+#define CSIDL_FONTS                   0x0014
+#define CSIDL_TEMPLATES               0x0015
+#define CSIDL_COMMON_STARTMENU        0x0016
+#define CSIDL_COMMON_PROGRAMS         0x0017
+#define CSIDL_COMMON_STARTUP          0x0018
+#define CSIDL_COMMON_DESKTOPDIRECTORY 0x0019
+#define CSIDL_APPDATA                 0x001A
+#define CSIDL_PRINTHOOD               0x001B
+#define CSIDL_LOCAL_APPDATA           0x001C
+#define CSIDL_ALTSTARTUP              0x001D
+#define CSIDL_COMMON_ALTSTARTUP       0x001E
+#define CSIDL_COMMON_FAVORITES        0x001F
+#define CSIDL_INTERNET_CACHE          0x0020
+#define CSIDL_COOKIES                 0x0021
+#define CSIDL_HISTORY                 0x0022
+#define CSIDL_COMMON_APPDATA          0x0023
+#define CSIDL_WINDOWS                 0x0024
+#define CSIDL_SYSTEM                  0x0025
+#define CSIDL_PROGRAM_FILES           0x0026
+#define CSIDL_MYPICTURES              0x0027
+#define CSIDL_PROFILE                 0x0028
+#define CSIDL_PROGRAM_FILES_COMMON    0x002B
+#define CSIDL_COMMON_TEMPLATES        0x002D
+#define CSIDL_COMMON_DOCUMENTS        0x002E
+#define CSIDL_FLAG_CREATE             0x8000
+#endif // CSIDL_DESKTOP
+
+// ── SHGetSpecialFolderPath stub ─────────────────────────────────────────────
+// On non-Windows, return the user's home directory for CSIDL_PERSONAL,
+// and /tmp for everything else.
+#ifndef SHGetSpecialFolderPath
+#include <stdlib.h>
+#include <string.h>
+static inline BOOL SHGetSpecialFolderPathA(HWND hwnd, LPSTR pszPath, int nFolder, BOOL fCreate) {
+    (void)hwnd; (void)fCreate;
+    if (!pszPath) return FALSE;
+    const char* home = getenv("HOME");
+    if (!home) home = "/tmp";
+    // For CSIDL_PERSONAL (My Documents) and similar, use $HOME
+    strncpy(pszPath, home, MAX_PATH - 1);
+    pszPath[MAX_PATH - 1] = '\0';
+    (void)nFolder; // treat all folders as home for stub purposes
+    return TRUE;
+}
+#define SHGetSpecialFolderPath  SHGetSpecialFolderPathA
+#define SHGetSpecialFolderPathW SHGetSpecialFolderPathA
+#endif // SHGetSpecialFolderPath
+
 #endif // !_WIN32
 #endif // ZH_COMPAT_SHLOBJ_H
