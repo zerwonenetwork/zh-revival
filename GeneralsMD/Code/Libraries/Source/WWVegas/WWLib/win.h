@@ -85,6 +85,15 @@ void __cdecl Print_Win32Error(unsigned long win32Error);
 #endif // _DEBUG
 
 #else // _WINDOWS
+// On non-Windows (Linux/macOS) builds: provide null stubs so code that
+// references these globals without #ifdef guards still compiles.
+// Each TU that includes this header gets its own static copy (fine for stubs).
+static HINSTANCE ProgramInstance = (HINSTANCE)NULL;
+static HWND      MainWindow      = (HWND)NULL;
+static bool      GameInFocus     = false;
+
+#define Print_Win32Error  // no-op on non-Windows
+
 //#include <unistd.h>	// file does not exist
 #endif // _WINDOWS
 

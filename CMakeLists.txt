@@ -47,6 +47,10 @@ add_compile_definitions(
 # _WINDOWS is defined, but <io.h> does not exist on POSIX).
 if(WIN32 OR CMAKE_CROSSCOMPILING)
     add_compile_definitions(WIN32 _WINDOWS)
+else()
+    # On native Linux/macOS: define _UNIX so that Westwood legacy code takes the
+    # POSIX/Unix branch in #ifdef _UNIX guards throughout WWLib (data.cpp, etc.).
+    add_compile_definitions(_UNIX)
 endif()
 # _MBCS is MSVC-only: enables tchar.h multi-byte character functions (_mbslen, _mbscmp).
 # On MinGW cross-compilation _mbslen/etc. are not available as import stubs, so we leave
