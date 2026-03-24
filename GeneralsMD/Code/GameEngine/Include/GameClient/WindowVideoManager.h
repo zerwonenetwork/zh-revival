@@ -28,6 +28,8 @@
 //                       Electronic Arts Pacific.                          
 //                                                                          
 //                       Confidential Information                           
+
+#include <cstdint>
 //                Copyright (C) 2002 - All Rights Reserved                  
 //                                                                          
 //-----------------------------------------------------------------------------
@@ -151,8 +153,8 @@ private:
 	{
 	size_t operator()(ConstGameWindowPtr p) const
 	{
-		std::hash<UnsignedInt> hasher;
-		return hasher((UnsignedInt)p);
+		std::hash<uintptr_t> hasher;
+		return hasher((uintptr_t)p);
 	}
 	};
 

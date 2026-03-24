@@ -18,9 +18,9 @@
 #include <errno.h>
 
 // Map SOCKET type — on POSIX it's an int
-#ifndef SOCKET
+#ifndef ZH_COMPAT_SOCKET_DEFINED
+#define ZH_COMPAT_SOCKET_DEFINED
 typedef int SOCKET;
-#define SOCKET SOCKET
 #endif
 #ifndef INVALID_SOCKET
 #define INVALID_SOCKET  ((SOCKET)(~0))

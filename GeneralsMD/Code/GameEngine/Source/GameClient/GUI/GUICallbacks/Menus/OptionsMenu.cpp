@@ -30,6 +30,8 @@
 // INCLUDES ///////////////////////////////////////////////////////////////////////////////////////
 #include "PreRTS.h"	// This must go first in EVERY cpp file int the GameEngine
 
+#include <cstdio>
+
 #include "GameSpy/ghttp/ghttp.h"
 
 #include "Common/AudioAffect.h"
@@ -2113,7 +2115,7 @@ WindowMsgHandledType OptionsMenuSystem( GameWindow *window, UnsignedInt msg,
 				char num[16];
 				num[0] = 0;
 				TheWritableGlobalData->m_firewallBehavior = FirewallHelperClass::FIREWALL_TYPE_UNKNOWN;
-				itoa(TheGlobalData->m_firewallBehavior, num, 10);
+				FormatMenuInt(TheGlobalData->m_firewallBehavior, num, sizeof(num));
 				AsciiString numstr;
 				numstr = num;
 				(*pref)["FirewallBehavior"] = numstr;
@@ -2130,3 +2132,9 @@ WindowMsgHandledType OptionsMenuSystem( GameWindow *window, UnsignedInt msg,
 	return MSG_HANDLED;
 
 }  // end OptionsMenuSystem
+static void FormatMenuInt(int value, char* buffer, size_t bufferSize)
+{
+	if (buffer && bufferSize > 0) {
+		std::snprintf(buffer, bufferSize, "%d", value);
+	}
+}
