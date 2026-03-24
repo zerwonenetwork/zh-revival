@@ -223,6 +223,19 @@ typedef LRESULT (*WNDPROC)(HWND, UINT, WPARAM, LPARAM);
 #ifndef _vsnprintf
 #define _vsnprintf vsnprintf
 #endif
+// _snprintf_s / _TRUNCATE — MSVC safe-string API
+// When count == _TRUNCATE the result is truncated to fit in sizeOfBuffer.
+#ifndef _TRUNCATE
+#define _TRUNCATE ((size_t)(-1))
+#endif
+#ifndef _snprintf_s
+// Map to snprintf (always null-terminates within sizeOfBuffer bytes).
+// The 'count' parameter is ignored — we always truncate to fit the buffer.
+#define _snprintf_s(buf, sz, count, fmt, ...) snprintf((buf), (sz), (fmt), ##__VA_ARGS__)
+#endif
+#ifndef _sprintf_s
+#define _sprintf_s(buf, sz, fmt, ...) snprintf((buf), (sz), (fmt), ##__VA_ARGS__)
+#endif
 #ifndef __forceinline
 #define __forceinline     __attribute__((always_inline)) inline
 #endif

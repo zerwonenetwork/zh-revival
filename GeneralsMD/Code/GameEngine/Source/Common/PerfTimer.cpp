@@ -49,10 +49,21 @@ __forceinline void ProfileGetTime(__int64 &t)
     pop edx
     pop eax
   };
-#else
+#elif defined(__x86_64__) || defined(__i386__)
+  // GCC/Clang on x86/x86-64: use the rdtsc instruction
   unsigned int lo, hi;
   __asm__ volatile("rdtsc" : "=a"(lo), "=d"(hi));
   t = ((__int64)hi << 32) | lo;
+#elif defined(__aarch64__)
+  // ARM64 (macOS Apple Silicon, Linux ARM64): read the virtual counter register
+  uint64_t val;
+  __asm__ volatile("mrs %0, cntvct_el0" : "=r"(val));
+  t = (__int64)val;
+#else
+  // Fallback: use POSIX clock_gettime (monotonic nanoseconds)
+  struct timespec ts;
+  clock_gettime(CLOCK_MONOTONIC, &ts);
+  t = (__int64)ts.tv_sec * 1000000000LL + (__int64)ts.tv_nsec;
 #endif
 }
 
