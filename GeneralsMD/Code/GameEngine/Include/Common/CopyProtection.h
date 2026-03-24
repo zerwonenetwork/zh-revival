@@ -32,8 +32,12 @@
 #ifndef COPYPROTECTION_H
 #define COPYPROTECTION_H
 
+// Copy protection only makes sense on Windows (CD-key / SafeDisc checks).
+// On Linux / macOS builds this is unconditionally disabled per P1-11.
+#ifdef _WIN32
 // Comment out the following line to disable copy protection checks
 #define DO_COPY_PROTECTION
+#endif // _WIN32
 
 #ifdef DO_COPY_PROTECTION
 

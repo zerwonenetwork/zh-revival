@@ -310,8 +310,35 @@ typedef LRESULT (*WNDPROC)(HWND, UINT, WPARAM, LPARAM);
 #define FORMAT_MESSAGE_FROM_HMODULE     0x00000800
 #define FORMAT_MESSAGE_MAX_WIDTH_MASK   0x000000FF
 #define MB_OK                           0x00000000L
+#define MB_OKCANCEL                     0x00000001L
+#define MB_ABORTRETRYIGNORE             0x00000002L
+#define MB_YESNOCANCEL                  0x00000003L
+#define MB_YESNO                        0x00000004L
+#define MB_RETRYCANCEL                  0x00000005L
 #define MB_ICONEXCLAMATION              0x00000030L
+#define MB_ICONWARNING                  0x00000030L
 #define MB_ICONSTOP                     0x00000010L
+#define MB_ICONERROR                    0x00000010L
+#define MB_ICONINFORMATION              0x00000040L
+#define MB_ICONQUESTION                 0x00000020L
+#define MB_DEFBUTTON1                   0x00000000L
+#define MB_DEFBUTTON2                   0x00000100L
+#define MB_DEFBUTTON3                   0x00000200L
+#define MB_DEFBUTTON4                   0x00000300L
+#define MB_APPLMODAL                    0x00000000L
+#define MB_SYSTEMMODAL                  0x00001000L
+#define MB_TASKMODAL                    0x00002000L
+#define MB_SETFOREGROUND                0x00010000L
+// MessageBox return values
+#define IDOK        1
+#define IDCANCEL    2
+#define IDABORT     3
+#define IDRETRY     4
+#define IDIGNORE    5
+#define IDYES       6
+#define IDNO        7
+#define IDCLOSE     8
+#define IDHELP      9
 #define VER_PLATFORM_WIN32s             0
 #define VER_PLATFORM_WIN32_WINDOWS      1
 #define VER_PLATFORM_WIN32_NT           2
@@ -1052,6 +1079,90 @@ static inline HANDLE  GetStdHandle(DWORD n)                           { (void)n;
 static inline BOOL    WriteConsoleA(HANDLE,const void*,DWORD,DWORD*,void*) { return FALSE; }
 static inline UINT    GetDriveTypeA(LPCSTR p)                         { (void)p; return 0; }
 #define GetDriveType GetDriveTypeA
+
+// ---------------------------------------------------------------------------
+//  DebugBreak — triggers a debugger breakpoint (or traps the process)
+// ---------------------------------------------------------------------------
+#ifndef DebugBreak
+#include <signal.h>
+#define DebugBreak() raise(SIGTRAP)
+#endif
+
+// ---------------------------------------------------------------------------
+//  EXCEPTION_POINTERS — Windows SEH structured exception type
+//  Used in StackDump.h and Debug.cpp for crash reporting stubs.
+//  On non-Windows these are stub definitions; actual SEH is not supported.
+// ---------------------------------------------------------------------------
+#ifndef _EXCEPTION_POINTERS_DEFINED_
+#define _EXCEPTION_POINTERS_DEFINED_
+typedef struct _EXCEPTION_RECORD {
+    DWORD ExceptionCode;
+    DWORD ExceptionFlags;
+    struct _EXCEPTION_RECORD* ExceptionRecord;
+    LPVOID ExceptionAddress;
+    DWORD NumberParameters;
+    ULONG_PTR ExceptionInformation[15];
+} EXCEPTION_RECORD, *PEXCEPTION_RECORD;
+
+// Minimal CONTEXT stub (x86 fields only; architecture-specific fields omitted)
+typedef struct _CONTEXT {
+    DWORD ContextFlags;
+    DWORD Edi, Esi, Ebx, Edx, Ecx, Eax;
+    DWORD Ebp, Eip, Esp;
+} CONTEXT, *PCONTEXT, *LPCONTEXT;
+
+typedef struct _EXCEPTION_POINTERS {
+    PEXCEPTION_RECORD ExceptionRecord;
+    PCONTEXT          ContextRecord;
+} EXCEPTION_POINTERS, *PEXCEPTION_POINTERS, *LPEXCEPTION_POINTERS;
+#endif // _EXCEPTION_POINTERS_DEFINED_
+
+// ---------------------------------------------------------------------------
+//  Memory-mapped file stubs (used by CopyProtection.cpp on Windows only;
+//  the whole DO_COPY_PROTECTION block is disabled on non-Windows via the
+//  #ifdef _WIN32 guard in CopyProtection.h — these stubs are safety nets.)
+// ---------------------------------------------------------------------------
+#ifndef FILE_MAP_ALL_ACCESS
+#define FILE_MAP_COPY       0x00000001
+#define FILE_MAP_WRITE      0x00000002
+#define FILE_MAP_READ       0x00000004
+#define FILE_MAP_ALL_ACCESS 0x000F001F
+#define FILE_MAP_EXECUTE    0x00000020
+#endif
+#ifndef PAGE_READWRITE
+#define PAGE_NOACCESS       0x01
+#define PAGE_READONLY       0x02
+#define PAGE_READWRITE      0x04
+#define PAGE_WRITECOPY      0x08
+#define PAGE_EXECUTE        0x10
+#define PAGE_EXECUTE_READ   0x20
+#define PAGE_EXECUTE_READWRITE 0x40
+#endif
+#ifndef EVENT_MODIFY_STATE
+#define EVENT_MODIFY_STATE  0x0002
+#define EVENT_ALL_ACCESS    0x001F0003L
+#define SYNCHRONIZE         0x00100000L
+#endif
+static inline HANDLE CreateFileMappingA(HANDLE h, void* sa, DWORD protect,
+                                          DWORD sizeHigh, DWORD sizeLow, LPCSTR name) {
+    (void)h;(void)sa;(void)protect;(void)sizeHigh;(void)sizeLow;(void)name; return NULL;
+}
+#define CreateFileMapping CreateFileMappingA
+static inline LPVOID MapViewOfFile(HANDLE h, DWORD access, DWORD offHigh, DWORD offLow, SIZE_T bytes) {
+    (void)h;(void)access;(void)offHigh;(void)offLow;(void)bytes; return NULL;
+}
+static inline LPVOID MapViewOfFileEx(HANDLE h, DWORD access, DWORD offHigh, DWORD offLow, SIZE_T bytes, LPVOID baseAddr) {
+    (void)h;(void)access;(void)offHigh;(void)offLow;(void)bytes;(void)baseAddr; return NULL;
+}
+static inline BOOL   UnmapViewOfFile(LPCVOID addr) { (void)addr; return FALSE; }
+static inline HANDLE OpenFileMappingA(DWORD access, BOOL inherit, LPCSTR name) {
+    (void)access;(void)inherit;(void)name; return NULL;
+}
+#define OpenFileMapping OpenFileMappingA
+static inline HANDLE OpenEventA(DWORD access, BOOL inherit, LPCSTR name) {
+    (void)access;(void)inherit;(void)name; return NULL;
+}
+#define OpenEvent OpenEventA
 
 #ifndef REALTIME_PRIORITY_CLASS
 #define REALTIME_PRIORITY_CLASS  0x00000100
