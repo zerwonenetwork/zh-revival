@@ -27,9 +27,6 @@
 #include <stdarg.h>
 #include <string.h>   // memset, memcpy — backing ZeroMemory / CopyMemory
 #include <stdlib.h>
-#include <fcntl.h>
-#include <sys/stat.h>
-#include <unistd.h>
 
 // ---------------------------------------------------------------------------
 //  Basic integer types
@@ -227,24 +224,6 @@ typedef LRESULT (*WNDPROC)(HWND, UINT, WPARAM, LPARAM);
 #endif
 #ifndef _vsnprintf
 #define _vsnprintf vsnprintf
-#endif
-#ifndef _open
-#define _open open
-#endif
-#ifndef _close
-#define _close close
-#endif
-#ifndef _O_CREAT
-#define _O_CREAT O_CREAT
-#endif
-#ifndef _O_RDWR
-#define _O_RDWR O_RDWR
-#endif
-#ifndef _S_IREAD
-#define _S_IREAD S_IRUSR
-#endif
-#ifndef _S_IWRITE
-#define _S_IWRITE S_IWUSR
 #endif
 // _snprintf_s / _TRUNCATE — MSVC safe-string API
 // When count == _TRUNCATE the result is truncated to fit in sizeOfBuffer.
