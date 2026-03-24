@@ -32,6 +32,7 @@
 
 // INCLUDES ///////////////////////////////////////////////////////////////////////////////////////
 #include "PreRTS.h"	// This must go first in EVERY cpp file int the GameEngine
+#include <cstdio>
 
 #include "Common/BitFlagsIO.h"
 #include "Common/GameAudio.h"
@@ -62,6 +63,14 @@
 //#pragma optimize("", off)
 //#pragma MESSAGE("************************************** WARNING, optimization disabled for debugging purposes")
 #endif
+
+static void formatContainIndex( Int value, char *buffer, size_t bufferSize )
+{
+	if( buffer && bufferSize > 0 )
+	{
+		snprintf( buffer, bufferSize, "%d", value );
+	}
+}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 // PUBLIC FUNCTIONS ///////////////////////////////////////////////////////////////////////////////
@@ -966,7 +975,7 @@ void OpenContain::exitObjectViaDoor( Object *exitObj, ExitDoorType exitDoor )
 		if( numberExits > 1 )
 		{
 			char suffix[8];
-			itoa(m_whichExitPath, suffix, 10);
+			formatContainIndex( m_whichExitPath, suffix, sizeof( suffix ) );
 			if( m_whichExitPath < 10 )
 			{
 				startBone.concat('0');
@@ -1085,7 +1094,7 @@ void OpenContain::exitObjectInAHurry( Object *exitObj )
 		if( numberExits > 1 )
 		{
 			char suffix[8];
-			itoa(m_whichExitPath, suffix, 10);
+			formatContainIndex( m_whichExitPath, suffix, sizeof( suffix ) );
 			if( m_whichExitPath < 10 )
 			{
 				startBone.concat('0');
@@ -1266,7 +1275,7 @@ void OpenContain::putObjAtNextFirePoint( Object *obj )
 		// If our passengers are in our turret, we need to recompute the Matrix.
 		AsciiString firepoint("FIREPOINT");
 		char suffix[8];
-		itoa( m_firePointNext + 1, suffix, 10 );//+1 from bone names starting at 1, not zero like my array
+		formatContainIndex( m_firePointNext + 1, suffix, sizeof( suffix ) );//+1 from bone names starting at 1, not zero like my array
 		if( m_firePointNext < 10 )
 		{
 			firepoint.concat('0');

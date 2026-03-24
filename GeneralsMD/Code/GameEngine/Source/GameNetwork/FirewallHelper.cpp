@@ -47,6 +47,7 @@
  * - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
 #include "PreRTS.h"	// This must go first in EVERY cpp file int the GameEngine
+#include <cstdio>
 
 #include "Common/crc.h"
 #include "Common/UserPreferences.h"
@@ -520,14 +521,14 @@ void FirewallHelperClass::writeFirewallBehavior(void)
 
 	char num[16];
 	num[0] = 0;
-	itoa(TheGlobalData->m_firewallBehavior, num, 10);
+	snprintf( num, sizeof( num ), "%d", TheGlobalData->m_firewallBehavior );
 	AsciiString numstr;
 	numstr = num;
 	(pref)["FirewallBehavior"] = numstr;
 
 	TheWritableGlobalData->m_firewallPortAllocationDelta = TheFirewallHelper->getSourcePortAllocationDelta();
 	num[0] = 0;
-	itoa(TheGlobalData->m_firewallPortAllocationDelta, num, 10);
+	snprintf( num, sizeof( num ), "%d", TheGlobalData->m_firewallPortAllocationDelta );
 	numstr = num;
 	(pref)["FirewallPortAllocationDelta"] = numstr;
 

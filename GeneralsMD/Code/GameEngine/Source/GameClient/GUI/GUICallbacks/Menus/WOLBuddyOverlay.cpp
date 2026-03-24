@@ -985,7 +985,7 @@ WindowMsgHandledType WOLBuddyOverlaySystem( GameWindow *window, UnsignedInt msg,
 
 					GadgetListBoxGetSelected(listbox, &selected);
 					if (selected >= 0)
-						selectedName = TheNameKeyGenerator->keyToName((NameKeyType)(int)GadgetListBoxGetItemData(listbox, selected));
+						selectedName = TheNameKeyGenerator->keyToName((NameKeyType)(intptr_t)GadgetListBoxGetItemData(listbox, selected));
 
 					if (!selectedName.isEmpty())
 					{
