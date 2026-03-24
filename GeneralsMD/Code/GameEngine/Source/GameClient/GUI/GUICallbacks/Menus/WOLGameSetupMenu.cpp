@@ -30,6 +30,8 @@
 
 #include "PreRTS.h"	// This must go first in EVERY cpp file int the GameEngine
 
+#include <cstdint>
+
 #include "Common/GameEngine.h"
 #include "Common/GameState.h"
 #include "GameClient/GameText.h"
@@ -539,7 +541,7 @@ static void handleColorSelection(int index)
 	GameWindow *combo = comboBoxColor[index];
 	Int color, selIndex;
 	GadgetComboBoxGetSelectedPos(combo, &selIndex);
-	color = (Int)GadgetComboBoxGetItemData(combo, selIndex);
+	color = (Int)(intptr_t)GadgetComboBoxGetItemData(combo, selIndex);
 
 	GameInfo *myGame = TheGameSpyInfo->getCurrentStagingRoom();
 
@@ -602,7 +604,7 @@ static void handlePlayerTemplateSelection(int index)
 	GameWindow *combo = comboBoxPlayerTemplate[index];
 	Int playerTemplate, selIndex;
 	GadgetComboBoxGetSelectedPos(combo, &selIndex);
-	playerTemplate = (Int)GadgetComboBoxGetItemData(combo, selIndex);
+	playerTemplate = (Int)(intptr_t)GadgetComboBoxGetItemData(combo, selIndex);
 	GameInfo *myGame = TheGameSpyInfo->getCurrentStagingRoom();
 
 	if (myGame)
@@ -727,7 +729,7 @@ static void handleTeamSelection(int index)
 	GameWindow *combo = comboBoxTeam[index];
 	Int team, selIndex;
 	GadgetComboBoxGetSelectedPos(combo, &selIndex);
-	team = (Int)GadgetComboBoxGetItemData(combo, selIndex);
+	team = (Int)(intptr_t)GadgetComboBoxGetItemData(combo, selIndex);
 	GameInfo *myGame = TheGameSpyInfo->getCurrentStagingRoom();
 
 	if (myGame)
@@ -773,7 +775,7 @@ static void handleStartingCashSelection()
     GadgetComboBoxGetSelectedPos(comboBoxStartingCash, &selIndex);
     
     Money startingCash;
-    startingCash.deposit( (UnsignedInt)GadgetComboBoxGetItemData( comboBoxStartingCash, selIndex ), FALSE );
+    startingCash.deposit( (UnsignedInt)(uintptr_t)GadgetComboBoxGetItemData( comboBoxStartingCash, selIndex ), FALSE );
     myGame->setStartingCash( startingCash );
     myGame->resetAccepted();
     
@@ -1025,7 +1027,7 @@ void WOLDisplayGameOptions( void )
   Int itemCount = GadgetComboBoxGetLength(comboBoxStartingCash);
   for ( Int index = 0; index < itemCount; index++ )
   {
-    Int value  = (Int)GadgetComboBoxGetItemData(comboBoxStartingCash, index);
+    Int value  = (Int)(intptr_t)GadgetComboBoxGetItemData(comboBoxStartingCash, index);
     if ( value == theGame->getStartingCash().countMoney() )
     {
       // Note: must check if combobox is already correct to avoid infinite recursion
@@ -2882,4 +2884,3 @@ WindowMsgHandledType WOLGameSetupMenuSystem( GameWindow *window, UnsignedInt msg
 	}//Switch
 	return MSG_HANDLED;
 }//WindowMsgHandledType WOLGameSetupMenuSystem( GameWindow *window, UnsignedInt msg, 
-

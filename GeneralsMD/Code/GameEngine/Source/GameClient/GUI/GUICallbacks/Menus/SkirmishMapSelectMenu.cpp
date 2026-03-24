@@ -30,6 +30,8 @@
 // INCLUDES ///////////////////////////////////////////////////////////////////////////////////////
 #include "PreRTS.h"	// This must go first in EVERY cpp file int the GameEngine
 
+#include <cstdint>
+
 #include "Common/GameEngine.h"
 #include "Common/MessageStream.h"
 #include "Common/UserPreferences.h"
@@ -96,7 +98,7 @@ static void mapListTooltipFunc(GameWindow *window,
 		return;
 	}
 
-	Int imageItemData = (Int)GadgetListBoxGetItemData(window, row, 1);
+	Int imageItemData = (Int)(intptr_t)GadgetListBoxGetItemData(window, row, 1);
 	UnicodeString tooltip;
 	switch (imageItemData)
 	{
