@@ -29,7 +29,7 @@
 
 #include "PreRTS.h"
 
-#include <bit>
+#include <cstring>
 #include <math.h>
 #include <limits.h>
 
@@ -54,7 +54,10 @@
 
 static inline Int TrigLookupValue(UnsignedInt value)
 {
-	return std::bit_cast<Int>(value);
+	Int result;
+	static_assert(sizeof(result) == sizeof(value), "Trig lookup storage size mismatch");
+	std::memcpy(&result, &value, sizeof(result));
+	return result;
 }
 
 static UnsignedInt sinLookup[TRIG_RES] = {
@@ -1755,4 +1758,3 @@ public:
 TrigInit trigInitializer;
 
 #endif // REGENERATE_TRIG_TABLES
-

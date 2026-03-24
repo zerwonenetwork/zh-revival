@@ -34,6 +34,15 @@
 #include "GameClient/GameText.h"
 #include "GameNetwork/NetworkInterface.h"
 
+#include <cstdio>
+
+static void FormatIntDecimal(long long value, char* buffer, size_t bufferSize)
+{
+	if (buffer && bufferSize > 0) {
+		std::snprintf(buffer, bufferSize, "%lld", value);
+	}
+}
+
 const char *DisconnectMenu::m_playerNameTextControlNames[] = {
 	"DisconnectScreen.wnd:StaticPlayer1Name",
 	"DisconnectScreen.wnd:StaticPlayer2Name",
@@ -148,7 +157,7 @@ void DisconnectMenu::setPlayerTimeoutTime(Int playerNum, time_t newTime) {
 	GameWindow *control = TheWindowManager->winGetWindowFromId(NULL, id);
 
 	char str[33]; // itoa uses a max of 33 bytes.
-	itoa(newTime, str, 10);
+	FormatIntDecimal((long long)newTime, str, sizeof(str));
 	AsciiString asciiNum;
 	asciiNum.set(str);
 	UnicodeString uninum;
@@ -250,7 +259,7 @@ void DisconnectMenu::setPacketRouterTimeoutTime(time_t newTime) {
 	GameWindow *control = TheWindowManager->winGetWindowFromId(NULL, id);
 
 	char str[33]; // itoa uses a max of 33 bytes.
-	itoa(newTime, str, 10);
+	FormatIntDecimal((long long)newTime, str, sizeof(str));
 	AsciiString asciiNum;
 	asciiNum.set(str);
 	UnicodeString uninum;
@@ -304,7 +313,7 @@ void DisconnectMenu::updateVotes(Int slot, Int votes) {
 
 	if (control != NULL) {
 		char votestr[16];
-		itoa(votes, votestr, 10);
+		FormatIntDecimal((long long)votes, votestr, sizeof(votestr));
 		AsciiString asciivotes;
 		asciivotes.set(votestr);
 		UnicodeString unistr;
