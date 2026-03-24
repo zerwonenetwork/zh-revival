@@ -27,14 +27,19 @@
 #include <stdio.h>
 #ifdef _UNIX
 #include "osdep.h"
+#ifdef __linux__
+// sysinfo() is Linux-specific; not available on macOS or other POSIX systems
 #include <linux/kernel.h>
 #include <linux/sys.h>
-
 extern "C" {
 	int sysinfo(struct sysinfo *info);
 }
-
 #else
+// macOS / other POSIX: use clock_gettime + getpid as entropy
+#include <time.h>
+#endif // __linux__
+
+#else  // !_UNIX (Windows)
 
 #include "win.h"
 #include <process.h>
@@ -164,6 +169,8 @@ void SecureRandomClass::Generate_Seed(void)
 
 	int_seeds[0]^=getuid();
 
+#  ifdef __linux__
+	// sysinfo() is Linux-specific
 	struct sysinfo info;
 	sysinfo(&info);
 
@@ -174,6 +181,17 @@ void SecureRandomClass::Generate_Seed(void)
 	int_seeds[5 % int_seed_length]^=info.freeswap;
 	int_seeds[6 % int_seed_length]^=info.procs;
 	int_seeds[7 % int_seed_length]^=info.bufferram;
+#  else
+	// macOS / other POSIX: use clock_gettime + getpid as entropy
+	struct timespec ts_mono, ts_real;
+	clock_gettime(CLOCK_MONOTONIC, &ts_mono);
+	clock_gettime(CLOCK_REALTIME,  &ts_real);
+	int_seeds[1 % int_seed_length]^=(unsigned int)ts_mono.tv_nsec;
+	int_seeds[2 % int_seed_length]^=(unsigned int)ts_mono.tv_sec;
+	int_seeds[3 % int_seed_length]^=(unsigned int)ts_real.tv_nsec;
+	int_seeds[4 % int_seed_length]^=(unsigned int)ts_real.tv_sec;
+	int_seeds[5 % int_seed_length]^=(unsigned int)getpid();
+#  endif // __linux__
 #else
 
 	//

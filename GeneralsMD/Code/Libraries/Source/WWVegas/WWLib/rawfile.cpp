@@ -856,17 +856,17 @@ int RawFileClass::Size(void)
 	if (Is_Open()) {
 
       #ifdef _UNIX
-			fpos_t curpos,startpos,endpos;
-			fgetpos(Handle,&curpos);	
+			// fpos_t is a struct on Linux/macOS — cannot subtract directly.
+			// Use ftell() to get integer offsets instead.
+			fpos_t curpos;
+			fgetpos(Handle, &curpos);
 
-			fseek(Handle,0,SEEK_SET);
-			fgetpos(Handle,&startpos);	
+			fseek(Handle, 0, SEEK_END);
+			long endpos_l = ftell(Handle);
 
-			fseek(Handle,0,SEEK_END);
-			fgetpos(Handle,&endpos);	
+			fsetpos(Handle, &curpos);
 
-			size=endpos-startpos;
-			fsetpos(Handle,&curpos);
+			size = (long)endpos_l;
 		#else
 			size = GetFileSize(Handle, NULL);
 		#endif
