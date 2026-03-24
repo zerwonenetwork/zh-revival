@@ -50,7 +50,12 @@ static inline BOOL SHGetPathFromIDListA(LPCITEMIDLIST pidl, LPSTR path) {
 #define SHGetPathFromIDList  SHGetPathFromIDListA
 #define SHGetPathFromIDListW SHGetPathFromIDListA
 
-static inline void CoTaskMemFree(void* p) { free(p); }
+// CoTaskMemFree is already defined in objbase.h (via #define CoTaskMemFree CoTaskMemFree_base).
+// Only define it here if objbase.h hasn't been included yet.
+#ifndef CoTaskMemFree
+static inline void CoTaskMemFree_shlobj_(void* p) { free(p); }
+#define CoTaskMemFree CoTaskMemFree_shlobj_
+#endif
 
 #endif // !_WIN32
 #endif // ZH_COMPAT_SHLOBJ_H

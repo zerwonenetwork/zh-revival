@@ -83,28 +83,35 @@ class STLSpecialAlloc;
 #include <process.h>
 #include <shellapi.h>
 #include <shlobj.h>
-#include <shlguid.h>
-#include <snmp.h>
+#ifdef _WIN32
+#include <shlguid.h>  // Windows Shell GUIDs — no POSIX equivalent
+#include <snmp.h>     // Windows SNMP API — not available on POSIX
+#endif
 #include <stdarg.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
-#include <sys/timeb.h>
+#ifdef _WIN32
+#include <sys/timeb.h>  // _ftime/_timeb — Windows extension; POSIX uses clock_gettime
+#endif
 #include <sys/types.h>
 #include <tchar.h>
 #include <time.h>
-#include <vfw.h>
+#ifdef _WIN32
+#include <vfw.h>      // Video for Windows (AVI playback) — Windows-only
+#endif
 #include <winerror.h>
 #include <wininet.h>
 #include <winreg.h>
 
+#ifdef _WIN32
 #ifndef DIRECTINPUT_VERSION
 #	define DIRECTINPUT_VERSION	0x800
 #endif
-
-#include <dinput.h>
+#include <dinput.h>   // DirectInput 8 — Windows-only; non-Windows uses SDL3 (P5-03)
+#endif
 
 //------------------------------------------------------------------------------------ STL Includes
 // srj sez: no, include STLTypesdefs below, instead, thanks
