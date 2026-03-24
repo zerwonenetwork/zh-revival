@@ -1906,6 +1906,16 @@ static inline BOOL CreateDirectoryA(LPCSTR lpPathName, void* lpSecurityAttribute
 #define CreateDirectory  CreateDirectoryA
 #define CreateDirectoryW CreateDirectoryA
 
+// ---------------------------------------------------------------------------
+//  Low-level file access check (_access → POSIX access)
+//  Many source files (GameState.cpp, ModManager.cpp, etc.) use _access()
+//  without directly including <io.h>.  Place the mapping here so it is
+//  available via the force-included compat path on every translation unit.
+//  F_OK=0  R_OK=4  W_OK=2  X_OK=1
+// ---------------------------------------------------------------------------
+#include <unistd.h>
+static inline int _access(const char *path, int mode) { return access(path, mode); }
+
 #endif  // !_WIN32
 #endif  // ZH_COMPAT_WINDOWS_H
 

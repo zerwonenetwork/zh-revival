@@ -47,5 +47,89 @@ static inline LCID GetSystemDefaultLCID(void){return 0x0409;}
 static inline LCID GetUserDefaultLCID(void){return 0x0409;}
 static inline LANGID GetSystemDefaultLangID(void){return 0x0409;}
 static inline LANGID GetUserDefaultLangID(void){return 0x0409;}
+
+// ---------------------------------------------------------------------------
+//  Locale IDs
+// ---------------------------------------------------------------------------
+#ifndef LOCALE_SYSTEM_DEFAULT
+#define LOCALE_SYSTEM_DEFAULT  0x0800u
+#define LOCALE_USER_DEFAULT    0x0400u
+#define LOCALE_NEUTRAL         0x0000u
+#define LOCALE_INVARIANT       0x007Fu
+#endif
+
+// ---------------------------------------------------------------------------
+//  GetDateFormat / GetTimeFormat flags
+// ---------------------------------------------------------------------------
+#ifndef DATE_SHORTDATE
+#define DATE_SHORTDATE          0x00000001u
+#define DATE_LONGDATE           0x00000002u
+#define DATE_USE_ALT_CALENDAR   0x00000004u
+#define DATE_YEARMONTH          0x00000008u
+#define DATE_LTRREADING         0x00000010u
+#define DATE_RTLREADING         0x00000020u
+#endif
+
+#ifndef TIME_NOSECONDS
+#define TIME_NOSECONDS          0x00000002u
+#define TIME_NOTIMEMARKER       0x00000004u
+#define TIME_FORCE24HOURFORMAT  0x00000008u
+#endif
+
+// ---------------------------------------------------------------------------
+//  GetDateFormatA/W and GetTimeFormatA/W stubs
+//  On POSIX, use strftime / wcsftime to produce locale-style date/time strings.
+//  The game uses these only for save-game timestamps, so functional output
+//  (not locale-perfect formatting) is sufficient.
+// ---------------------------------------------------------------------------
+#include <time.h>
+
+static inline int GetDateFormatA(LCID lcid, DWORD dwFlags, const void *lpDate,
+                                  LPCSTR lpFormat, LPSTR lpDateStr, int cchDate)
+{
+    (void)lcid; (void)dwFlags; (void)lpDate; (void)lpFormat;
+    if (!lpDateStr || cchDate <= 0) return 0;
+    time_t t = time(NULL);
+    struct tm *tm_info = localtime(&t);
+    return (int)strftime(lpDateStr, (size_t)cchDate, "%m/%d/%Y", tm_info);
+}
+
+static inline int GetDateFormatW(LCID lcid, DWORD dwFlags, const void *lpDate,
+                                  LPCWSTR lpFormat, LPWSTR lpDateStr, int cchDate)
+{
+    (void)lcid; (void)dwFlags; (void)lpDate; (void)lpFormat;
+    if (!lpDateStr || cchDate <= 0) return 0;
+    time_t t = time(NULL);
+    struct tm *tm_info = localtime(&t);
+    return (int)wcsftime(lpDateStr, (size_t)cchDate, L"%m/%d/%Y", tm_info);
+}
+
+static inline int GetTimeFormatA(LCID lcid, DWORD dwFlags, const void *lpTime,
+                                  LPCSTR lpFormat, LPSTR lpTimeStr, int cchTime)
+{
+    (void)lcid; (void)dwFlags; (void)lpTime; (void)lpFormat;
+    if (!lpTimeStr || cchTime <= 0) return 0;
+    time_t t = time(NULL);
+    struct tm *tm_info = localtime(&t);
+    // Honor TIME_NOSECONDS and TIME_FORCE24HOURFORMAT flags
+    const char *fmt = (dwFlags & 0x00000008u) ? "%H:%M" : "%I:%M %p";
+    if (dwFlags & 0x00000002u) fmt = (dwFlags & 0x00000008u) ? "%H:%M" : "%I:%M";
+    return (int)strftime(lpTimeStr, (size_t)cchTime, fmt, tm_info);
+}
+
+static inline int GetTimeFormatW(LCID lcid, DWORD dwFlags, const void *lpTime,
+                                  LPCWSTR lpFormat, LPWSTR lpTimeStr, int cchTime)
+{
+    (void)lcid; (void)dwFlags; (void)lpTime; (void)lpFormat;
+    if (!lpTimeStr || cchTime <= 0) return 0;
+    time_t t = time(NULL);
+    struct tm *tm_info = localtime(&t);
+    const wchar_t *fmt = (dwFlags & 0x00000008u) ? L"%H:%M" : L"%I:%M %p";
+    if (dwFlags & 0x00000002u) fmt = (dwFlags & 0x00000008u) ? L"%H:%M" : L"%I:%M";
+    return (int)wcsftime(lpTimeStr, (size_t)cchTime, fmt, tm_info);
+}
+
+#define GetDateFormat  GetDateFormatA
+#define GetTimeFormat  GetTimeFormatA
 #endif
 #endif

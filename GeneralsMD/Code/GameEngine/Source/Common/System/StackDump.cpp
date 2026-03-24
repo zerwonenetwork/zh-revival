@@ -24,7 +24,10 @@
 
 #include "PreRTS.h"	// This must go first in EVERY cpp file int the GameEngine
 
-#if defined(_DEBUG) || defined(_INTERNAL) || defined(IG_DEBUG_STACKTRACE)
+// StackDump uses Windows Debug Help Library (imagehlp.h/dbghelp.h) which is
+// unavailable on Linux/macOS.  Gate the entire implementation on _WIN32.
+// Non-Windows builds get empty stubs from StackDump.h's inline declarations.
+#if defined(_WIN32) && (defined(_DEBUG) || defined(_INTERNAL) || defined(IG_DEBUG_STACKTRACE))
 
 #pragma pack(push, 8)
 
