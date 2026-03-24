@@ -475,6 +475,8 @@ Bool IsFirstCDPresent(void)
 #endif
 }
 
+static gameStartCallback s_pendingGameStart = NULL;
+
 static MessageBoxReturnType checkCDCallback( void *userData )
 {
 	if (!IsFirstCDPresent())
@@ -490,8 +492,6 @@ static MessageBoxReturnType checkCDCallback( void *userData )
 		return MB_RETURN_CLOSE;
 	}
 }
-
-static gameStartCallback s_pendingGameStart = NULL;
 
 void CheckForCDAtGameStart( gameStartCallback callback )
 {
