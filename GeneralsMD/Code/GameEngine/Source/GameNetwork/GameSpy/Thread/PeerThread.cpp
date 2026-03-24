@@ -1403,8 +1403,8 @@ void PeerThreadClass::Thread_Function()
 				s_lastStateChangedHeartbeat = 0;
 				s_wantStateChangedHeartbeat = FALSE;
 				peerStopGame( peer );
-				peerLeaveRoom( peer, GroupRoom, NULL );
-				peerLeaveRoom( peer, StagingRoom, NULL );
+				peerLeaveRoom( peer, GroupRoom, (void *)NULL );
+				peerLeaveRoom( peer, StagingRoom, (void *)NULL );
 				if (qr2Sock != INVALID_SOCKET)
 				{
 					closesocket(qr2Sock);
@@ -1419,16 +1419,16 @@ void PeerThreadClass::Thread_Function()
 			case PeerRequest::PEERREQUEST_LEAVEGROUPROOM:
 				m_groupRoomID = 0;
 				updateBuddyStatus( BUDDY_ONLINE );
-				peerLeaveRoom( peer, GroupRoom, NULL );
-				peerLeaveRoom( peer, StagingRoom, NULL ); m_isHosting = false;
+				peerLeaveRoom( peer, GroupRoom, (void *)NULL );
+				peerLeaveRoom( peer, StagingRoom, (void *)NULL ); m_isHosting = false;
 				break;
 
 			case PeerRequest::PEERREQUEST_JOINSTAGINGROOM:
 				{
 					m_groupRoomID = 0;
 					updateBuddyStatus( BUDDY_ONLINE );
-					peerLeaveRoom( peer, GroupRoom, NULL );
-					peerLeaveRoom( peer, StagingRoom, NULL ); m_isHosting = false;
+					peerLeaveRoom( peer, GroupRoom, (void *)NULL );
+					peerLeaveRoom( peer, StagingRoom, (void *)NULL ); m_isHosting = false;
 					SBServer server = findServerByID(incomingRequest.stagingRoom.id);
 					m_localStagingServerName = incomingRequest.text;
 					DEBUG_LOG(("Setting m_localStagingServerName to [%ls]\n", m_localStagingServerName.c_str()));
@@ -1453,8 +1453,8 @@ void PeerThreadClass::Thread_Function()
 			case PeerRequest::PEERREQUEST_LEAVESTAGINGROOM:
 				m_groupRoomID = 0;
 				updateBuddyStatus( BUDDY_ONLINE );
-				peerLeaveRoom( peer, GroupRoom, NULL );
-				peerLeaveRoom( peer, StagingRoom, NULL );
+				peerLeaveRoom( peer, GroupRoom, (void *)NULL );
+				peerLeaveRoom( peer, StagingRoom, (void *)NULL );
 				isThreadHosting = 0; // debugging
 				s_lastStateChangedHeartbeat = 0;
 				s_wantStateChangedHeartbeat = FALSE;
@@ -1575,8 +1575,8 @@ void PeerThreadClass::Thread_Function()
 					updateBuddyStatus( BUDDY_ONLINE );
 					if (!incomingRequest.stagingRoomCreation.restrictGameList)
 					{
-						peerLeaveRoom( peer, GroupRoom, NULL );
-						peerLeaveRoom( peer, StagingRoom, NULL );
+						peerLeaveRoom( peer, GroupRoom, (void *)NULL );
+						peerLeaveRoom( peer, StagingRoom, (void *)NULL );
 					}
 					m_isHosting = TRUE;
 
@@ -1628,7 +1628,7 @@ void PeerThreadClass::Thread_Function()
 						DEBUG_LOG(("Requesting to join room %d\n", m_localRoomID));
 						if (incomingRequest.stagingRoomCreation.restrictGameList)
 						{
-							peerLeaveRoom( peer, StagingRoom, NULL );
+								peerLeaveRoom( peer, StagingRoom, (void *)NULL );
 						}
 						else
 						{
@@ -1642,7 +1642,7 @@ void PeerThreadClass::Thread_Function()
 					{
 						if (incomingRequest.stagingRoomCreation.restrictGameList)
 						{
-							peerLeaveRoom( peer, GroupRoom, NULL );
+								peerLeaveRoom( peer, GroupRoom, (void *)NULL );
 						}
 						isThreadHosting = 1; // debugging
 						s_lastStateChangedHeartbeat = timeGetTime(); // wait the full interval before updating state
@@ -1954,8 +1954,8 @@ void PeerThreadClass::doQuickMatch( PEER peer )
 						TheGameSpyPeerMessageQueue->addResponse(resp);
 
 						m_groupRoomID = m_qmGroupRoom;
-						peerLeaveRoom( peer, GroupRoom, NULL );
-						peerLeaveRoom( peer, StagingRoom, NULL ); m_isHosting = false;
+						peerLeaveRoom( peer, GroupRoom, (void *)NULL );
+						peerLeaveRoom( peer, StagingRoom, (void *)NULL ); m_isHosting = false;
 						m_localRoomID = m_groupRoomID;
 						m_roomJoined = false;
 						DEBUG_LOG(("Requesting to join room %d in thread %X\n", m_localRoomID, this));
@@ -2061,8 +2061,8 @@ void PeerThreadClass::doQuickMatch( PEER peer )
 				case QM_MATCHED:
 					{
 						// leave QM channel, and clean up.  Our work here is done.
-						peerLeaveRoom( peer, GroupRoom, NULL );
-						peerLeaveRoom( peer, StagingRoom, NULL ); m_isHosting = false;
+						peerLeaveRoom( peer, GroupRoom, (void *)NULL );
+						peerLeaveRoom( peer, StagingRoom, (void *)NULL ); m_isHosting = false;
 
 						m_qmStatus = QM_STOPPED;
 						peerLeaveRoom(peer, GroupRoom, "");

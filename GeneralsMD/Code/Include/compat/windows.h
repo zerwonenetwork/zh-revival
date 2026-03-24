@@ -105,6 +105,7 @@ typedef WORD*          LPWORD;
 typedef void*       LPVOID;
 typedef const void* LPCVOID;
 typedef void*       PVOID;
+typedef void        VOID;
 
 // ---------------------------------------------------------------------------
 //  Handle types (opaque pointers)
@@ -1228,11 +1229,12 @@ static inline HANDLE OpenEventA(DWORD access, BOOL inherit, LPCSTR name) {
 #endif
 
 // Thread management stubs
+typedef DWORD (WINAPI *LPTHREAD_START_ROUTINE)(LPVOID);
 static inline BOOL TerminateThread(HANDLE hThread, DWORD dwExitCode) { (void)hThread;(void)dwExitCode; return FALSE; }
 static inline BOOL GetExitCodeThread(HANDLE hThread, DWORD* lpExitCode) { (void)hThread; if(lpExitCode)*lpExitCode=0; return TRUE; }
 static inline DWORD SuspendThread(HANDLE hThread) { (void)hThread; return 0; }
 static inline DWORD ResumeThread(HANDLE hThread)  { (void)hThread; return 0; }
-static inline HANDLE CreateThread(void* lpSA, SIZE_T dwStackSize, void* lpStartAddress,
+static inline HANDLE CreateThread(void* lpSA, SIZE_T dwStackSize, LPTHREAD_START_ROUTINE lpStartAddress,
                                    void* lpParameter, DWORD dwCreationFlags, DWORD* lpThreadId) {
     (void)lpSA;(void)dwStackSize;(void)lpStartAddress;(void)lpParameter;
     (void)dwCreationFlags;(void)lpThreadId; return NULL;
