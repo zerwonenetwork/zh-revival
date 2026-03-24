@@ -1794,7 +1794,7 @@ WindowMsgHandledType GadgetListBoxSystem( GameWindow *window, UnsignedInt msg,
 		{
 			
 			if( list->multiSelect )
-				*(Int*)mData2 = (Int)list->selections;
+				memcpy( (Int *)mData2, list->selections, list->listLength * sizeof( Int ) );
 			else
 				*(Int*)mData2 = list->selectPos;
 

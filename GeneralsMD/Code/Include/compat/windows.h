@@ -145,6 +145,8 @@ typedef void*  HACCEL;
 typedef HANDLE HTHREAD;
 typedef HANDLE HEVENT;
 typedef HANDLE HMUTEX;
+typedef void*  HIMC;
+typedef void*  HKL;
 
 // ---------------------------------------------------------------------------
 //  Return/message types
@@ -407,6 +409,19 @@ typedef LRESULT (*WNDPROC)(HWND, UINT, WPARAM, LPARAM);
 #define WM_MBUTTONDBLCLK            0x0209
 #define WM_MOUSEWHEEL               0x020A
 #define WM_USER                     0x0400
+#define WM_IME_STARTCOMPOSITION     0x010D
+#define WM_IME_ENDCOMPOSITION       0x010E
+#define WM_IME_COMPOSITION          0x010F
+#define WM_IME_KEYLAST              0x010F
+#define WM_IME_SETCONTEXT           0x0281
+#define WM_IME_NOTIFY               0x0282
+#define WM_IME_CONTROL              0x0283
+#define WM_IME_COMPOSITIONFULL      0x0284
+#define WM_IME_SELECT               0x0285
+#define WM_IME_CHAR                 0x0286
+#define WM_IME_REQUEST              0x0288
+#define WM_IME_KEYDOWN              0x0290
+#define WM_IME_KEYUP                0x0291
 
 // Virtual key codes
 #define VK_BACK         0x08
@@ -501,6 +516,16 @@ typedef LRESULT (*WNDPROC)(HWND, UINT, WPARAM, LPARAM);
 typedef struct tagRECT  { LONG left, top, right, bottom; }  RECT,  *LPRECT,  *PRECT;
 typedef struct tagPOINT { LONG x, y; }                      POINT, *LPPOINT, *PPOINT;
 typedef struct tagSIZE  { LONG cx, cy; }                    SIZE,  *LPSIZE,  *PSIZE;
+
+typedef struct tagCANDIDATELIST {
+    DWORD dwSize;
+    DWORD dwStyle;
+    DWORD dwCount;
+    DWORD dwSelection;
+    DWORD dwPageStart;
+    DWORD dwPageSize;
+    DWORD dwOffset[1];
+} CANDIDATELIST, *PCANDIDATELIST, *LPCANDIDATELIST;
 
 // ---------------------------------------------------------------------------
 //  LARGE_INTEGER / ULARGE_INTEGER (used by QueryPerformanceCounter path)
@@ -1213,6 +1238,132 @@ static inline HANDLE CreateSemaphoreA(void* sa, LONG init, LONG max, LPCSTR name
 }
 #define CreateSemaphore CreateSemaphoreA
 static inline BOOL ReleaseSemaphore(HANDLE h, LONG count, LONG* prev) { (void)h;(void)count;(void)prev; return FALSE; }
+
+// ---------------------------------------------------------------------------
+//  IMM / IME stubs (used by IMEManager on native non-Windows builds)
+// ---------------------------------------------------------------------------
+#ifndef GCS_COMPSTR
+#define GCS_COMPREADSTR              0x0001
+#define GCS_COMPREADATTR             0x0002
+#define GCS_COMPREADCLAUSE           0x0004
+#define GCS_COMPSTR                  0x0008
+#define GCS_COMPATTR                 0x0010
+#define GCS_COMPCLAUSE               0x0020
+#define GCS_CURSORPOS                0x0080
+#define GCS_DELTASTART               0x0100
+#define GCS_RESULTREADSTR            0x0200
+#define GCS_RESULTREADCLAUSE         0x0400
+#define GCS_RESULTSTR                0x0800
+#define GCS_RESULTCLAUSE             0x1000
+#endif
+
+#ifndef CS_INSERTCHAR
+#define CS_INSERTCHAR                0x2000
+#define CS_NOMOVECARET               0x4000
+#endif
+
+#ifndef IMN_CLOSESTATUSWINDOW
+#define IMN_CLOSESTATUSWINDOW        0x0001
+#define IMN_OPENSTATUSWINDOW         0x0002
+#define IMN_CHANGECANDIDATE          0x0003
+#define IMN_CLOSECANDIDATE           0x0004
+#define IMN_OPENCANDIDATE            0x0005
+#define IMN_SETCONVERSIONMODE        0x0006
+#define IMN_SETSENTENCEMODE          0x0007
+#define IMN_SETOPENSTATUS            0x0008
+#define IMN_SETCANDIDATEPOS          0x0009
+#define IMN_SETCOMPOSITIONFONT       0x000A
+#define IMN_SETCOMPOSITIONWINDOW     0x000B
+#define IMN_SETSTATUSWINDOWPOS       0x000C
+#define IMN_GUIDELINE                0x000D
+#define IMN_PRIVATE                  0x000E
+#endif
+
+#ifndef IMR_CANDIDATEWINDOW
+#define IMR_CANDIDATEWINDOW          0x0001
+#endif
+
+#ifndef IMC_GETCANDIDATEPOS
+#define IMC_GETCANDIDATEPOS          0x0007
+#define IMC_SETCANDIDATEPOS          0x0008
+#endif
+
+#ifndef ISC_SHOWUICANDIDATEWINDOW
+#define ISC_SHOWUICANDIDATEWINDOW    0x00000001
+#endif
+
+#ifndef IGP_PROPERTY
+#define IGP_PROPERTY                 0x00000004
+#endif
+
+#ifndef IME_PROP_CANDLIST_START_FROM_1
+#define IME_PROP_AT_CARET            0x00010000
+#define IME_PROP_SPECIAL_UI          0x00020000
+#define IME_PROP_CANDLIST_START_FROM_1 0x00040000
+#define IME_PROP_UNICODE             0x00080000
+#endif
+
+#ifndef IME_CAND_UNKNOWN
+#define IME_CAND_UNKNOWN             0x0000
+#define IME_CAND_READ                0x0001
+#define IME_CAND_CODE                0x0002
+#define IME_CAND_MEANING             0x0003
+#define IME_CAND_RADICAL             0x0004
+#define IME_CAND_STROKE              0x0005
+#endif
+
+static inline HKL     GetKeyboardLayout(DWORD thread_id) { (void)thread_id; return NULL; }
+static inline HIMC    ImmCreateContext(void) { return (HIMC)1; }
+static inline BOOL    ImmDestroyContext(HIMC context) { (void)context; return TRUE; }
+static inline HIMC    ImmGetContext(HWND window) { (void)window; return (HIMC)1; }
+static inline BOOL    ImmReleaseContext(HWND window, HIMC context) { (void)window; (void)context; return TRUE; }
+static inline HIMC    ImmAssociateContext(HWND window, HIMC context) { (void)window; return context; }
+static inline BOOL    ImmGetConversionStatus(HIMC context, DWORD* conversion, DWORD* sentence) {
+    (void)context;
+    if (conversion) *conversion = 0;
+    if (sentence) *sentence = 0;
+    return TRUE;
+}
+static inline LONG    ImmGetCompositionStringA(HIMC context, DWORD index, LPVOID buffer, DWORD buffer_len) {
+    (void)context; (void)index;
+    if (buffer && buffer_len > 0) memset(buffer, 0, buffer_len);
+    return 0;
+}
+static inline LONG    ImmGetCompositionStringW(HIMC context, DWORD index, LPVOID buffer, DWORD buffer_len) {
+    (void)context; (void)index;
+    if (buffer && buffer_len > 0) memset(buffer, 0, buffer_len);
+    return 0;
+}
+static inline LONG    ImmGetCompositionString(HIMC context, DWORD index, LPVOID buffer, DWORD buffer_len) {
+    return ImmGetCompositionStringA(context, index, buffer, buffer_len);
+}
+static inline DWORD   ImmGetCandidateListCountA(HIMC context, DWORD* list_count) {
+    (void)context;
+    if (list_count) *list_count = 0;
+    return 0;
+}
+static inline DWORD   ImmGetCandidateListCountW(HIMC context, DWORD* list_count) {
+    (void)context;
+    if (list_count) *list_count = 0;
+    return 0;
+}
+static inline DWORD   ImmGetCandidateListA(HIMC context, DWORD de_index, LPCANDIDATELIST candidate_list, DWORD buffer_len) {
+    (void)context; (void)de_index;
+    if (candidate_list && buffer_len >= sizeof(CANDIDATELIST)) {
+        CANDIDATELIST* writable = (CANDIDATELIST*)candidate_list;
+        writable->dwSize = sizeof(CANDIDATELIST);
+        writable->dwCount = 0;
+        writable->dwSelection = 0;
+        writable->dwPageStart = 0;
+        writable->dwPageSize = 0;
+        writable->dwOffset[0] = 0;
+    }
+    return 0;
+}
+static inline DWORD   ImmGetCandidateListW(HIMC context, DWORD de_index, LPCANDIDATELIST candidate_list, DWORD buffer_len) {
+    return ImmGetCandidateListA(context, de_index, candidate_list, buffer_len);
+}
+static inline DWORD   ImmGetProperty(HKL layout, DWORD index) { (void)layout; (void)index; return 0; }
 
 // ---------------------------------------------------------------------------
 //  FILETIME and file-information structs (used by rawfile.cpp and others)
