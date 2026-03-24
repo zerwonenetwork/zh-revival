@@ -1612,6 +1612,7 @@ static inline HMODULE LoadLibraryExA(LPCSTR n, HANDLE h, DWORD f) { (void)n;(voi
 //  Global memory functions (used by verchk.cpp and other Win32 code)
 // ---------------------------------------------------------------------------
 #ifndef GMEM_MOVEABLE
+#define GMEM_FIXED      0x0000   // fixed (non-moveable) allocation — same as 0
 #define GMEM_MOVEABLE   0x0002
 #define GMEM_ZEROINIT   0x0040
 #define GHND            (GMEM_MOVEABLE | GMEM_ZEROINIT)

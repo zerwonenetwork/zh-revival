@@ -52,6 +52,20 @@ public:
 		NameKeyType key;
 		const char *name;
 		void *func;
+
+		// These constructors allow Clang/AppleClang (which rejects implicit
+		// function-ptr→void* in C++11 aggregate initializers) to compile the
+		// large table definitions in FunctionLexicon.cpp without modification.
+		// GCC uses -fpermissive for the same purpose; MSVC is permissive by default.
+		//
+		// Overload resolution:
+		//   void*  ctor  — matches NULL / nullptr / plain void* sentinels
+		//   F*     ctor  — matches any typed function pointer (template deduction
+		//                  fails for null-pointer-constants, so no ambiguity)
+		TableEntry(NameKeyType k, const char *n, void *f) : key(k), name(n), func(f) {}
+		template<typename F>
+		TableEntry(NameKeyType k, const char *n, F *f)
+			: key(k), name(n), func(reinterpret_cast<void *>(f)) {}
 	};
 
 	enum TableIndex
