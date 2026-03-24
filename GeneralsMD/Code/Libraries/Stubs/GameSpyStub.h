@@ -655,6 +655,28 @@ typedef struct SBServer_s
     void* keyvals;
 } *SBServer;
 
+typedef enum
+{
+    key_server     = 0,
+    key_player     = 1,
+    key_team       = 2
+} qr2_key_type;
+
+typedef enum
+{
+    e_qrnoerror              = 0,
+    e_qrwsockerror           = 1,
+    e_qrbinderror            = 2,
+    e_qrdnserror             = 3,
+    e_qrconnerror            = 4,
+    e_qrnochallengeerror     = 5,
+    e_qrsenderror            = 6,
+    e_qrnothinitializederror = 7
+} qr2_error_t;
+
+typedef void* qr2_buffer_t;
+typedef void* qr2_keybuffer_t;
+
 // Common Peer callback pointer types
 typedef void (* PeerConnectCallback)       (PEER peer, PEERBool success, void* param);
 typedef void (* PeerDisconnectedCallback)  (PEER peer, const char* reason, void* param);
@@ -683,6 +705,32 @@ typedef void (* PeerListGroupRoomsCallback)(PEER peer, PEERBool success, int gro
 typedef void (* PeerAuthenticateCDKeyCallback)(PEER peer, int result, const char* message, void* param);
 typedef void (* PeerListingGamesCallbackEx)(PEER peer, PEERBool success, const char* name, SBServer server,
                                              PEERBool staging, int msg, int percentListed, void* param);
+typedef void (* PeerPlayerChangedNickCallback)(PEER peer, RoomType room, const char* oldNick,
+                                               const char* newNick, void* param);
+typedef void (* PeerPlayerFlagsChangedCallback)(PEER peer, RoomType room, const char* nick,
+                                                int oldFlags, int newFlags, void* param);
+typedef void (* PeerPlayerInfoCallback)(PEER peer, RoomType room, const char* nick,
+                                        unsigned int IP, int profileID, void* param);
+typedef void (* PeerRoomUTMCallback)(PEER peer, RoomType room, const char* nick,
+                                     const char* command, const char* parameters,
+                                     PEERBool authenticated, void* param);
+typedef void (* PeerPlayerUTMCallback)(PEER peer, const char* sender,
+                                       const char* command, const char* parameters,
+                                       PEERBool authenticated, void* param);
+typedef void (* PeerGlobalKeyChangedCallback)(PEER peer, const char* nick,
+                                              const char* key, const char* value, void* param);
+typedef void (* PeerRoomKeyChangedCallback)(PEER peer, RoomType room, const char* nick,
+                                            const char* key, const char* value, void* param);
+typedef void (* PeerGameStartedCallback)(PEER peer, unsigned int IP, const char* message, void* param);
+typedef void (* PeerQRServerKeyCallback)(PEER peer, int keyid, qr2_buffer_t outbuf, void* param);
+typedef void (* PeerQRPlayerKeyCallback)(PEER peer, int keyid, int index, qr2_buffer_t outbuf, void* param);
+typedef void (* PeerQRTeamKeyCallback)(PEER peer, int keyid, int index, qr2_buffer_t outbuf, void* param);
+typedef void (* PeerQRKeyListCallback)(PEER peer, qr2_key_type keytype, qr2_keybuffer_t keybuffer, void* param);
+typedef int  (* PeerQRCountCallback)(PEER peer, qr2_key_type keytype, void* param);
+typedef void (* PeerQRAddErrorCallback)(PEER peer, qr2_error_t error, char* errmsg, void* param);
+typedef void (* PeerQRNatNegotiateCallback)(PEER peer, int cookie, void* param);
+typedef void (* PeerKickedCallback)(PEER peer, RoomType room, const char* nick, const char* reason, void* param);
+typedef void (* PeerNewPlayerListCallback)(PEER peer, RoomType room, void* param);
 
 // Peer callback table — callers fill this in and pass it to peerConnect
 typedef struct PEERCallbacks_s
@@ -692,26 +740,26 @@ typedef struct PEERCallbacks_s
     PeerPlayerMsgCallback    playerMessage;
     PeerPlayerJoinedCallback playerJoined;
     PeerPlayerLeftCallback   playerLeft;
-    void*                    playerChangedNick;  // unused in stub
-    void*                    playerFlagsChanged;
-    void*                    playerInfo;
-    void*                    roomUTM;
-    void*                    playerUTM;
-    void*                    globalKeyChanged;
-    void*                    roomKeyChanged;
+    PeerPlayerChangedNickCallback  playerChangedNick;
+    PeerPlayerFlagsChangedCallback playerFlagsChanged;
+    PeerPlayerInfoCallback         playerInfo;
+    PeerRoomUTMCallback            roomUTM;
+    PeerPlayerUTMCallback          playerUTM;
+    PeerGlobalKeyChangedCallback   globalKeyChanged;
+    PeerRoomKeyChangedCallback     roomKeyChanged;
     void*                    ready;
-    void*                    gameStarted;
+    PeerGameStartedCallback  gameStarted;
     void*                    autoMatch;
     void*                    autoMatchStatus;
-    void*                    qrServerKey;
-    void*                    qrPlayerKey;
-    void*                    qrTeamKey;
-    void*                    qrKeyList;
-    void*                    qrCount;
-    void*                    qrAddError;
-    void*                    qrNatNegotiateCallback;
-    void*                    kicked;
-    void*                    newPlayerList;
+    PeerQRServerKeyCallback  qrServerKey;
+    PeerQRPlayerKeyCallback  qrPlayerKey;
+    PeerQRTeamKeyCallback    qrTeamKey;
+    PeerQRKeyListCallback    qrKeyList;
+    PeerQRCountCallback      qrCount;
+    PeerQRAddErrorCallback   qrAddError;
+    PeerQRNatNegotiateCallback qrNatNegotiateCallback;
+    PeerKickedCallback       kicked;
+    PeerNewPlayerListCallback newPlayerList;
     void*                    param;
 } PEERCallbacks;
 
@@ -1166,30 +1214,6 @@ inline void SetPersistDataValues(int localid, int profileid, persisttype_t type,
 //  Used by PeerThread.cpp for server-key/player-key reporting callbacks.
 // ===========================================================================
 
-// Key types used by QR2 key registration
-typedef enum
-{
-    key_server     = 0,
-    key_player     = 1,
-    key_team       = 2
-} qr2_key_type;
-
-// QR2 error codes
-typedef enum
-{
-    e_qrnoerror            = 0,
-    e_qrwsockerror         = 1,
-    e_qrbinderror          = 2,
-    e_qrdnserror           = 3,
-    e_qrconnerror          = 4,
-    e_qrnochallengeerror   = 5,
-    e_qrsenderror          = 6,
-    e_qrnothinitializederror = 7
-} qr2_error_t;
-
-// QR2 buffer types (opaque in stub — callers only pass them through)
-typedef void* qr2_buffer_t;
-typedef void* qr2_keybuffer_t;
 
 // Registered key list (stub — always empty)
 static const char* qr2_registered_key_list[] = { "" };
@@ -1207,3 +1231,4 @@ inline void qr2_register_key(int key_id, const char* key_name) { (void)key_id; (
 
 #endif // STUB_IMPL
 #endif // ZH_GAMESPY_STUB_H
+
