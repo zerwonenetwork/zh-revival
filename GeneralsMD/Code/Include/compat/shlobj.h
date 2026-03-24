@@ -50,6 +50,14 @@ static inline BOOL SHGetPathFromIDListA(LPCITEMIDLIST pidl, LPSTR path) {
 #define SHGetPathFromIDList  SHGetPathFromIDListA
 #define SHGetPathFromIDListW SHGetPathFromIDListA
 
+static inline HRESULT SHGetSpecialFolderLocation(HWND hwnd, int nFolder, LPITEMIDLIST* ppidl) {
+    (void)hwnd;
+    (void)nFolder;
+    if (!ppidl) return E_INVALIDARG;
+    *ppidl = NULL;
+    return E_NOTIMPL;
+}
+
 // CoTaskMemFree is already defined in objbase.h (via #define CoTaskMemFree CoTaskMemFree_base).
 // Only define it here if objbase.h hasn't been included yet.
 #ifndef CoTaskMemFree
