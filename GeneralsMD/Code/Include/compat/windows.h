@@ -1105,6 +1105,24 @@ typedef struct _BY_HANDLE_FILE_INFORMATION {
 #include <time.h>
 #include <errno.h>
 
+// ---------------------------------------------------------------------------
+//  MSVC _stat / _S_IFxxx aliases — Windows uses underscore-prefixed names
+//  for POSIX stat(). On Linux/macOS the POSIX names are the standard ones.
+// ---------------------------------------------------------------------------
+#ifndef _stat
+#define _stat  stat   // struct _stat -> struct stat
+#endif
+#ifndef _S_IFMT
+#define _S_IFMT   S_IFMT
+#define _S_IFDIR  S_IFDIR
+#define _S_IFCHR  S_IFCHR
+#define _S_IFREG  S_IFREG
+#endif
+#ifndef _S_ISDIR
+#define _S_ISDIR(m)  S_ISDIR(m)
+#define _S_ISREG(m)  S_ISREG(m)
+#endif
+
 // ReadFile — backed by POSIX read(2)
 static inline BOOL ReadFile(HANDLE hFile, void* lpBuffer, DWORD nNumberOfBytesToRead,
                              DWORD* lpNumberOfBytesRead, void* lpOverlapped) {
