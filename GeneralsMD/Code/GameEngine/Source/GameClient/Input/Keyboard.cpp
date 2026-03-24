@@ -331,7 +331,7 @@ void Keyboard::initKeyNames( void )
 
 	HKL kLayout = GetKeyboardLayout(0);
 
-	Int low = (UnsignedInt)kLayout & 0xFFFF;
+	Int low = (Int)((UINT_PTR)kLayout & 0xFFFF);
 	LanguageID currentLanguage = OurLanguage;
 	if(low == 0x040c
 		 || low == 0x080c
