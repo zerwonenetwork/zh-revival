@@ -120,10 +120,13 @@ static inline long _lseek(int fd, long offset, int whence)
     return (long)lseek(fd, (off_t)offset, whence);
 }
 
+#ifndef ZH_COMPAT_ACCESS_DEFINED
+#define ZH_COMPAT_ACCESS_DEFINED
 static inline int _access(const char *path, int mode)
 {
     return access(path, mode);
 }
+#endif
 
 static inline long _filelength(int fd)
 {

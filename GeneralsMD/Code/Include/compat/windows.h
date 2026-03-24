@@ -1914,8 +1914,10 @@ static inline BOOL CreateDirectoryA(LPCSTR lpPathName, void* lpSecurityAttribute
 //  F_OK=0  R_OK=4  W_OK=2  X_OK=1
 // ---------------------------------------------------------------------------
 #include <unistd.h>
+#ifndef ZH_COMPAT_ACCESS_DEFINED
+#define ZH_COMPAT_ACCESS_DEFINED
 static inline int _access(const char *path, int mode) { return access(path, mode); }
+#endif
 
 #endif  // !_WIN32
 #endif  // ZH_COMPAT_WINDOWS_H
-
