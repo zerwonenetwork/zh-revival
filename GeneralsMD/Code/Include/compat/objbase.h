@@ -46,6 +46,8 @@ static inline void* CoTaskMemRealloc(void* p, size_t cb) { return realloc(p, cb)
 static inline HRESULT CoInitialize(void* reserved)   { (void)reserved; return S_OK; }
 static inline HRESULT CoInitializeEx(void* r, DWORD d){ (void)r;(void)d; return S_OK; }
 static inline void    CoUninitialize(void)            {}
+static inline HRESULT OleInitialize(void* reserved)   { return CoInitialize(reserved); }
+static inline void    OleUninitialize(void)           { CoUninitialize(); }
 static inline HRESULT CoCreateInstance(REFCLSID rclsid, void* pUnkOuter, DWORD dwClsContext,
                                        REFIID riid, void** ppv) {
     (void)rclsid;(void)pUnkOuter;(void)dwClsContext;(void)riid;
