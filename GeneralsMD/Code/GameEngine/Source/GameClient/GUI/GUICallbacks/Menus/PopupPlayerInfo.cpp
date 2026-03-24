@@ -31,6 +31,8 @@
 // INCLUDES ///////////////////////////////////////////////////////////////////////////////////////
 #include "PreRTS.h"	// This must go first in EVERY cpp file int the GameEngine
 
+#include <cstdint>
+
 #include "Common/PlayerTemplate.h"
 #include "Common/BattleHonors.h"
 #include "Common/CustomMatchPreferences.h"
@@ -312,8 +314,8 @@ void BattleHonorTooltip(GameWindow *window,
 		return;
 	}
 
-	Int battleHonor = (Int)GadgetListBoxGetItemData( window, row, col );
-	Int extraValue = (Int)GadgetListBoxGetItemData( window, row - 1, col );
+	Int battleHonor = (Int)(intptr_t)GadgetListBoxGetItemData( window, row, col );
+	Int extraValue = (Int)(intptr_t)GadgetListBoxGetItemData( window, row - 1, col );
 	if (battleHonor == 0)
 	{
 		//DEBUG_CRASH(("No Battle Honor in listbox row %d, col %d!", row, col));
@@ -1412,7 +1414,7 @@ WindowMsgHandledType GameSpyPlayerInfoOverlayInput( GameWindow *window, Unsigned
 
 	return MSG_IGNORED;
 }// GameSpyPlayerInfoOverlayInput
-void messageBoxYes( void );
+static void messageBoxYes( void );
 //-------------------------------------------------------------------------------------------------
 /** Overlay window system callback */
 //-------------------------------------------------------------------------------------------------
