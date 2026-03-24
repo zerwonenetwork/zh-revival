@@ -22,6 +22,7 @@
 #define ZH_COMPAT_SOCKET_DEFINED
 typedef int SOCKET;
 #endif
+typedef struct hostent HOSTENT;
 #ifndef INVALID_SOCKET
 #define INVALID_SOCKET  ((SOCKET)(~0))
 #endif

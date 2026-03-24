@@ -711,7 +711,9 @@ Bool FirewallHelperClass::detectionBeginUpdate() {
 		if (!found) {
 			Int m = m_numManglers++;
 			memcpy(&mangler_addresses[m][0], &host_info->h_addr_list[0][0], 4);
-			ntohl((UnsignedInt)mangler_addresses[m]);
+			UnsignedInt manglerAddress = *((UnsignedInt *)&mangler_addresses[m][0]);
+			manglerAddress = ntohl(manglerAddress);
+			memcpy(&mangler_addresses[m][0], &manglerAddress, sizeof(manglerAddress));
 			DEBUG_LOG(("Found mangler address at %d.%d.%d.%d\n", mangler_addresses[m][0], mangler_addresses[m][1], mangler_addresses[m][2], mangler_addresses[m][3]));
 		}
 
