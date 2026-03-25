@@ -22,11 +22,18 @@
 #include "windows.h"   // DWORD, HWND etc.
 
 // ---------------------------------------------------------------------------
-//  Forward-declare IDirectSound so that pointer types compile.
-//  No actual implementation — all code paths that call DS methods are
-//  guarded by platform checks or never reached on non-Windows builds.
+//  Minimal IDirectSound stub so that MilesAudioManager.cpp compiles.
+//  The GetSpeakerConfig body is unreachable on non-Windows (Miles returns
+//  null from AIL_get_DirectSound_info), but Clang requires a full definition
+//  whenever a member function is called through the pointer.
 // ---------------------------------------------------------------------------
-struct IDirectSound;
+struct IDirectSound {
+    virtual HRESULT GetSpeakerConfig(DWORD *pdwSpeakerConfig) {
+        if (pdwSpeakerConfig) *pdwSpeakerConfig = DSSPEAKER_STEREO;
+        return 0;
+    }
+    virtual ~IDirectSound() {}
+};
 typedef struct IDirectSound  *LPDIRECTSOUND;
 
 // ---------------------------------------------------------------------------
