@@ -34,6 +34,13 @@
 #include "assert.h"
 #include "ftp.h"
 #include "winsock.h"
+// socklen_t: defined in <sys/socket.h> on POSIX; on Windows getsockname
+// uses int* so we provide the typedef when it is absent.
+#if defined(_WIN32) && !defined(_SOCKLEN_T) && !defined(_SOCKLEN_T_DEFINED)
+#  define _SOCKLEN_T
+#  define _SOCKLEN_T_DEFINED
+   typedef int socklen_t;
+#endif
 #include <time.h>
 #include <direct.h>
 #include <errno.h>
@@ -1010,8 +1017,8 @@ unsigned long MyIPAddress( int sockfd )
 
 	if( sockfd != -1 )
 	{
-		{ socklen_t addrlen_ = sizeof( sin );
-		getsockname( sockfd, (struct sockaddr *)&sin, &addrlen_ ); }
+		{ socklen_t addrlen_ftp = (socklen_t)sizeof( sin );
+		getsockname( sockfd, (struct sockaddr *)&sin, &addrlen_ftp ); }
 
 		ip = sin.sin_addr.s_addr;  // S_un.S_addr is Windows-only; s_addr is portable
 	}
@@ -1127,8 +1134,8 @@ int Cftp::SendNewPort( void )
 		}
 
 
-		{ socklen_t addrlen_ = sizeof( m_DataSockAddr );
-		getsockname( m_iDataSocket, (struct sockaddr *)&m_DataSockAddr, &addrlen_ ); }
+		{ socklen_t addrlen_ftp2 = (socklen_t)sizeof( m_DataSockAddr );
+		getsockname( m_iDataSocket, (struct sockaddr *)&m_DataSockAddr, &addrlen_ftp2 ); }
 
 		listen( m_iDataSocket, 5 );
 

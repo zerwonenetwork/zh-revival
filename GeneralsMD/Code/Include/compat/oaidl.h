@@ -63,6 +63,8 @@ typedef struct tagEXCEPINFO {
 
 struct ITypeInfo;
 
+// IDispatch uses C++ struct inheritance; guard so .c files don't fail.
+#ifdef __cplusplus
 struct IDispatch : public IUnknown {
     virtual HRESULT STDMETHODCALLTYPE GetTypeInfoCount(UINT* pctinfo) = 0;
     virtual HRESULT STDMETHODCALLTYPE GetTypeInfo(UINT iTInfo, LCID lcid, ITypeInfo** ppTInfo) = 0;
@@ -74,6 +76,7 @@ struct IDispatch : public IUnknown {
 };
 
 static const IID IID_NULL = { 0, 0, 0, { 0, 0, 0, 0, 0, 0, 0, 0 } };
+#endif // __cplusplus
 
 #endif
 
