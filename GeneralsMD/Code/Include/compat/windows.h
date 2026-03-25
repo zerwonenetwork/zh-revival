@@ -490,26 +490,6 @@ typedef LRESULT (*WNDPROC)(HWND, UINT, WPARAM, LPARAM);
 #define SC_MONITORPOWER 0xF170
 #define SC_SCREENSAVE 0xF140
 
-// PAINTSTRUCT and painting functions
-typedef struct tagPAINTSTRUCT {
-    HDC  hdc;
-    BOOL fErase;
-    RECT rcPaint;
-    BOOL fRestore;
-    BOOL fIncUpdate;
-    BYTE rgbReserved[32];
-} PAINTSTRUCT, *PPAINTSTRUCT, *LPPAINTSTRUCT;
-
-static inline HDC  BeginPaint(HWND h, PAINTSTRUCT* ps) { (void)h; if(ps) memset(ps,0,sizeof(*ps)); return NULL; }
-static inline BOOL EndPaint(HWND h, const PAINTSTRUCT* ps) { (void)h; (void)ps; return TRUE; }
-
-// ClipCursor — confine cursor to a rectangle (no-op on non-Windows)
-static inline BOOL ClipCursor(const RECT* r) { (void)r; return TRUE; }
-static inline BOOL GetClipCursor(RECT* r) { if(r) memset(r,0,sizeof(*r)); return TRUE; }
-
-// GetAsyncKeyState — key state query (always returns 0 on non-Windows)
-static inline SHORT GetAsyncKeyState(int vKey) { (void)vKey; return 0; }
-
 // Virtual key codes
 #define VK_BACK         0x08
 #define VK_TAB          0x09
@@ -615,6 +595,23 @@ static inline SHORT GetAsyncKeyState(int vKey) { (void)vKey; return 0; }
 typedef struct tagRECT  { LONG left, top, right, bottom; }  RECT,  *LPRECT,  *PRECT;
 typedef struct tagPOINT { LONG x, y; }                      POINT, *LPPOINT, *PPOINT;
 typedef struct tagSIZE  { LONG cx, cy; }                    SIZE,  *LPSIZE,  *PSIZE;
+
+// PAINTSTRUCT — needs RECT, HWND, HDC (all defined above)
+typedef struct tagPAINTSTRUCT {
+    HDC  hdc;
+    BOOL fErase;
+    RECT rcPaint;
+    BOOL fRestore;
+    BOOL fIncUpdate;
+    BYTE rgbReserved[32];
+} PAINTSTRUCT, *PPAINTSTRUCT, *LPPAINTSTRUCT;
+
+static inline HDC  BeginPaint(HWND h, PAINTSTRUCT* ps) { (void)h; if(ps) memset(ps,0,sizeof(*ps)); return NULL; }
+static inline BOOL EndPaint(HWND h, const PAINTSTRUCT* ps) { (void)h; (void)ps; return TRUE; }
+
+// ClipCursor — confine cursor to a rectangle (no-op on non-Windows)
+static inline BOOL ClipCursor(const RECT* r) { (void)r; return TRUE; }
+static inline BOOL GetClipCursor(RECT* r) { if(r) memset(r,0,sizeof(*r)); return TRUE; }
 
 typedef struct tagCANDIDATELIST {
     DWORD dwSize;
