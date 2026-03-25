@@ -460,6 +460,56 @@ typedef LRESULT (*WNDPROC)(HWND, UINT, WPARAM, LPARAM);
 #define WM_IME_KEYDOWN              0x0290
 #define WM_IME_KEYUP                0x0291
 
+// Additional window messages used by WinMain.cpp
+#define WM_NCHITTEST                0x0084
+#define WM_SETCURSOR                0x0020
+#define WM_SYSCOMMAND               0x0112
+#define WM_QUERYENDSESSION          0x0011
+#define WM_POWERBROADCAST           0x0218
+#define WM_DEVICECHANGE             0x0219
+
+// WM_NCHITTEST return codes
+#define HTCLIENT      1
+#define HTNOWHERE     0
+#define HTCAPTION     2
+#define HTBORDER      18
+#define HTBOTTOM      15
+
+// WM_ACTIVATE wParam low word
+#define WA_INACTIVE   0
+#define WA_ACTIVE     1
+#define WA_CLICKACTIVE 2
+
+// WM_SYSCOMMAND codes
+#define SC_SIZE       0xF000
+#define SC_MOVE       0xF010
+#define SC_MINIMIZE   0xF020
+#define SC_MAXIMIZE   0xF030
+#define SC_CLOSE      0xF060
+#define SC_KEYMENU    0xF100
+#define SC_MONITORPOWER 0xF170
+#define SC_SCREENSAVE 0xF140
+
+// PAINTSTRUCT and painting functions
+typedef struct tagPAINTSTRUCT {
+    HDC  hdc;
+    BOOL fErase;
+    RECT rcPaint;
+    BOOL fRestore;
+    BOOL fIncUpdate;
+    BYTE rgbReserved[32];
+} PAINTSTRUCT, *PPAINTSTRUCT, *LPPAINTSTRUCT;
+
+static inline HDC  BeginPaint(HWND h, PAINTSTRUCT* ps) { (void)h; if(ps) memset(ps,0,sizeof(*ps)); return NULL; }
+static inline BOOL EndPaint(HWND h, const PAINTSTRUCT* ps) { (void)h; (void)ps; return TRUE; }
+
+// ClipCursor — confine cursor to a rectangle (no-op on non-Windows)
+static inline BOOL ClipCursor(const RECT* r) { (void)r; return TRUE; }
+static inline BOOL GetClipCursor(RECT* r) { if(r) memset(r,0,sizeof(*r)); return TRUE; }
+
+// GetAsyncKeyState — key state query (always returns 0 on non-Windows)
+static inline SHORT GetAsyncKeyState(int vKey) { (void)vKey; return 0; }
+
 // Virtual key codes
 #define VK_BACK         0x08
 #define VK_TAB          0x09
