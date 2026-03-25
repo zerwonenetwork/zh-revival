@@ -42,6 +42,7 @@ typedef char             CHAR;
 typedef unsigned short   WORD;
 typedef short            SHORT;
 typedef unsigned long    DWORD;   // matches Windows SDK + game bittype.h
+typedef unsigned long*   LPDWORD;
 typedef long             LONG;    // matches Windows SDK + game bittype.h
 typedef unsigned long    ULONG;   // matches Windows SDK + game bittype.h
 typedef int              INT;
@@ -984,6 +985,7 @@ static inline int     ToAscii(UINT virt_key, UINT scan_code, const BYTE* key_sta
 }
 static inline BOOL    IsWindow(HWND h)                    { (void)h; return FALSE; }
 static inline BOOL    IsWindowVisible(HWND h)             { (void)h; return FALSE; }
+static inline BOOL    IsIconic(HWND h)                    { (void)h; return FALSE; }
 static inline LRESULT SendMessageA(HWND h,UINT m,WPARAM w,LPARAM l){ (void)h;(void)m;(void)w;(void)l; return 0; }
 #define SendMessage SendMessageA
 static inline BOOL    PostMessageA(HWND h,UINT m,WPARAM w,LPARAM l){ (void)h;(void)m;(void)w;(void)l; return FALSE; }
@@ -1829,6 +1831,21 @@ static inline LPVOID  GlobalLock(HGLOBAL hMem)                 { return hMem; }
 static inline BOOL    GlobalUnlock(HGLOBAL hMem)               { (void)hMem; return TRUE; }
 static inline HGLOBAL GlobalFree(HGLOBAL hMem)                 { free(hMem); return NULL; }
 static inline SIZE_T  GlobalSize(HGLOBAL hMem)                 { (void)hMem; return 0; }
+
+// LocalAlloc flags
+#ifndef LMEM_FIXED
+#define LMEM_FIXED      0x0000
+#define LMEM_MOVEABLE   0x0002
+#define LMEM_ZEROINIT   0x0040
+#define LPTR            (LMEM_FIXED | LMEM_ZEROINIT)
+#define LHND            (LMEM_MOVEABLE | LMEM_ZEROINIT)
+#define LMEM_DISCARDABLE 0x0F00
+#define LMEM_NOCOMPACT  0x0010
+#define LMEM_NODISCARD  0x0020
+#define LMEM_SHARE      0x2000
+#define NONZEROLPTR     LMEM_FIXED
+#define NONZEROLHND     LMEM_MOVEABLE
+#endif
 
 static inline HLOCAL LocalAlloc(UINT uFlags, SIZE_T uBytes) { (void)uFlags; return malloc(uBytes); }
 static inline LPVOID LocalLock(HLOCAL hMem)                 { return hMem; }
