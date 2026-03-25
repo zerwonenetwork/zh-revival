@@ -32,12 +32,11 @@
 #ifndef COPYPROTECTION_H
 #define COPYPROTECTION_H
 
-// Copy protection only makes sense on Windows (CD-key / SafeDisc checks).
-// On Linux / macOS builds this is unconditionally disabled per P1-11.
-#ifdef _WIN32
-// Comment out the following line to disable copy protection checks
-#define DO_COPY_PROTECTION
-#endif // _WIN32
+// P1-11: DO_COPY_PROTECTION is permanently disabled.
+// The legacy SafeDisc/launcher check blocks startup for up to 60 seconds on
+// modern installs (Steam, EA App) where the CD launcher is never present.
+// CopyProtect::validate() calls in ScoreScreen / GameLogic also disabled below.
+// #define DO_COPY_PROTECTION   ← intentionally left commented out
 
 #ifdef DO_COPY_PROTECTION
 
