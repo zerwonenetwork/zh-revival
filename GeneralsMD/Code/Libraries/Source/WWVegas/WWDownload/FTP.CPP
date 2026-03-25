@@ -1010,10 +1010,10 @@ unsigned long MyIPAddress( int sockfd )
 
 	if( sockfd != -1 )
 	{
-		i = sizeof( sin );
-		getsockname( sockfd, (struct sockaddr *)&sin, &i );
+		{ socklen_t addrlen_ = sizeof( sin );
+		getsockname( sockfd, (struct sockaddr *)&sin, &addrlen_ ); }
 
-		ip = sin.sin_addr.S_un.S_addr;
+		ip = sin.sin_addr.s_addr;  // S_un.S_addr is Windows-only; s_addr is portable
 	}
 	else
 	{
@@ -1127,9 +1127,8 @@ int Cftp::SendNewPort( void )
 		}
 
 
-		i = sizeof( m_DataSockAddr);
-
-		getsockname( m_iDataSocket, (struct sockaddr *)&m_DataSockAddr, &i );
+		{ socklen_t addrlen_ = sizeof( m_DataSockAddr );
+		getsockname( m_iDataSocket, (struct sockaddr *)&m_DataSockAddr, &addrlen_ ); }
 
 		listen( m_iDataSocket, 5 );
 

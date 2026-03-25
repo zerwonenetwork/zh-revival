@@ -149,5 +149,11 @@ static inline long _tell(int fd)
     return _lseek(fd, 0, SEEK_CUR);
 }
 
+// _chmod — MSVC-specific name; POSIX uses chmod() from <sys/stat.h>
+// _S_IWRITE and _S_IREAD are already defined above as S_IWUSR / S_IRUSR.
+#ifndef _chmod
+#define _chmod  chmod
+#endif
+
 #endif // !_WIN32
 #endif // ZH_COMPAT_IO_H
