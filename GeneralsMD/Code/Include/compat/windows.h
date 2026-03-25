@@ -287,6 +287,14 @@ typedef LRESULT (*WNDPROC)(HWND, UINT, WPARAM, LPARAM);
 #define INVALID_SET_FILE_POINTER 0xFFFFFFFFu
 
 // ---------------------------------------------------------------------------
+//  FILETIME
+// ---------------------------------------------------------------------------
+#ifndef _FILETIME_
+#define _FILETIME_
+typedef struct _FILETIME { DWORD dwLowDateTime; DWORD dwHighDateTime; } FILETIME, *PFILETIME, *LPFILETIME;
+#endif
+
+// ---------------------------------------------------------------------------
 //  HRESULT constants
 // ---------------------------------------------------------------------------
 #define S_OK                  ((HRESULT)0x00000000L)
@@ -368,6 +376,7 @@ typedef LRESULT (*WNDPROC)(HWND, UINT, WPARAM, LPARAM);
 #define MB_SYSTEMMODAL                  0x00001000L
 #define MB_TASKMODAL                    0x00002000L
 #define MB_SETFOREGROUND                0x00010000L
+#define SEM_FAILCRITICALERRORS          0x00000001L
 // MessageBox return values
 #define IDOK        1
 #define IDCANCEL    2
@@ -990,7 +999,9 @@ static inline BOOL    SetCursorPos(int x, int y)          { (void)x;(void)y; ret
 static inline HCURSOR SetCursor(HCURSOR h)                { (void)h; return NULL; }
 static inline HCURSOR GetCursor(void)                     { return NULL; }
 static inline HCURSOR LoadCursorA(HINSTANCE h, LPCSTR n)  { (void)h;(void)n; return NULL; }
+static inline HCURSOR LoadCursorFromFileA(LPCSTR path)    { (void)path; return NULL; }
 #define LoadCursor LoadCursorA
+#define LoadCursorFromFile LoadCursorFromFileA
 static inline BOOL    PeekMessageA(LPMSG m,HWND h,UINT a,UINT b,UINT c) { (void)m;(void)h;(void)a;(void)b;(void)c; return FALSE; }
 static inline BOOL    GetMessageA(LPMSG m,HWND h,UINT a,UINT b)         { (void)m;(void)h;(void)a;(void)b; return FALSE; }
 static inline BOOL    TranslateMessage(const MSG* m)      { (void)m; return FALSE; }
@@ -1059,6 +1070,7 @@ static inline void    OutputDebugStringW(LPCWSTR s)                    { (void)s
 #define OutputDebugString OutputDebugStringA
 static inline DWORD   GetLastError(void)                               { return 0; }
 static inline void    SetLastError(DWORD e)                            { (void)e; }
+static inline UINT    SetErrorMode(UINT mode)                          { (void)mode; return 0; }
 static inline DWORD   GetTickCount(void)                               { return 0; }
 #ifndef GetCurrentTime
 #define GetCurrentTime() GetTickCount()
@@ -1137,9 +1149,16 @@ typedef struct _PROCESS_INFORMATION {
     DWORD  dwThreadId;
 } PROCESS_INFORMATION, *LPPROCESS_INFORMATION;
 typedef struct _WIN32_FIND_DATAA {
-    DWORD dwFileAttributes;
-    CHAR  cFileName[MAX_PATH];
-    CHAR  cAlternateFileName[14];
+    DWORD    dwFileAttributes;
+    FILETIME ftCreationTime;
+    FILETIME ftLastAccessTime;
+    FILETIME ftLastWriteTime;
+    DWORD    nFileSizeHigh;
+    DWORD    nFileSizeLow;
+    DWORD    dwReserved0;
+    DWORD    dwReserved1;
+    CHAR     cFileName[MAX_PATH];
+    CHAR     cAlternateFileName[14];
 } WIN32_FIND_DATAA, WIN32_FIND_DATA, *PWIN32_FIND_DATAA, *LPWIN32_FIND_DATAA, *PWIN32_FIND_DATA, *LPWIN32_FIND_DATA;
 static inline HANDLE  CreateFileA(LPCSTR path, DWORD access, DWORD share, void* sa,
                                   DWORD creation, DWORD flags, HANDLE template_file) {

@@ -985,18 +985,6 @@ char *nextParam(char *newSource, const char *seps)
 // Necessary to allow memory managers and such to have useful critical sections
 static CriticalSection critSec1, critSec2, critSec3, critSec4, critSec5;
 
-#if !defined(_WIN32)
-// Native Linux/macOS linkers require a standard C/C++ main entry point.
-// Route it into the legacy WinMain path so the existing startup code remains
-// the single implementation.
-int main(int argc, char **argv)
-{
-	(void)argc;
-	(void)argv;
-	return WinMain(NULL, NULL, GetCommandLineA(), SW_SHOWDEFAULT);
-}
-#endif
-
 // WinMain ====================================================================
 /** Application entry point */
 //=============================================================================
@@ -1364,3 +1352,34 @@ void ApplyResolutionOverride( void )
 	if (ApplicationHeightOverride > 0)
 		TheWritableGlobalData->m_yResolution = ApplicationHeightOverride;
 }  // end ApplyResolutionOverride
+
+#if !defined(_WIN32)
+// Native Linux/macOS linkers require a standard C/C++ main entry point.
+// Route it into the legacy WinMain path after its definition is available.
+int main(int argc, char **argv)
+{
+	char cmdline[4096];
+	size_t offset = 0;
+
+	cmdline[0] = '\0';
+	for (int i = 1; i < argc && offset + 1 < sizeof(cmdline); ++i)
+	{
+		const int written = _snprintf(
+			cmdline + offset,
+			sizeof(cmdline) - offset,
+			"%s%s",
+			(i > 1) ? " " : "",
+			argv[i] ? argv[i] : "");
+		if (written < 0)
+			break;
+		offset += (size_t)written;
+		if (offset >= sizeof(cmdline))
+		{
+			cmdline[sizeof(cmdline) - 1] = '\0';
+			break;
+		}
+	}
+
+	return WinMain(NULL, NULL, cmdline, SW_SHOWDEFAULT);
+}
+#endif
