@@ -593,12 +593,12 @@ endif()
 # ─── GameEngineDevice  (D3D8 / audio device layer) ───
 zh_glob_sources(GAMEENGINEDEVICE_SRCS ${ZH}/GameEngineDevice/Source)
 if(NOT WIN32)
-    # Win32Device sources use DirectInput COM methods that have no POSIX
-    # equivalent.  The class declarations (Win32DIKeyboard.h etc.) are still
-    # visible via headers; the implementations are Windows-only and are never
-    # invoked on Linux / macOS builds.
-    list(FILTER GAMEENGINEDEVICE_SRCS EXCLUDE REGEX ".*/Win32Device/.*\\.cpp$")
-    list(FILTER GAMEENGINEDEVICE_SRCS EXCLUDE REGEX ".*/Win32Device/.*\\.CPP$")
+    # Native Linux/macOS still use the legacy WinMain/Win32 engine path through
+    # the compatibility shim, so keep the general Win32Device/Common and
+    # Win32Mouse implementations. Only DirectInput-specific sources are truly
+    # Windows-only here.
+    list(FILTER GAMEENGINEDEVICE_SRCS EXCLUDE REGEX ".*/Win32Device/GameClient/Win32DI.*\\.cpp$")
+    list(FILTER GAMEENGINEDEVICE_SRCS EXCLUDE REGEX ".*/Win32Device/GameClient/Win32DI.*\\.CPP$")
 endif()
 add_library(gameenginedevice STATIC ${GAMEENGINEDEVICE_SRCS})
 target_include_directories(gameenginedevice PUBLIC

@@ -985,6 +985,18 @@ char *nextParam(char *newSource, const char *seps)
 // Necessary to allow memory managers and such to have useful critical sections
 static CriticalSection critSec1, critSec2, critSec3, critSec4, critSec5;
 
+#if !defined(_WIN32)
+// Native Linux/macOS linkers require a standard C/C++ main entry point.
+// Route it into the legacy WinMain path so the existing startup code remains
+// the single implementation.
+int main(int argc, char **argv)
+{
+	(void)argc;
+	(void)argv;
+	return WinMain(NULL, NULL, GetCommandLineA(), SW_SHOWDEFAULT);
+}
+#endif
+
 // WinMain ====================================================================
 /** Application entry point */
 //=============================================================================
