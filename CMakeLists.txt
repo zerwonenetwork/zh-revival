@@ -334,6 +334,16 @@ else()
     )
 endif()
 
+# Belt-and-suspenders: insert the compat shim dir at the FRONT of
+# ZH_COMMON_INCLUDES so that every target's target_include_directories()
+# call resolves <io.h>, <windows.h>, etc. to our stubs before any system
+# header.  include_directories(BEFORE ...) at directory scope is supposed
+# to do this, but some CMake generators apply directory-scope includes
+# AFTER target-scope ones, making this explicit insertion necessary.
+if(DEFINED ZH_COMPAT_INCLUDE_DIR)
+    list(INSERT ZH_COMMON_INCLUDES 0 "${ZH_COMPAT_INCLUDE_DIR}")
+endif()
+
 # ─────────────────────────────────────────────
 #  Per-configuration compile definitions
 #  These mirror the original .dsp preprocessor blocks exactly.
