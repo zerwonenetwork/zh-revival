@@ -59,6 +59,28 @@
 #include "WW3D2/htree.h"
 #include "WW3D2/animobj.h"  ///< @todo superhack for demo, remove!
 
+#if !defined(_WIN32)
+namespace {
+class NativeStubKeyboard : public Keyboard
+{
+public:
+	virtual Bool getCapsState( void ) { return FALSE; }
+
+protected:
+	virtual void getKey( KeyboardIO *key )
+	{
+		if (key)
+		{
+			key->key = KEY_NONE;
+			key->status = KeyboardIO::STATUS_UNUSED;
+			key->state = 0;
+			key->sequence = 0;
+		}
+	}
+};
+}
+#endif
+
 //-------------------------------------------------------------------------------------------------
 //-------------------------------------------------------------------------------------------------
 W3DGameClient::W3DGameClient()
@@ -72,6 +94,17 @@ W3DGameClient::~W3DGameClient()
 {
 
 }  // end ~W3DGameClient
+
+//-------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------
+Keyboard *W3DGameClient::createKeyboard( void )
+{
+#if defined(_WIN32)
+	return NEW DirectInputKeyboard;
+#else
+	return NEW NativeStubKeyboard;
+#endif
+}
 
 //-------------------------------------------------------------------------------------------------
 /** Initialize resources for the w3d game client */

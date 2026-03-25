@@ -786,3 +786,7 @@ void ReleaseCrashLocalized(const AsciiString& p, const AsciiString& m)
 
 	_exit(1);
 }
+
+#if !defined(_WIN32)
+AsciiString g_LastErrorDump;
+#endif
