@@ -1832,6 +1832,27 @@ static inline BOOL    GlobalUnlock(HGLOBAL hMem)               { (void)hMem; ret
 static inline HGLOBAL GlobalFree(HGLOBAL hMem)                 { free(hMem); return NULL; }
 static inline SIZE_T  GlobalSize(HGLOBAL hMem)                 { (void)hMem; return 0; }
 
+// ---------------------------------------------------------------------------
+//  Heap management (GetProcessHeap, HeapAlloc, HeapFree)
+// ---------------------------------------------------------------------------
+#ifndef HEAP_ZERO_MEMORY
+#define HEAP_ZERO_MEMORY    0x00000008
+#define HEAP_NO_SERIALIZE   0x00000001
+#define HEAP_GENERATE_EXCEPTIONS 0x00000004
+#endif
+
+static inline HANDLE  GetProcessHeap(void)                               { return (HANDLE)1; }
+static inline LPVOID  HeapAlloc(HANDLE h, DWORD flags, SIZE_T bytes)     {
+    (void)h;
+    if (flags & HEAP_ZERO_MEMORY) return calloc(1, bytes);
+    return malloc(bytes);
+}
+static inline BOOL    HeapFree(HANDLE h, DWORD flags, LPVOID ptr)        { (void)h; (void)flags; free(ptr); return TRUE; }
+static inline LPVOID  HeapReAlloc(HANDLE h, DWORD flags, LPVOID ptr, SIZE_T bytes) {
+    (void)h; (void)flags; return realloc(ptr, bytes);
+}
+static inline SIZE_T  HeapSize(HANDLE h, DWORD flags, LPCVOID ptr)       { (void)h; (void)flags; (void)ptr; return 0; }
+
 // LocalAlloc flags
 #ifndef LMEM_FIXED
 #define LMEM_FIXED      0x0000
