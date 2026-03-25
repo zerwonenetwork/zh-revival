@@ -32,6 +32,15 @@
 #include "PreRTS.h"	// This must go first in EVERY cpp file int the GameEngine
 
 #include <winsock.h>
+// socklen_t is defined in <ws2tcpip.h> which winsock.h alone does not include.
+// Provide it here for MSVC and MinGW cross-compile targets.
+#ifdef _WIN32
+#if !defined(_SOCKLEN_T) && !defined(_SOCKLEN_T_DEFINED)
+#define _SOCKLEN_T
+#define _SOCKLEN_T_DEFINED
+typedef int socklen_t;
+#endif
+#endif
 
 #include "Common/Registry.h"
 #include "Common/StackDump.h"

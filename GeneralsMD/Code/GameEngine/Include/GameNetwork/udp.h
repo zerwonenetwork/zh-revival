@@ -35,6 +35,14 @@
 #ifdef _WINDOWS
 #include <winsock.h>
 #include <io.h>
+// socklen_t is defined in <ws2tcpip.h> which winsock.h alone does not pull in.
+// Provide a portable fallback so that callers don't need to include ws2tcpip.h.
+// The guard mirrors MinGW-w64's ws2tcpip.h so we don't redefine if already present.
+#if !defined(_SOCKLEN_T) && !defined(_SOCKLEN_T_DEFINED)
+#define _SOCKLEN_T
+#define _SOCKLEN_T_DEFINED
+typedef int socklen_t;
+#endif
 //#define close _close
 //#define read  _read
 //#define write _write

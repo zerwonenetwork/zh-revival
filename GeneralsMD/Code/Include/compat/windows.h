@@ -305,6 +305,40 @@ typedef LRESULT (*WNDPROC)(HWND, UINT, WPARAM, LPARAM);
 #define MAKE_HRESULT(sev,fac,code) ((HRESULT)(((DWORD)(sev)<<31)|((DWORD)(fac)<<16)|((DWORD)(code))))
 
 // ---------------------------------------------------------------------------
+//  HRESULT severity and facility constants (from winerror.h)
+//  Used by MAKE_HRESULT in downloaddefs.h, ftpdefs.h and similar COM code.
+// ---------------------------------------------------------------------------
+#ifndef SEVERITY_SUCCESS
+#define SEVERITY_SUCCESS    0
+#define SEVERITY_ERROR      1
+#endif
+
+#ifndef FACILITY_NULL
+#define FACILITY_NULL       0
+#define FACILITY_RPC        1
+#define FACILITY_DISPATCH   2
+#define FACILITY_STORAGE    3
+#define FACILITY_ITF        4   // custom/interface-specific errors
+#define FACILITY_WIN32      7
+#define FACILITY_WINDOWS    8
+#define FACILITY_SECURITY   9
+#define FACILITY_SSPI       9
+#define FACILITY_CONTROL    10
+#define FACILITY_CERT       11
+#define FACILITY_INTERNET   12
+#define FACILITY_MEDIASERVER 13
+#define FACILITY_MSMQ       14
+#define FACILITY_SETUPAPI   15
+#define FACILITY_SCARD      16
+#define FACILITY_COMPLUS    17
+#define FACILITY_AAF        18
+#define FACILITY_URT        19
+#define FACILITY_ACS        20
+#define FACILITY_DPLAY      21
+#define FACILITY_HTTP       25
+#endif
+
+// ---------------------------------------------------------------------------
 //  FormatMessage flags
 // ---------------------------------------------------------------------------
 #define FORMAT_MESSAGE_ALLOCATE_BUFFER  0x00000100
