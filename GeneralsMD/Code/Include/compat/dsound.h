@@ -29,7 +29,7 @@
 // ---------------------------------------------------------------------------
 struct IDirectSound {
     virtual HRESULT GetSpeakerConfig(DWORD *pdwSpeakerConfig) {
-        if (pdwSpeakerConfig) *pdwSpeakerConfig = DSSPEAKER_STEREO;
+        if (pdwSpeakerConfig) *pdwSpeakerConfig = 4u; /* DSSPEAKER_STEREO */
         return 0;
     }
     virtual ~IDirectSound() {}
