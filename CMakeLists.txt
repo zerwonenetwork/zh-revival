@@ -611,6 +611,13 @@ if(DXSDK_LIB_DIR)
     target_link_directories(gameenginedevice PUBLIC ${DXSDK_LIB_DIR})
 endif()
 zh_target_defs(gameenginedevice)
+if(NOT MSVC)
+    # W3DMainMenu.cpp / W3DControlBar.cpp use double literals in
+    # aggregate initializers for Int (32-bit) struct fields.
+    # The narrowing is intentional screen-coordinate arithmetic;
+    # suppress the C++11 narrowing error on Clang/GCC.
+    target_compile_options(gameenginedevice PRIVATE -Wno-narrowing)
+endif()
 target_link_libraries(gameenginedevice PUBLIC
     gameengine ww3d2 wwaudio
     eabrowserdispatch compression benchmark_lib
