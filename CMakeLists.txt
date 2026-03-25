@@ -673,19 +673,36 @@ target_link_libraries(zh-revival PRIVATE
     eabrowserdispatch
     # DirectX 8 — DInput/dxguid come from the Windows SDK, D3D8/D3DX8
     # still require the legacy DXSDK path when building against the real SDK.
-    $<$<BOOL:${DXSDK_LIB_DIR}>:d3d8>
-    $<$<BOOL:${DXSDK_LIB_DIR}>:d3dx8>
-    $<$<BOOL:${DXSDK_LIB_DIR}>:dsound>
-    # Windows system libraries (always available in Windows SDK)
-    kernel32 user32 gdi32 winspool comdlg32 advapi32 shell32
-    ole32 oleaut32 uuid odbc32 odbccp32
-    winmm vfw32 wsock32 imm32 wininet
+    # All of these are Windows-only; guard every entry with WIN32.
+    $<$<AND:$<BOOL:${WIN32}>,$<BOOL:${DXSDK_LIB_DIR}>>:d3d8>
+    $<$<AND:$<BOOL:${WIN32}>,$<BOOL:${DXSDK_LIB_DIR}>>:d3dx8>
+    $<$<AND:$<BOOL:${WIN32}>,$<BOOL:${DXSDK_LIB_DIR}>>:dsound>
+    # Windows system libraries (Win32 SDK — not present on Linux/macOS)
+    $<$<BOOL:${WIN32}>:kernel32>
+    $<$<BOOL:${WIN32}>:user32>
+    $<$<BOOL:${WIN32}>:gdi32>
+    $<$<BOOL:${WIN32}>:winspool>
+    $<$<BOOL:${WIN32}>:comdlg32>
+    $<$<BOOL:${WIN32}>:advapi32>
+    $<$<BOOL:${WIN32}>:shell32>
+    $<$<BOOL:${WIN32}>:ole32>
+    $<$<BOOL:${WIN32}>:oleaut32>
+    $<$<BOOL:${WIN32}>:uuid>
+    $<$<BOOL:${WIN32}>:odbc32>
+    $<$<BOOL:${WIN32}>:odbccp32>
+    $<$<BOOL:${WIN32}>:winmm>
+    $<$<BOOL:${WIN32}>:vfw32>
+    $<$<BOOL:${WIN32}>:wsock32>
+    $<$<BOOL:${WIN32}>:imm32>
+    $<$<BOOL:${WIN32}>:wininet>
     # avifil32: AVI capture (FramGrab.cpp). MSVC only — guarded with #ifdef _MSC_VER.
-    $<$<NOT:$<CXX_COMPILER_ID:GNU>>:avifil32>
-    dbghelp   # StackDump.cpp uses Sym*/StackWalk from DbgHelp.dll
-    dinput8 dxguid
-    # comsuppw is an MSVC-specific COM support library not available in MinGW.
-    $<$<NOT:$<CXX_COMPILER_ID:GNU>>:comsuppw>
+    $<$<AND:$<BOOL:${WIN32}>,$<NOT:$<CXX_COMPILER_ID:GNU>>>:avifil32>
+    # dbghelp: StackDump.cpp uses Sym*/StackWalk from DbgHelp.dll — Windows only.
+    $<$<BOOL:${WIN32}>:dbghelp>
+    $<$<BOOL:${WIN32}>:dinput8>
+    $<$<BOOL:${WIN32}>:dxguid>
+    # comsuppw is an MSVC-specific COM support library — Windows/MSVC only.
+    $<$<AND:$<BOOL:${WIN32}>,$<NOT:$<CXX_COMPILER_ID:GNU>>>:comsuppw>
     # Proprietary audio/video .lib files
     # Present only when real SDKs are available (ZH_USE_STUBS=OFF + real libs).
     # When ZH_USE_STUBS=ON the stub headers provide inline no-ops so no .lib
