@@ -592,6 +592,14 @@ endif()
 
 # ─── GameEngineDevice  (D3D8 / audio device layer) ───
 zh_glob_sources(GAMEENGINEDEVICE_SRCS ${ZH}/GameEngineDevice/Source)
+if(NOT WIN32)
+    # Win32Device sources use DirectInput COM methods that have no POSIX
+    # equivalent.  The class declarations (Win32DIKeyboard.h etc.) are still
+    # visible via headers; the implementations are Windows-only and are never
+    # invoked on Linux / macOS builds.
+    list(FILTER GAMEENGINEDEVICE_SRCS EXCLUDE REGEX ".*/Win32Device/.*\\.cpp$")
+    list(FILTER GAMEENGINEDEVICE_SRCS EXCLUDE REGEX ".*/Win32Device/.*\\.CPP$")
+endif()
 add_library(gameenginedevice STATIC ${GAMEENGINEDEVICE_SRCS})
 target_include_directories(gameenginedevice PUBLIC
     ${ZH}/GameEngineDevice/Include

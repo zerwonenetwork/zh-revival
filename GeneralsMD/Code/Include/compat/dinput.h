@@ -179,5 +179,101 @@
 // ── GUID is already defined by compat/windows.h (force-included) ───────────
 // Do not redefine GUID here — it would cause a redefinition error.
 
+// ── DirectInput 8 interface stubs ───────────────────────────────────────────
+// Win32DIKeyboard.h and Win32DIMouse.h declare pointer-typed member variables
+// of these interface types.  Forward declarations are sufficient for pointer
+// members and pointer function parameters; the actual implementations of the
+// Win32Device .cpp files are excluded from non-Windows builds via CMake.
+
+struct DIDEVICEOBJECTDATA {
+    DWORD  dwOfs;
+    DWORD  dwData;
+    DWORD  dwTimeStamp;
+    DWORD  dwSequence;
+    UINT_PTR uAppData;
+};
+
+struct DIDEVCAPS {
+    DWORD dwSize;
+    DWORD dwFlags;
+    DWORD dwDevType;
+    DWORD dwAxes;
+    DWORD dwButtons;
+    DWORD dwPOVs;
+    DWORD dwFFSamplePeriod;
+    DWORD dwFFMinTimeResolution;
+    DWORD dwFirmwareRevision;
+    DWORD dwHardwareRevision;
+    DWORD dwFFDriverVersion;
+};
+
+struct DIPROPHEADER {
+    DWORD dwSize;
+    DWORD dwHeaderSize;
+    DWORD dwObj;
+    DWORD dwHow;
+};
+
+struct DIPROPDWORD {
+    DIPROPHEADER diph;
+    DWORD  dwData;
+};
+
+struct DIDATAFORMAT {
+    DWORD dwSize;
+    DWORD dwObjSize;
+    DWORD dwFlags;
+    DWORD dwDataSize;
+    DWORD dwNumObjs;
+    void *rgodf;
+};
+
+#ifndef DIPROP_BUFFERSIZE
+#define DIPROP_BUFFERSIZE  ((const DIPROPHEADER *)1)
+#endif
+
+// GUIDs for system devices — values don't matter for non-Windows stubs
+#ifndef GUID_SysKeyboard
+extern "C" { extern const GUID GUID_SysKeyboard; }
+#endif
+#ifndef GUID_SysMouse
+extern "C" { extern const GUID GUID_SysMouse; }
+#endif
+
+// Data formats — only the pointer address is passed to SetDataFormat
+extern "C" { extern const DIDATAFORMAT c_dfDIKeyboard; }
+extern "C" { extern const DIDATAFORMAT c_dfDIMouse; }
+
+// IDirectInputDevice8 — stub interface (methods never called on non-Windows)
+struct IDirectInputDevice8 {
+    virtual HRESULT SetDataFormat(const DIDATAFORMAT*) { return 0; }
+    virtual HRESULT SetCooperativeLevel(HWND, DWORD) { return 0; }
+    virtual HRESULT SetProperty(const DIPROPHEADER*, const DIPROPHEADER*) { return 0; }
+    virtual HRESULT Acquire() { return 0; }
+    virtual HRESULT Unacquire() { return 0; }
+    virtual ULONG   Release() { return 0; }
+    virtual HRESULT GetCapabilities(DIDEVCAPS*) { return 0; }
+    virtual HRESULT GetDeviceData(DWORD, DIDEVICEOBJECTDATA*, DWORD*, DWORD) { return 0; }
+    virtual HRESULT GetDeviceState(DWORD, void*) { return 0; }
+    virtual ~IDirectInputDevice8() {}
+};
+typedef IDirectInputDevice8 *LPDIRECTINPUTDEVICE8;
+
+// IDirectInput8 — stub interface
+struct IDirectInput8 {
+    virtual HRESULT CreateDevice(const GUID&, IDirectInputDevice8**, void*) { return 0; }
+    virtual ULONG   Release() { return 0; }
+    virtual ~IDirectInput8() {}
+};
+typedef IDirectInput8 *LPDIRECTINPUT8;
+
+// DirectInput8Create stub — never called on non-Windows
+static inline HRESULT DirectInput8Create(HINSTANCE, DWORD, const GUID&,
+                                          void **ppvOut, void *)
+{
+    if (ppvOut) *ppvOut = nullptr;
+    return 0;
+}
+
 #endif // !_WIN32
 #endif // ZH_COMPAT_DINPUT_H
