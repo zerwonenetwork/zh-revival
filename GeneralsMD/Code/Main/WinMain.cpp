@@ -893,6 +893,9 @@ void checkProtection(void)
 // strtrim ====================================================================
 /** Trim leading and trailing whitespace from a character string (in place). */
 //=============================================================================
+#ifdef _WIN32
+// On non-Windows, strtrim is provided by WWLib/trim.cpp (trim.h is in scope
+// via the include chain, and defining a static version here would conflict).
 static char* strtrim(char* buffer)
 {
 	if (buffer != NULL) {
@@ -924,6 +927,7 @@ static char* strtrim(char* buffer)
 
 	return buffer;
 }
+#endif // _WIN32
 
 char *nextParam(char *newSource, const char *seps)
 {
