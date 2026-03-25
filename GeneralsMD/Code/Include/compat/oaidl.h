@@ -63,7 +63,7 @@ typedef struct tagEXCEPINFO {
 
 struct ITypeInfo;
 
-typedef struct IDispatch : public IUnknown {
+struct IDispatch : public IUnknown {
     virtual HRESULT STDMETHODCALLTYPE GetTypeInfoCount(UINT* pctinfo) = 0;
     virtual HRESULT STDMETHODCALLTYPE GetTypeInfo(UINT iTInfo, LCID lcid, ITypeInfo** ppTInfo) = 0;
     virtual HRESULT STDMETHODCALLTYPE GetIDsOfNames(REFIID riid, OLECHAR** rgszNames,
@@ -71,7 +71,7 @@ typedef struct IDispatch : public IUnknown {
     virtual HRESULT STDMETHODCALLTYPE Invoke(DISPID dispIdMember, REFIID riid, LCID lcid, WORD wFlags,
                                              DISPPARAMS* pDispParams, VARIANT* pVarResult,
                                              EXCEPINFO* pExcepInfo, UINT* puArgErr) = 0;
-} IDispatch;
+};
 
 static const IID IID_NULL = { 0, 0, 0, { 0, 0, 0, 0, 0, 0, 0, 0 } };
 
