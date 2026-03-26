@@ -174,6 +174,7 @@ extern HINSTANCE ApplicationHInstance;  ///< our application instance
 #if defined(_MSC_VER) && !defined(__GNUC__)
 extern CComModule _Module;
 #endif
+extern void AppendStartupTrace( const char *format, ... );
 
 //-------------------------------------------------------------------------------------------------
 static void updateTGAtoDDS();
@@ -260,7 +261,12 @@ void GameEngine::init( int argc, char *argv[] )
 {
 	// Track which subsystem is being initialized so crash messages name the failing subsystem.
 	static char s_initStage[256] = "pre-init";
-#define INIT_STAGE(name) strncpy(s_initStage, (name), sizeof(s_initStage)-1)
+#define INIT_STAGE(name) \
+	do { \
+		strncpy(s_initStage, (name), sizeof(s_initStage)-1); \
+		s_initStage[sizeof(s_initStage)-1] = '\0'; \
+		AppendStartupTrace("GameEngine::init stage=%s", s_initStage); \
+	} while (0)
 
 	try {
 		//create an INI object to use for loading stuff
@@ -312,9 +318,11 @@ void GameEngine::init( int argc, char *argv[] )
 
 		// initialize the random number system
 		InitRandom();
+		AppendStartupTrace("GameEngine::init after InitRandom");
 
 		// Create the low-level file system interface
 		TheFileSystem = createFileSystem();
+		AppendStartupTrace("GameEngine::init after createFileSystem");
 
 		//Kris: Patch 1.01 - November 17, 2003
 		//I was unable to resolve the RTPatch method of deleting a shipped file. English, Chinese, and Korean
@@ -325,6 +333,7 @@ void GameEngine::init( int argc, char *argv[] )
 		// not part of the subsystem list, because it should normally never be reset!
 		TheNameKeyGenerator = MSGNEW("GameEngineSubsystem") NameKeyGenerator;
 		TheNameKeyGenerator->init();
+		AppendStartupTrace("GameEngine::init after TheNameKeyGenerator");
 
 
     	#ifdef DUMP_PERF_STATS///////////////////////////////////////////////////////////////////////////
@@ -338,6 +347,7 @@ void GameEngine::init( int argc, char *argv[] )
 		// not part of the subsystem list, because it should normally never be reset!
 		TheCommandList = MSGNEW("GameEngineSubsystem") CommandList;
 		TheCommandList->init();
+		AppendStartupTrace("GameEngine::init after TheCommandList");
 
     	#ifdef DUMP_PERF_STATS///////////////////////////////////////////////////////////////////////////
 	GetPrecisionTimer(&endTime64);//////////////////////////////////////////////////////////////////
@@ -349,6 +359,7 @@ void GameEngine::init( int argc, char *argv[] )
 
 		XferCRC xferCRC;
 		xferCRC.open("lightCRC");
+		AppendStartupTrace("GameEngine::init after XferCRC open");
 
 
 		INIT_STAGE("TheLocalFileSystem");
@@ -394,10 +405,12 @@ void GameEngine::init( int argc, char *argv[] )
 		
 		// special-case: parse command-line parameters after loading global data
 		parseCommandLine(argc, argv);
+		AppendStartupTrace("GameEngine::init after parseCommandLine");
 
 		// doesn't require resets so just create a single instance here.
 		TheGameLODManager = MSGNEW("GameEngineSubsystem") GameLODManager;
 		TheGameLODManager->init();
+		AppendStartupTrace("GameEngine::init after TheGameLODManager");
 		
 		// after parsing the command line, we may want to perform dds stuff. Do that here.
 		if (TheGlobalData->m_shouldUpdateTGAToDDS) {
@@ -572,8 +585,10 @@ void GameEngine::init( int argc, char *argv[] )
 		DEBUG_LOG(("INI CRC is 0x%8.8X\n", TheGlobalData->m_iniCRC));
 
 		TheSubsystemList->postProcessLoadAll();
+		AppendStartupTrace("GameEngine::init after postProcessLoadAll");
 
 		setFramesPerSecondLimit(TheGlobalData->m_framesPerSecondLimit);
+		AppendStartupTrace("GameEngine::init after setFramesPerSecondLimit");
 
 		TheAudio->setOn(TheGlobalData->m_audioOn && TheGlobalData->m_musicOn, AudioAffect_Music);
 		TheAudio->setOn(TheGlobalData->m_audioOn && TheGlobalData->m_soundsOn, AudioAffect_Sound);
@@ -622,6 +637,7 @@ void GameEngine::init( int argc, char *argv[] )
 		// initialize the MapCache
 		TheMapCache = MSGNEW("GameEngineSubsystem") MapCache;
 		TheMapCache->updateCache();
+		AppendStartupTrace("GameEngine::init after TheMapCache->updateCache");
 
 
 	#ifdef DUMP_PERF_STATS///////////////////////////////////////////////////////////////////////////
@@ -685,6 +701,7 @@ void GameEngine::init( int argc, char *argv[] )
 
 		if(!TheGlobalData->m_playIntro)
 			TheWritableGlobalData->m_afterIntro = TRUE;
+		AppendStartupTrace("GameEngine::init end of try");
 
 		//initDisabledMasks();
 		
