@@ -62,48 +62,76 @@ void MissingTexture::_Init()
 {
 	WWASSERT(!_MissingTexture);
 
-	IDirect3DTexture8* tex=DX8Wrapper::_Create_DX8_Texture
-	(
+	IDirect3DTexture8 *tex = NULL;
+	HRESULT create_result = DX8Wrapper::_Get_D3D_Device8()->CreateTexture(
 		missing_image_width,
 		missing_image_height,
-		WW3D_FORMAT_A8R8G8B8,
-		MIP_LEVELS_ALL
-	);
+		0,
+		0,
+		D3DFMT_A8R8G8B8,
+		D3DPOOL_MANAGED,
+		&tex);
+
+	if (FAILED(create_result) || !tex) {
+		WWDEBUG_SAY(("MissingTexture::_Init: CreateTexture failed (hr=0x%08X), falling back to helper path\n", create_result));
+		tex = DX8Wrapper::_Create_DX8_Texture(
+			missing_image_width,
+			missing_image_height,
+			WW3D_FORMAT_A8R8G8B8,
+			MIP_LEVELS_ALL);
+	}
+
+	if (!tex) {
+		WWDEBUG_SAY(("MissingTexture::_Init: unable to create fallback texture\n"));
+		return;
+	}
 
 	D3DLOCKED_RECT locked_rect;
+	::ZeroMemory(&locked_rect, sizeof(locked_rect));
 	RECT rect;
 	rect.left=0;
 	rect.right=missing_image_width;
 	rect.top=0;
 	rect.bottom=missing_image_height;
-	DX8_ErrorCode(
-		tex->LockRect(
-			0,
-			&locked_rect,
-			&rect,
-			0));
+	HRESULT lock_result = tex->LockRect(
+		0,
+		&locked_rect,
+		&rect,
+		0);
 
-	unsigned *buffer=(unsigned*)locked_rect.pBits;
-	unsigned char *pixels=(unsigned char *)missing_image_pixels;
-	for (unsigned y=0;y<missing_image_height;y++)
-	{
-		for (unsigned x=0; x<missing_image_width; x++)
+	if (SUCCEEDED(lock_result) && locked_rect.pBits) {
+		for (unsigned y = 0; y < missing_image_height; ++y)
 		{
-			//*buffer++=missing_image_palette[*pixels++];
-			*buffer++=0x7FFF00FF;
-		}
-		buffer=(unsigned*)locked_rect.pBits;
-		buffer+=locked_rect.Pitch/sizeof(unsigned)*y;
-	}
+			unsigned *buffer = (unsigned *)locked_rect.pBits;
+			buffer += (locked_rect.Pitch / sizeof(unsigned)) * y;
 
-	DX8_ErrorCode(tex->UnlockRect(0));
+			for (unsigned x = 0; x < missing_image_width; ++x)
+			{
+				//*buffer++=missing_image_palette[*pixels++];
+				*buffer++ = 0x7FFF00FF;
+			}
+		}
+
+		DX8_ErrorCode(tex->UnlockRect(0));
+	} else {
+		WWDEBUG_SAY(("MissingTexture::_Init: LockRect failed (hr=0x%08X), continuing with uninitialized placeholder texture\n", lock_result));
+	}
 
 	for (unsigned i=1;i<tex->GetLevelCount();++i) {
 		IDirect3DSurface8 *src,*dst;
-		DX8_ErrorCode(tex->GetSurfaceLevel(i-1,&src));
-		DX8_ErrorCode(tex->GetSurfaceLevel(i,&dst));
+		src = NULL;
+		dst = NULL;
+		if (FAILED(tex->GetSurfaceLevel(i-1,&src)) || FAILED(tex->GetSurfaceLevel(i,&dst)) || !src || !dst) {
+			if (src) {
+				src->Release();
+			}
+			if (dst) {
+				dst->Release();
+			}
+			break;
+		}
 
-		DX8_ErrorCode(D3DXLoadSurfaceFromSurface(
+		HRESULT mip_result = D3DXLoadSurfaceFromSurface(
 			dst,
 			NULL,	// palette
 			NULL,	// rect
@@ -111,10 +139,15 @@ void MissingTexture::_Init()
 			NULL,	// palette
 			NULL,	// rect
 			D3DX_FILTER_BOX,	// box is good for 2:1 filtering
-			0));
+			0);
 
 		src->Release();
 		dst->Release();
+
+		if (FAILED(mip_result)) {
+			WWDEBUG_SAY(("MissingTexture::_Init: D3DXLoadSurfaceFromSurface failed at mip %u (hr=0x%08X)\n", i, mip_result));
+			break;
+		}
 	}
 
 	_MissingTexture=tex;
