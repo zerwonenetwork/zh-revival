@@ -28,6 +28,8 @@
 
 #include "Common/SubsystemInterface.h"
 #include "Common/Xfer.h"
+#include "Common/INI.h"
+#include <stdio.h>
 
 #ifdef _INTERNAL
 // for occasional debugging...
@@ -162,12 +164,34 @@ void SubsystemInterfaceList::initSubsystem(SubsystemInterface* sys, const char* 
 	sys->init();
 
 	INI ini;
+	auto iniLoadSafe = [&](const char* iniPath) {
+		// Wrap ini.load() to convert anonymous INI enum exceptions (INI_CANT_OPEN_FILE etc.)
+		// to INIException, which GameEngine.cpp's catch chain can handle with a useful message.
+		try {
+			ini.load(iniPath, INI_LOAD_OVERWRITE, pXfer);
+		} catch (INIException&) {
+			throw;
+		} catch (...) {
+			char buf[512];
+			snprintf(buf, sizeof(buf), "Failed to load required INI file '%s'", iniPath);
+			throw INIException(buf);
+		}
+	};
 	if (path1)
-		ini.load(path1, INI_LOAD_OVERWRITE, pXfer );
+		iniLoadSafe(path1);
 	if (path2)
-		ini.load(path2, INI_LOAD_OVERWRITE, pXfer );
-	if (dirpath)
-		ini.loadDirectory(dirpath, TRUE, INI_LOAD_OVERWRITE, pXfer );
+		iniLoadSafe(path2);
+	if (dirpath) {
+		try {
+			ini.loadDirectory(dirpath, TRUE, INI_LOAD_OVERWRITE, pXfer);
+		} catch (INIException&) {
+			throw;
+		} catch (...) {
+			char buf[512];
+			snprintf(buf, sizeof(buf), "Failed to load required INI directory '%s'", dirpath);
+			throw INIException(buf);
+		}
+	}
 
 	m_subsystems.push_back(sys);
 }

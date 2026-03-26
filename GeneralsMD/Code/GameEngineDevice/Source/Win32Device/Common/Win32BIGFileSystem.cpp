@@ -52,25 +52,31 @@ Win32BIGFileSystem::Win32BIGFileSystem() : ArchiveFileSystem() {
 Win32BIGFileSystem::~Win32BIGFileSystem() {
 }
 
+extern void AppendStartupTrace(const char *format, ...);
+
 void Win32BIGFileSystem::init() {
 	DEBUG_ASSERTCRASH(TheLocalFileSystem != NULL, ("TheLocalFileSystem must be initialized before TheArchiveFileSystem."));
 	if (TheLocalFileSystem == NULL) {
 		return;
 	}
 
-	loadBigFilesFromDirectory("", "*.big");
+	Bool curDirLoaded = loadBigFilesFromDirectory("", "*.big");
+	AppendStartupTrace("BIGFileSystem: current-dir scan loaded=%d", (int)curDirLoaded);
 
     // load original Generals assets
     AsciiString installPath;
     GetStringFromGeneralsRegistry("", "InstallPath", installPath );
+	AppendStartupTrace("BIGFileSystem: GeneralsRegistry InstallPath='%s'", installPath.str());
     //@todo this will need to be ramped up to a crash for release
 #ifndef _INTERNAL
     // had to make this non-internal only, otherwise we can't autobuild
     // GeneralsZH...
     DEBUG_ASSERTCRASH(installPath != "", ("Be 1337! Go install Generals!"));
 #endif
-    if (installPath!="")
-      loadBigFilesFromDirectory(installPath, "*.big");
+    if (installPath!="") {
+      Bool installLoaded = loadBigFilesFromDirectory(installPath, "*.big");
+	  AppendStartupTrace("BIGFileSystem: installPath scan loaded=%d", (int)installLoaded);
+    }
 }
 
 void Win32BIGFileSystem::reset() {
