@@ -1,4 +1,4 @@
-// d3d8.h — minimal stub header for Direct3D 8
+﻿// d3d8.h â€” minimal stub header for Direct3D 8
 //
 // This project can be built in "stub mode" without the legacy DirectX 8 SDK.
 // The real D3D8 headers (d3d8.h / d3dx8.h) are not shipped with modern Windows SDKs.
@@ -107,7 +107,7 @@ typedef struct _D3DCAPS8 {
   DWORD PixelShaderVersion;
   float MaxPixelShaderValue;
   float MaxPointSize;
-  // Texture filter capabilities — used by TextureFilterClass
+  // Texture filter capabilities â€” used by TextureFilterClass
   DWORD TextureFilterCaps;
   DWORD MaxAnisotropy;
   // Volume texture capability
@@ -521,7 +521,7 @@ typedef DWORD D3DCOLOR;
 #define D3DDMT_ENABLE               0
 #define D3DDMT_DISABLE              1
 
-// D3DTS_TEXTURE0..7 — texture transform state indices
+// D3DTS_TEXTURE0..7 â€” texture transform state indices
 #define D3DTS_TEXTURE0   16
 #define D3DTS_TEXTURE1   17
 #define D3DTS_TEXTURE2   18
@@ -750,6 +750,18 @@ typedef DWORD D3DCOLOR;
 #include "D3DXMath.h"
 #endif
 
+// COM calling convention: D3D8 interfaces use __stdcall on Windows.
+// MinGW GCC also supports __stdcall.  On native Linux/macOS builds
+// (where D3D8 is never actually called at runtime) define it away.
+#if defined(_WIN32) || defined(__MINGW32__) || defined(__MINGW64__)
+#  define D3D8CC __stdcall
+#else
+#  ifndef __stdcall
+#    define __stdcall   // keep any code that uses __stdcall explicitly from breaking
+#  endif
+#  define D3D8CC
+#endif
+
 // Forward declarations needed for cross-references
 struct D3DXVECTOR4;
 struct IDirect3DSurface8;
@@ -773,136 +785,226 @@ typedef IDirect3DSwapChain8* LPDIRECT3DSWAPCHAIN8;
 typedef IDirect3DDevice8* LPDIRECT3DDEVICE8;
 typedef IDirect3D8* LPDIRECT3D8;
 
-struct IDirect3DBaseTexture8 {
-  virtual ULONG AddRef() = 0;
-  virtual ULONG Release() = 0;
-  virtual DWORD SetLOD(DWORD LODNew) = 0;
-  virtual DWORD GetLevelCount() = 0;
-  virtual DWORD GetPriority() = 0;
-  virtual DWORD SetPriority(DWORD Priority) = 0;
+// -----------------------------------------------------------------------
+// COM vtable layout: every D3D8 interface is a COM interface.
+// The vtable MUST start with QueryInterface / AddRef / Release (IUnknown),
+// followed by the interface's own methods in exactly the order the real
+// D3D8.DLL (and any wrapper such as dxwrapper/d3d8to9/DXVK) exposes them.
+// Wrong ordering â†’ every call dispatches to the wrong vtable slot â†’ crash.
+// -----------------------------------------------------------------------
+
+// IUnknown_D3D8: minimal base so we don't pull in objbase.h
+struct IUnknown_D3D8 {
+  virtual HRESULT D3D8CC QueryInterface(const GUID& riid, void** ppvObject) = 0;
+  virtual ULONG D3D8CC   AddRef()   = 0;
+  virtual ULONG D3D8CC   Release()  = 0;
 };
 
+// IDirect3DResource8 (common base for textures and buffers)
+// Vtable slots 0-2: IUnknown; 3-10: resource methods
+struct IDirect3DResource8 : public IUnknown_D3D8 {
+  virtual HRESULT D3D8CC GetDevice(IDirect3DDevice8** ppDevice) = 0;                                         // 3
+  virtual HRESULT D3D8CC SetPrivateData(const GUID&, const void*, DWORD, DWORD) = 0;                         // 4
+  virtual HRESULT D3D8CC GetPrivateData(const GUID&, void*, DWORD*) = 0;                                     // 5
+  virtual HRESULT D3D8CC FreePrivateData(const GUID&) = 0;                                                   // 6
+  virtual DWORD D3D8CC   SetPriority(DWORD PriorityNew) = 0;                                                 // 7
+  virtual DWORD D3D8CC   GetPriority() = 0;                                                                  // 8
+  virtual void D3D8CC    PreLoad() = 0;                                                                       // 9
+  virtual DWORD D3D8CC   GetType() = 0;  // returns D3DRESOURCETYPE                                          // 10
+};
+
+// IDirect3DBaseTexture8
+// Vtable slots 0-10: IDirect3DResource8; 11-13: base-texture methods
+struct IDirect3DBaseTexture8 : public IDirect3DResource8 {
+  virtual DWORD D3D8CC SetLOD(DWORD LODNew) = 0;                                                             // 11
+  virtual DWORD D3D8CC GetLOD() = 0;                                                                         // 12
+  virtual DWORD D3D8CC GetLevelCount() = 0;                                                                  // 13
+};
+
+// IDirect3DTexture8
+// Vtable slots 0-13: IDirect3DBaseTexture8; 14-18: texture-specific methods
 struct IDirect3DTexture8 : public IDirect3DBaseTexture8 {
-  virtual HRESULT GetSurfaceLevel(UINT, IDirect3DSurface8**) = 0;
-  virtual HRESULT GetLevelDesc(UINT, D3DSURFACE_DESC*) = 0;
-  virtual HRESULT LockRect(UINT, D3DLOCKED_RECT*, const RECT*, DWORD) = 0;
-  virtual HRESULT UnlockRect(UINT) = 0;
+  virtual HRESULT D3D8CC GetLevelDesc(UINT Level, D3DSURFACE_DESC* pDesc) = 0;                              // 14
+  virtual HRESULT D3D8CC GetSurfaceLevel(UINT Level, IDirect3DSurface8** ppSurfaceLevel) = 0;               // 15
+  virtual HRESULT D3D8CC LockRect(UINT Level, D3DLOCKED_RECT* pLockedRect, const RECT* pRect, DWORD Flags) = 0; // 16
+  virtual HRESULT D3D8CC UnlockRect(UINT Level) = 0;                                                        // 17
+  virtual HRESULT D3D8CC AddDirtyRect(const RECT* pDirtyRect) = 0;                                         // 18
 };
 
+// IDirect3DCubeTexture8
+// Vtable slots 0-13: IDirect3DBaseTexture8; 14-18: cube-texture-specific methods
 struct IDirect3DCubeTexture8 : public IDirect3DBaseTexture8 {
-  virtual HRESULT GetLevelDesc(UINT Level, D3DSURFACE_DESC* pDesc) = 0;
-  virtual HRESULT LockRect(D3DCUBEMAP_FACE Face, UINT Level, D3DLOCKED_RECT* pLockedRect, const RECT* pRect, DWORD Flags) = 0;
-  virtual HRESULT UnlockRect(D3DCUBEMAP_FACE Face, UINT Level) = 0;
+  virtual HRESULT D3D8CC GetLevelDesc(UINT Level, D3DSURFACE_DESC* pDesc) = 0;                              // 14
+  virtual HRESULT D3D8CC GetCubeMapSurface(D3DCUBEMAP_FACE FaceType, UINT Level, IDirect3DSurface8** ppSurface) = 0; // 15
+  virtual HRESULT D3D8CC LockRect(D3DCUBEMAP_FACE FaceType, UINT Level, D3DLOCKED_RECT* pLockedRect, const RECT* pRect, DWORD Flags) = 0; // 16
+  virtual HRESULT D3D8CC UnlockRect(D3DCUBEMAP_FACE FaceType, UINT Level) = 0;                             // 17
+  virtual HRESULT D3D8CC AddDirtyRect(D3DCUBEMAP_FACE FaceType, const RECT* pDirtyRect) = 0;               // 18
 };
 
+// IDirect3DVolumeTexture8
+// Vtable slots 0-13: IDirect3DBaseTexture8; 14-18: volume-texture-specific methods
 struct IDirect3DVolumeTexture8 : public IDirect3DBaseTexture8 {
-  virtual HRESULT GetLevelDesc(UINT Level, D3DVOLUME_DESC* pDesc) = 0;
-  virtual HRESULT LockBox(UINT Level, D3DLOCKED_BOX* pLockedVolume, const void* pBox, DWORD Flags) = 0;
-  virtual HRESULT UnlockBox(UINT Level) = 0;
+  virtual HRESULT D3D8CC GetLevelDesc(UINT Level, D3DVOLUME_DESC* pDesc) = 0;                              // 14
+  virtual HRESULT D3D8CC GetVolumeLevel(UINT Level, void** ppVolumeLevel) = 0;                             // 15
+  virtual HRESULT D3D8CC LockBox(UINT Level, D3DLOCKED_BOX* pLockedVolume, const void* pBox, DWORD Flags) = 0; // 16
+  virtual HRESULT D3D8CC UnlockBox(UINT Level) = 0;                                                        // 17
+  virtual HRESULT D3D8CC AddDirtyBox(const void* pDirtyBox) = 0;                                          // 18
 };
 
-struct IDirect3DSurface8 {
-  virtual ULONG AddRef() = 0;
-  virtual ULONG Release() = 0;
-  virtual HRESULT GetDesc(void*) = 0;
-  virtual HRESULT LockRect(void*, const RECT*, DWORD) = 0;
-  virtual HRESULT UnlockRect() = 0;
+// IDirect3DSurface8
+// Vtable slots 0-2: IUnknown; 3-10: surface methods
+struct IDirect3DSurface8 : public IUnknown_D3D8 {
+  virtual HRESULT D3D8CC GetDevice(IDirect3DDevice8** ppDevice) = 0;                                        // 3
+  virtual HRESULT D3D8CC SetPrivateData(const GUID&, const void*, DWORD, DWORD) = 0;                        // 4
+  virtual HRESULT D3D8CC GetPrivateData(const GUID&, void*, DWORD*) = 0;                                    // 5
+  virtual HRESULT D3D8CC FreePrivateData(const GUID&) = 0;                                                  // 6
+  virtual HRESULT D3D8CC GetContainer(const GUID& riid, void** ppContainer) = 0;                            // 7
+  virtual HRESULT D3D8CC GetDesc(D3DSURFACE_DESC* pDesc) = 0;                                              // 8
+  virtual HRESULT D3D8CC LockRect(D3DLOCKED_RECT* pLockedRect, const RECT* pRect, DWORD Flags) = 0;        // 9
+  virtual HRESULT D3D8CC UnlockRect() = 0;                                                                  // 10
 };
 
-struct IDirect3DVertexBuffer8 {
-  virtual ULONG AddRef() = 0;
-  virtual ULONG Release() = 0;
-  virtual HRESULT Lock(UINT, UINT, BYTE**, DWORD) = 0;
-  virtual HRESULT Unlock() = 0;
+// IDirect3DVertexBuffer8
+// Vtable slots 0-10: IDirect3DResource8; 11-13: buffer methods
+struct IDirect3DVertexBuffer8 : public IDirect3DResource8 {
+  virtual HRESULT D3D8CC Lock(UINT OffsetToLock, UINT SizeToLock, BYTE** ppbData, DWORD Flags) = 0;       // 11
+  virtual HRESULT D3D8CC Unlock() = 0;                                                                      // 12
+  virtual HRESULT D3D8CC GetDesc(void* pDesc) = 0;  // D3DVERTEXBUFFER_DESC*                               // 13
 };
 
-struct IDirect3DIndexBuffer8 {
-  virtual ULONG AddRef() = 0;
-  virtual ULONG Release() = 0;
-  virtual HRESULT Lock(UINT, UINT, BYTE**, DWORD) = 0;
-  virtual HRESULT Unlock() = 0;
+// IDirect3DIndexBuffer8
+// Vtable slots 0-10: IDirect3DResource8; 11-13: buffer methods
+struct IDirect3DIndexBuffer8 : public IDirect3DResource8 {
+  virtual HRESULT D3D8CC Lock(UINT OffsetToLock, UINT SizeToLock, BYTE** ppbData, DWORD Flags) = 0;       // 11
+  virtual HRESULT D3D8CC Unlock() = 0;                                                                      // 12
+  virtual HRESULT D3D8CC GetDesc(void* pDesc) = 0;  // D3DINDEXBUFFER_DESC*                                // 13
 };
 
-struct IDirect3DSwapChain8 {
-  virtual ULONG AddRef() = 0;
-  virtual ULONG Release() = 0;
-  virtual HRESULT GetBackBuffer(UINT, D3DBACKBUFFER_TYPE, IDirect3DSurface8**) = 0;
+// IDirect3DSwapChain8
+// Vtable slots 0-2: IUnknown; 3-4: swap chain methods
+struct IDirect3DSwapChain8 : public IUnknown_D3D8 {
+  virtual HRESULT D3D8CC Present(const RECT*, const RECT*, HWND, const void*) = 0;                        // 3
+  virtual HRESULT D3D8CC GetBackBuffer(UINT BackBuffer, D3DBACKBUFFER_TYPE Type, IDirect3DSurface8** ppBackBuffer) = 0; // 4
 };
 
-struct IDirect3DDevice8 {
-  virtual HRESULT TestCooperativeLevel() = 0;
-  virtual HRESULT Reset(D3DPRESENT_PARAMETERS*) = 0;
-  virtual HRESULT Present(const void*, const void*, void*, const void*) = 0;
-  virtual HRESULT SetVertexShader(DWORD) = 0;
-  virtual HRESULT SetPixelShader(DWORD) = 0;
-  virtual HRESULT SetVertexShaderConstant(DWORD, const void*, DWORD) = 0;
-  virtual HRESULT SetPixelShaderConstant(DWORD, const void*, DWORD) = 0;
+// IDirect3DDevice8 â€” 97 vtable slots (0-2 IUnknown, 3-96 device methods)
+// Every slot must appear in exactly this order to match the real COM vtable.
+struct IDirect3DDevice8 : public IUnknown_D3D8 {
+  virtual HRESULT D3D8CC TestCooperativeLevel() = 0;                                                        // 3
+  virtual UINT D3D8CC    GetAvailableTextureMem() = 0;                                                      // 4
+  virtual HRESULT D3D8CC ResourceManagerDiscardBytes(DWORD Bytes) = 0;                                      // 5
+  virtual HRESULT D3D8CC GetDirect3D(IDirect3D8** ppD3D8) = 0;                                             // 6
+  virtual HRESULT D3D8CC GetDeviceCaps(D3DCAPS8* pCaps) = 0;                                               // 7
+  virtual HRESULT D3D8CC GetDisplayMode(D3DDISPLAYMODE* pMode) = 0;                                        // 8
+  virtual HRESULT D3D8CC GetCreationParameters(void* pParameters) = 0;                                     // 9
+  virtual HRESULT D3D8CC SetCursorProperties(UINT XHotSpot, UINT YHotSpot, IDirect3DSurface8* pCursorBitmap) = 0; // 10
+  virtual void D3D8CC    SetCursorPosition(int X, int Y, DWORD Flags) = 0;                                 // 11
+  virtual BOOL D3D8CC    ShowCursor(BOOL bShow) = 0;                                                        // 12
+  virtual HRESULT D3D8CC CreateAdditionalSwapChain(D3DPRESENT_PARAMETERS* pPP, IDirect3DSwapChain8** ppSwapChain) = 0; // 13
+  virtual HRESULT D3D8CC Reset(D3DPRESENT_PARAMETERS* pPresentationParameters) = 0;                        // 14
+  virtual HRESULT D3D8CC Present(const RECT* pSourceRect, const RECT* pDestRect, HWND hDestWindowOverride, const void* pDirtyRegion) = 0; // 15
+  virtual HRESULT D3D8CC GetBackBuffer(UINT BackBuffer, D3DBACKBUFFER_TYPE Type, IDirect3DSurface8** ppBackBuffer) = 0; // 16
+  virtual HRESULT D3D8CC GetRasterStatus(void* pRasterStatus) = 0;                                         // 17
+  virtual void D3D8CC    SetGammaRamp(DWORD Flags, const D3DGAMMARAMP* pRamp) = 0;                         // 18
+  virtual void D3D8CC    GetGammaRamp(D3DGAMMARAMP* pRamp) = 0;                                            // 19
+  virtual HRESULT D3D8CC CreateTexture(UINT Width, UINT Height, UINT Levels, DWORD Usage, D3DFORMAT Format, D3DPOOL Pool, IDirect3DTexture8** ppTexture) = 0; // 20
+  virtual HRESULT D3D8CC CreateVolumeTexture(UINT Width, UINT Height, UINT Depth, UINT Levels, DWORD Usage, D3DFORMAT Format, D3DPOOL Pool, IDirect3DVolumeTexture8** ppVolumeTexture) = 0; // 21
+  virtual HRESULT D3D8CC CreateCubeTexture(UINT EdgeLength, UINT Levels, DWORD Usage, D3DFORMAT Format, D3DPOOL Pool, IDirect3DCubeTexture8** ppCubeTexture) = 0; // 22
+  virtual HRESULT D3D8CC CreateVertexBuffer(UINT Length, DWORD Usage, DWORD FVF, D3DPOOL Pool, IDirect3DVertexBuffer8** ppVertexBuffer) = 0; // 23
+  virtual HRESULT D3D8CC CreateIndexBuffer(UINT Length, DWORD Usage, D3DFORMAT Format, D3DPOOL Pool, IDirect3DIndexBuffer8** ppIndexBuffer) = 0; // 24
+  virtual HRESULT D3D8CC CreateRenderTarget(UINT Width, UINT Height, D3DFORMAT Format, DWORD MultiSample, BOOL Lockable, IDirect3DSurface8** ppSurface) = 0; // 25
+  virtual HRESULT D3D8CC CreateDepthStencilSurface(UINT Width, UINT Height, D3DFORMAT Format, DWORD MultiSample, IDirect3DSurface8** ppSurface) = 0; // 26
+  virtual HRESULT D3D8CC CreateImageSurface(UINT Width, UINT Height, D3DFORMAT Format, IDirect3DSurface8** ppSurface) = 0; // 27
+  virtual HRESULT D3D8CC CopyRects(IDirect3DSurface8* pSourceSurface, const RECT* pSourceRectsArray, UINT cRects, IDirect3DSurface8* pDestSurface, const POINT* pDestPointsArray) = 0; // 28
+  virtual HRESULT D3D8CC UpdateTexture(IDirect3DBaseTexture8* pSourceTexture, IDirect3DBaseTexture8* pDestinationTexture) = 0; // 29
+  virtual HRESULT D3D8CC GetFrontBuffer(IDirect3DSurface8* pDestSurface) = 0;                              // 30
+  virtual HRESULT D3D8CC SetRenderTarget(IDirect3DSurface8* pRenderTarget, IDirect3DSurface8* pNewZStencil) = 0; // 31
+  virtual HRESULT D3D8CC GetRenderTarget(IDirect3DSurface8** ppRenderTarget) = 0;                          // 32
+  virtual HRESULT D3D8CC GetDepthStencilSurface(IDirect3DSurface8** ppZStencilSurface) = 0;               // 33
+  virtual HRESULT D3D8CC BeginScene() = 0;                                                                  // 34
+  virtual HRESULT D3D8CC EndScene() = 0;                                                                    // 35
+  virtual HRESULT D3D8CC Clear(DWORD Count, const void* pRects, DWORD Flags, DWORD Color, float Z, DWORD Stencil) = 0; // 36
+  virtual HRESULT D3D8CC SetTransform(D3DTRANSFORMSTATETYPE State, const D3DMATRIX* pMatrix) = 0;          // 37
+  virtual HRESULT D3D8CC GetTransform(D3DTRANSFORMSTATETYPE State, D3DMATRIX* pMatrix) = 0;                // 38
+  virtual HRESULT D3D8CC MultiplyTransform(D3DTRANSFORMSTATETYPE State, const D3DMATRIX* pMatrix) = 0;     // 39
+  virtual HRESULT D3D8CC SetViewport(const D3DVIEWPORT8* pViewport) = 0;                                   // 40
+  virtual HRESULT D3D8CC GetViewport(D3DVIEWPORT8* pViewport) = 0;                                        // 41
+  virtual HRESULT D3D8CC SetMaterial(const D3DMATERIAL8* pMaterial) = 0;                                  // 42
+  virtual HRESULT D3D8CC GetMaterial(D3DMATERIAL8* pMaterial) = 0;                                        // 43
+  virtual HRESULT D3D8CC SetLight(DWORD Index, const D3DLIGHT8* pLight) = 0;                              // 44
+  virtual HRESULT D3D8CC GetLight(DWORD Index, D3DLIGHT8* pLight) = 0;                                    // 45
+  virtual HRESULT D3D8CC LightEnable(DWORD Index, BOOL Enable) = 0;                                       // 46
+  virtual HRESULT D3D8CC GetLightEnable(DWORD Index, BOOL* pEnable) = 0;                                  // 47
+  virtual HRESULT D3D8CC SetClipPlane(DWORD Index, const float* pPlane) = 0;                              // 48
+  virtual HRESULT D3D8CC GetClipPlane(DWORD Index, float* pPlane) = 0;                                    // 49
+  virtual HRESULT D3D8CC SetRenderState(D3DRENDERSTATETYPE State, DWORD Value) = 0;                       // 50
+  virtual HRESULT D3D8CC GetRenderState(D3DRENDERSTATETYPE State, DWORD* pValue) = 0;                     // 51
+  virtual HRESULT D3D8CC BeginStateBlock() = 0;                                                            // 52
+  virtual HRESULT D3D8CC EndStateBlock(DWORD* pToken) = 0;                                                 // 53
+  virtual HRESULT D3D8CC ApplyStateBlock(DWORD Token) = 0;                                                 // 54
+  virtual HRESULT D3D8CC CaptureStateBlock(DWORD Token) = 0;                                              // 55
+  virtual HRESULT D3D8CC DeleteStateBlock(DWORD Token) = 0;                                               // 56
+  virtual HRESULT D3D8CC CreateStateBlock(DWORD Type, DWORD* pToken) = 0;                                 // 57
+  virtual HRESULT D3D8CC SetClipStatus(const void* pClipStatus) = 0;                                      // 58
+  virtual HRESULT D3D8CC GetClipStatus(void* pClipStatus) = 0;                                            // 59
+  virtual HRESULT D3D8CC GetTexture(DWORD Stage, IDirect3DBaseTexture8** ppTexture) = 0;                  // 60
+  virtual HRESULT D3D8CC SetTexture(DWORD Stage, IDirect3DBaseTexture8* pTexture) = 0;                    // 61
+  virtual HRESULT D3D8CC GetTextureStageState(DWORD Stage, D3DTEXTURESTAGESTATETYPE Type, DWORD* pValue) = 0; // 62
+  virtual HRESULT D3D8CC SetTextureStageState(DWORD Stage, D3DTEXTURESTAGESTATETYPE Type, DWORD Value) = 0;   // 63
+  virtual HRESULT D3D8CC ValidateDevice(DWORD* pNumPasses) = 0;                                            // 64
+  virtual HRESULT D3D8CC GetInfo(DWORD DevInfoID, void* pDevInfoStruct, DWORD DevInfoStructSize) = 0;     // 65
+  virtual HRESULT D3D8CC SetPaletteEntries(UINT PaletteNumber, const void* pEntries) = 0;                 // 66
+  virtual HRESULT D3D8CC GetPaletteEntries(UINT PaletteNumber, void* pEntries) = 0;                       // 67
+  virtual HRESULT D3D8CC SetCurrentTexturePalette(UINT PaletteNumber) = 0;                                // 68
+  virtual HRESULT D3D8CC GetCurrentTexturePalette(UINT* pPaletteNumber) = 0;                              // 69
+  virtual HRESULT D3D8CC DrawPrimitive(D3DPRIMITIVETYPE PrimitiveType, UINT StartVertex, UINT PrimitiveCount) = 0; // 70
+  virtual HRESULT D3D8CC DrawIndexedPrimitive(D3DPRIMITIVETYPE PrimitiveType, UINT MinIndex, UINT NumVertices, UINT StartIndex, UINT PrimitiveCount) = 0; // 71
+  virtual HRESULT D3D8CC DrawPrimitiveUP(D3DPRIMITIVETYPE PrimitiveType, UINT PrimitiveCount, const void* pVertexStreamZeroData, UINT VertexStreamZeroStride) = 0; // 72
+  virtual HRESULT D3D8CC DrawIndexedPrimitiveUP(D3DPRIMITIVETYPE PrimitiveType, UINT MinVertexIndex, UINT NumVertexIndices, UINT PrimitiveCount, const void* pIndexData, D3DFORMAT IndexDataFormat, const void* pVertexStreamZeroData, UINT VertexStreamZeroStride) = 0; // 73
+  virtual HRESULT D3D8CC ProcessVertices(UINT SrcStartIndex, UINT DestIndex, UINT VertexCount, IDirect3DVertexBuffer8* pDestBuffer, DWORD Flags) = 0; // 74
+  virtual HRESULT D3D8CC CreateVertexShader(const DWORD* pDeclaration, const DWORD* pFunction, DWORD* pHandle, DWORD Usage) = 0; // 75
+  virtual HRESULT D3D8CC SetVertexShader(DWORD Handle) = 0;                                               // 76
+  virtual HRESULT D3D8CC GetVertexShader(DWORD* pHandle) = 0;                                             // 77
+  virtual HRESULT D3D8CC DeleteVertexShader(DWORD Handle) = 0;                                            // 78
+  virtual HRESULT D3D8CC SetVertexShaderConstant(DWORD Register, const void* pConstantData, DWORD ConstantCount) = 0; // 79
+  virtual HRESULT D3D8CC GetVertexShaderConstant(DWORD Register, void* pConstantData, DWORD ConstantCount) = 0; // 80
+  virtual HRESULT D3D8CC GetVertexShaderDeclaration(DWORD Handle, void* pData, DWORD* pSizeOfData) = 0;  // 81
+  virtual HRESULT D3D8CC GetVertexShaderFunction(DWORD Handle, void* pData, DWORD* pSizeOfData) = 0;     // 82
+  virtual HRESULT D3D8CC SetStreamSource(UINT StreamNumber, IDirect3DVertexBuffer8* pStreamData, UINT Stride) = 0; // 83
+  virtual HRESULT D3D8CC GetStreamSource(UINT StreamNumber, IDirect3DVertexBuffer8** ppStreamData, UINT* pStride) = 0; // 84
+  virtual HRESULT D3D8CC SetIndices(IDirect3DIndexBuffer8* pIndexData, UINT BaseVertexIndex) = 0;         // 85
+  virtual HRESULT D3D8CC GetIndices(IDirect3DIndexBuffer8** ppIndexData, UINT* pBaseVertexIndex) = 0;     // 86
+  virtual HRESULT D3D8CC CreatePixelShader(const DWORD* pFunction, DWORD* pHandle) = 0;                  // 87
+  virtual HRESULT D3D8CC SetPixelShader(DWORD Handle) = 0;                                               // 88
+  virtual HRESULT D3D8CC GetPixelShader(DWORD* pHandle) = 0;                                             // 89
+  virtual HRESULT D3D8CC DeletePixelShader(DWORD Handle) = 0;                                            // 90
+  virtual HRESULT D3D8CC SetPixelShaderConstant(DWORD Register, const void* pConstantData, DWORD ConstantCount) = 0; // 91
+  virtual HRESULT D3D8CC GetPixelShaderConstant(DWORD Register, void* pConstantData, DWORD ConstantCount) = 0; // 92
+  virtual HRESULT D3D8CC GetPixelShaderFunction(DWORD Handle, void* pData, DWORD* pSizeOfData) = 0;      // 93
+  virtual HRESULT D3D8CC DrawRectPatch(UINT Handle, const float* pNumSegs, const void* pRectPatchInfo) = 0; // 94
+  virtual HRESULT D3D8CC DrawTriPatch(UINT Handle, const float* pNumSegs, const void* pTriPatchInfo) = 0;  // 95
+  virtual HRESULT D3D8CC DeletePatch(UINT Handle) = 0;                                                    // 96
+
+  // Non-virtual convenience overloads (do not add vtable slots)
   HRESULT SetVertexShaderConstant(DWORD Register, const D3DXVECTOR4& Value, DWORD Count) { return SetVertexShaderConstant(Register, &Value, Count); }
   HRESULT SetPixelShaderConstant(DWORD Register, const D3DXVECTOR4& Value, DWORD Count) { return SetPixelShaderConstant(Register, &Value, Count); }
-  virtual HRESULT SetTransform(D3DTRANSFORMSTATETYPE, const D3DMATRIX*) = 0;
-  virtual HRESULT GetTransform(D3DTRANSFORMSTATETYPE, D3DMATRIX*) = 0;
-  virtual HRESULT SetMaterial(const D3DMATERIAL8*) = 0;
-  virtual HRESULT SetLight(DWORD, const D3DLIGHT8*) = 0;
-  virtual HRESULT LightEnable(DWORD, BOOL) = 0;
-  virtual HRESULT SetRenderState(D3DRENDERSTATETYPE, DWORD) = 0;
-  virtual HRESULT GetRenderState(D3DRENDERSTATETYPE, DWORD*) = 0;
-  virtual HRESULT SetClipPlane(DWORD, const float*) = 0;
-  virtual HRESULT SetTextureStageState(DWORD, D3DTEXTURESTAGESTATETYPE, DWORD) = 0;
-  virtual HRESULT GetTextureStageState(DWORD, D3DTEXTURESTAGESTATETYPE, DWORD*) = 0;
-  virtual HRESULT SetTexture(DWORD, IDirect3DBaseTexture8*) = 0;
-  virtual HRESULT GetTexture(DWORD, IDirect3DBaseTexture8**) = 0;
-  virtual HRESULT CopyRects(IDirect3DSurface8*, const RECT*, UINT, IDirect3DSurface8*, const POINT*) = 0;
-  virtual HRESULT CreateTexture(UINT, UINT, UINT, DWORD, D3DFORMAT, D3DPOOL, IDirect3DTexture8**) = 0;
-  virtual HRESULT CreateVertexBuffer(UINT, DWORD, DWORD, D3DPOOL, IDirect3DVertexBuffer8**) = 0;
-  virtual HRESULT CreateIndexBuffer(UINT, DWORD, D3DFORMAT, D3DPOOL, IDirect3DIndexBuffer8**) = 0;
-  virtual HRESULT SetStreamSource(UINT, IDirect3DVertexBuffer8*, UINT) = 0;
-  virtual HRESULT SetIndices(IDirect3DIndexBuffer8*, UINT) = 0;
-  virtual HRESULT DrawPrimitive(DWORD, UINT, UINT) = 0;
-  virtual HRESULT DrawIndexedPrimitive(DWORD, UINT, UINT, UINT, UINT) = 0;
-  virtual HRESULT DrawPrimitiveUP(DWORD, UINT, const void*, UINT) = 0;
-  virtual HRESULT DrawIndexedPrimitiveUP(DWORD, UINT, UINT, UINT, const void*, D3DFORMAT, const void*, UINT) = 0;
-  virtual HRESULT BeginScene() = 0;
-  virtual HRESULT EndScene() = 0;
-  virtual HRESULT Clear(DWORD, const void*, DWORD, DWORD, float, DWORD) = 0;
-  virtual HRESULT SetViewport(const D3DVIEWPORT8*) = 0;
-  virtual HRESULT GetViewport(D3DVIEWPORT8*) = 0;
-  virtual HRESULT GetDisplayMode(D3DDISPLAYMODE*) = 0;
-  virtual HRESULT GetDeviceCaps(D3DCAPS8*) = 0;
-  virtual HRESULT GetBackBuffer(UINT, DWORD, IDirect3DSurface8**) = 0;
-  virtual HRESULT GetFrontBuffer(IDirect3DSurface8*) = 0;
-  virtual HRESULT GetDepthStencilSurface(IDirect3DSurface8**) = 0;
-  virtual HRESULT CreateAdditionalSwapChain(D3DPRESENT_PARAMETERS*, IDirect3DSwapChain8**) = 0;
-  virtual HRESULT CreateDepthStencilSurface(UINT, UINT, D3DFORMAT, DWORD, IDirect3DSurface8**) = 0;
-  virtual HRESULT CreateImageSurface(UINT, UINT, D3DFORMAT, IDirect3DSurface8**) = 0;
-  virtual HRESULT SetRenderTarget(IDirect3DSurface8*, IDirect3DSurface8*) = 0;
-  virtual HRESULT GetRenderTarget(IDirect3DSurface8**) = 0;
-  virtual HRESULT UpdateTexture(IDirect3DBaseTexture8*, IDirect3DBaseTexture8*) = 0;
-  virtual HRESULT ValidateDevice(DWORD*) = 0;
-  virtual HRESULT CreateVertexShader(const DWORD*, const DWORD*, DWORD*, DWORD) = 0;
-  virtual HRESULT CreatePixelShader(const DWORD*, DWORD*) = 0;
-  virtual HRESULT DeleteVertexShader(DWORD) = 0;
-  virtual HRESULT DeletePixelShader(DWORD) = 0;
-  virtual HRESULT SetCursorProperties(UINT, UINT, IDirect3DSurface8*) = 0;
-  virtual void SetCursorPosition(int, int, DWORD) = 0;
-  virtual BOOL ShowCursor(BOOL) = 0;
-  virtual UINT GetAvailableTextureMem() = 0;
-  virtual void SetGammaRamp(DWORD, const D3DGAMMARAMP*) = 0;
-  virtual HRESULT ResourceManagerDiscardBytes(DWORD Bytes) = 0;
-  virtual ULONG Release() = 0;
 };
 
-struct IDirect3D8 {
-  virtual HRESULT GetDeviceCaps(UINT, UINT, D3DCAPS8*) = 0;
-  virtual HRESULT GetAdapterIdentifier(UINT, DWORD, D3DADAPTER_IDENTIFIER8*) = 0;
-  virtual UINT GetAdapterCount() = 0;
-  virtual UINT GetAdapterModeCount(UINT) = 0;
-  virtual HRESULT EnumAdapterModes(UINT, UINT, D3DDISPLAYMODE*) = 0;
-  virtual HRESULT GetAdapterDisplayMode(UINT, D3DDISPLAYMODE*) = 0;
-  virtual HRESULT CheckDeviceType(UINT, UINT, UINT, UINT, BOOL) = 0;
-  virtual HRESULT CheckDeviceFormat(UINT, UINT, UINT, UINT, UINT, UINT) = 0;
-  virtual HRESULT CheckDepthStencilMatch(UINT, UINT, UINT, UINT, UINT) = 0;
-  virtual HRESULT CreateDevice(UINT, UINT, HWND, DWORD, D3DPRESENT_PARAMETERS*, IDirect3DDevice8**) = 0;
-  virtual ULONG Release() = 0;
+// IDirect3D8 â€” 16 vtable slots (0-2 IUnknown, 3-15 D3D8 methods)
+struct IDirect3D8 : public IUnknown_D3D8 {
+  virtual HRESULT D3D8CC RegisterSoftwareDevice(void* pInitializeFunction) = 0;                           // 3
+  virtual UINT D3D8CC    GetAdapterCount() = 0;                                                            // 4
+  virtual HRESULT D3D8CC GetAdapterIdentifier(UINT Adapter, DWORD Flags, D3DADAPTER_IDENTIFIER8* pIdentifier) = 0; // 5
+  virtual UINT D3D8CC    GetAdapterModeCount(UINT Adapter) = 0;                                           // 6
+  virtual HRESULT D3D8CC EnumAdapterModes(UINT Adapter, UINT Mode, D3DDISPLAYMODE* pMode) = 0;            // 7
+  virtual HRESULT D3D8CC GetAdapterDisplayMode(UINT Adapter, D3DDISPLAYMODE* pMode) = 0;                  // 8
+  virtual HRESULT D3D8CC CheckDeviceType(UINT Adapter, DWORD CheckType, D3DFORMAT DisplayFormat, D3DFORMAT BackBufferFormat, BOOL Windowed) = 0; // 9
+  virtual HRESULT D3D8CC CheckDeviceFormat(UINT Adapter, DWORD DeviceType, D3DFORMAT AdapterFormat, DWORD Usage, DWORD RType, D3DFORMAT CheckFormat) = 0; // 10
+  virtual HRESULT D3D8CC CheckDeviceMultiSampleType(UINT Adapter, DWORD DeviceType, D3DFORMAT SurfaceFormat, BOOL Windowed, DWORD MultiSampleType) = 0; // 11
+  virtual HRESULT D3D8CC CheckDepthStencilMatch(UINT Adapter, DWORD DeviceType, D3DFORMAT AdapterFormat, D3DFORMAT RenderTargetFormat, D3DFORMAT DepthStencilFormat) = 0; // 12
+  virtual HRESULT D3D8CC GetDeviceCaps(UINT Adapter, DWORD DeviceType, D3DCAPS8* pCaps) = 0;              // 13
+  virtual void*   GetAdapterMonitor(UINT Adapter) = 0;  // returns HMONITOR                        // 14
+  virtual HRESULT D3D8CC CreateDevice(UINT Adapter, DWORD DeviceType, HWND hFocusWindow, DWORD BehaviorFlags, D3DPRESENT_PARAMETERS* pPresentationParameters, IDirect3DDevice8** ppReturnedDeviceInterface) = 0; // 15
 };
 
 #endif // __cplusplus
