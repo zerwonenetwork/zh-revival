@@ -63,19 +63,24 @@ void Win32BIGFileSystem::init() {
 	Bool curDirLoaded = loadBigFilesFromDirectory("", "*.big");
 	AppendStartupTrace("BIGFileSystem: current-dir scan loaded=%d", (int)curDirLoaded);
 
-    // load original Generals assets
-    AsciiString installPath;
-    GetStringFromGeneralsRegistry("", "InstallPath", installPath );
-	AppendStartupTrace("BIGFileSystem: GeneralsRegistry InstallPath='%s'", installPath.str());
+	// Load ZH assets. Try the ZH-specific registry key first ("Command and Conquer Generals Zero Hour"),
+	// then fall back to the base Generals key. On Steam/EA App installs only the ZH key is populated.
+	AsciiString installPath;
+	if (!GetStringFromRegistry("", "InstallPath", installPath) || installPath.isEmpty())
+	{
+		GetStringFromGeneralsRegistry("", "InstallPath", installPath);
+	}
+	AppendStartupTrace("BIGFileSystem: ZH InstallPath='%s'", installPath.str());
+
     //@todo this will need to be ramped up to a crash for release
 #ifndef _INTERNAL
     // had to make this non-internal only, otherwise we can't autobuild
     // GeneralsZH...
     DEBUG_ASSERTCRASH(installPath != "", ("Be 1337! Go install Generals!"));
 #endif
-    if (installPath!="") {
-      Bool installLoaded = loadBigFilesFromDirectory(installPath, "*.big");
-	  AppendStartupTrace("BIGFileSystem: installPath scan loaded=%d", (int)installLoaded);
+    if (installPath != "") {
+		Bool installLoaded = loadBigFilesFromDirectory(installPath, "*.big");
+		AppendStartupTrace("BIGFileSystem: installPath scan loaded=%d", (int)installLoaded);
     }
 }
 
