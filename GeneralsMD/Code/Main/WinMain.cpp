@@ -1290,8 +1290,12 @@ Int APIENTRY WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance,
 		//our app is already running.
 		//WARNING: DO NOT use this number for any other application except Generals.
 		GeneralsMutex = CreateMutex(NULL, FALSE, GENERALS_GUID);
-		AppendStartupTrace("WinMain: CreateMutex handle=%p lastError=%lu", GeneralsMutex, GetLastError());
-		if (GetLastError() == ERROR_ALREADY_EXISTS)
+		// IMPORTANT: Save GetLastError() BEFORE AppendStartupTrace — fopen("a") on an
+		// existing file calls CreateFile(OPEN_ALWAYS) which clobbers GetLastError with
+		// ERROR_ALREADY_EXISTS (183), causing a false "already running" detection.
+		DWORD mutexLastError = GetLastError();
+		AppendStartupTrace("WinMain: CreateMutex handle=%p lastError=%lu", GeneralsMutex, mutexLastError);
+		if (mutexLastError == ERROR_ALREADY_EXISTS)
 		{
 			AppendStartupTrace("WinMain: mutex already exists");
 			HWND ccwindow = FindWindow(GENERALS_GUID, NULL);

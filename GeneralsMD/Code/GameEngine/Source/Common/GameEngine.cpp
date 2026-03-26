@@ -67,6 +67,8 @@
 #include "Common/UserPreferences.h"
 #include "Common/Xfer.h"
 #include "Common/XferCRC.h"
+#include <exception>
+#include <stdio.h>
 #include "Common/GameLOD.h"
 #include "Common/Registry.h"
 #include "Common/GameCommon.h"	// FOR THE ALLOW_DEBUG_CHEATS_IN_RELEASE #define
@@ -256,6 +258,10 @@ void GameEngine::setFramesPerSecondLimit( Int fps )
 void GameEngine::init( void ) {} /// @todo: I changed this to take argc & argv so we can parse those after the GDF is loaded.  We need to rethink this immediately as it is a nasty hack
 void GameEngine::init( int argc, char *argv[] )
 {
+	// Track which subsystem is being initialized so crash messages name the failing subsystem.
+	static char s_initStage[256] = "pre-init";
+#define INIT_STAGE(name) strncpy(s_initStage, (name), sizeof(s_initStage)-1)
+
 	try {
 		//create an INI object to use for loading stuff
 		INI ini;
@@ -345,6 +351,7 @@ void GameEngine::init( int argc, char *argv[] )
 		xferCRC.open("lightCRC");
 
 
+		INIT_STAGE("TheLocalFileSystem");
 		initSubsystem(TheLocalFileSystem, "TheLocalFileSystem", createLocalFileSystem(), NULL);
 
 
@@ -356,6 +363,7 @@ void GameEngine::init( int argc, char *argv[] )
 	#endif/////////////////////////////////////////////////////////////////////////////////////////////
 
 
+		INIT_STAGE("TheArchiveFileSystem");
 		initSubsystem(TheArchiveFileSystem, "TheArchiveFileSystem", createArchiveFileSystem(), NULL); // this MUST come after TheLocalFileSystem creation
 
     	#ifdef DUMP_PERF_STATS///////////////////////////////////////////////////////////////////////////
@@ -366,6 +374,7 @@ void GameEngine::init( int argc, char *argv[] )
 	#endif/////////////////////////////////////////////////////////////////////////////////////////////
 
 
+		INIT_STAGE("TheWritableGlobalData");
 		initSubsystem(TheWritableGlobalData, "TheWritableGlobalData", MSGNEW("GameEngineSubsystem") GlobalData(), &xferCRC, "Data\\INI\\Default\\GameData.ini", "Data\\INI\\GameData.ini");
 
 
@@ -586,26 +595,26 @@ void GameEngine::init( int argc, char *argv[] )
 		// for fingerprinting, we need to ensure the presence of these files
 
 
+// P1-11: CD fingerprinting check removed for digital installs (Steam, EA App).
+// These installs do not ship generalsbzh.sec / generalsazh.sec in the expected
+// .big archives, so the check always failed and set m_quitting = TRUE.
 #if !defined(_INTERNAL) && !defined(_DEBUG)
 		AsciiString dirName;
-    dirName = TheArchiveFileSystem->getArchiveFilenameForFile("generalsbzh.sec");
-
-    if (dirName.compareNoCase("genseczh.big") != 0)
+		dirName = TheArchiveFileSystem->getArchiveFilenameForFile("generalsbzh.sec");
+		if (dirName.compareNoCase("genseczh.big") != 0)
 		{
-			DEBUG_LOG(("generalsbzh.sec was not found in genseczh.big - it was in '%s'\n", dirName.str()));
-			m_quitting = TRUE;
+			DEBUG_LOG(("P1-11: generalsbzh.sec not in genseczh.big (was in '%s') - CD check skipped for digital install\n", dirName.str()));
+			// Removed: m_quitting = TRUE;  (P1-11)
 		}
-		
 		dirName = TheArchiveFileSystem->getArchiveFilenameForFile("generalsazh.sec");
 		const char *noPath = dirName.reverseFind('\\');
 		if (noPath) {
 			dirName = noPath + 1;
 		}
-
 		if (dirName.compareNoCase("musiczh.big") != 0)
 		{
-			DEBUG_LOG(("generalsazh.sec was not found in musiczh.big - it was in '%s'\n", dirName.str()));
-			m_quitting = TRUE;
+			DEBUG_LOG(("P1-11: generalsazh.sec not in musiczh.big (was in '%s') - CD check skipped for digital install\n", dirName.str()));
+			// Removed: m_quitting = TRUE;  (P1-11)
 		}
 #endif
 
@@ -686,19 +695,65 @@ void GameEngine::init( int argc, char *argv[] )
 		{
 			RELEASE_CRASHLOCALIZED("ERROR:D3DFailurePrompt", "ERROR:D3DFailureMessage");
 		}
+		else
+		{
+			char buf[512];
+			snprintf(buf, sizeof(buf),
+				"ErrorCode 0x%08X thrown during initialization of %s.",
+				(unsigned int)ec, s_initStage);
+			RELEASE_CRASH((buf));
+		}
 	}
 	catch (INIException e)
 	{
-		if (e.mFailureMessage)
-			RELEASE_CRASH((e.mFailureMessage));
-		else
-			RELEASE_CRASH(("Uncaught Exception during initialization."));
-
+		char buf[512];
+		snprintf(buf, sizeof(buf),
+			"INI parse error during initialization of %s: %s",
+			s_initStage,
+			e.mFailureMessage ? e.mFailureMessage : "(no message)");
+		RELEASE_CRASH((buf));
+	}
+	catch (std::exception& ex)
+	{
+		char buf[512];
+		snprintf(buf, sizeof(buf),
+			"std::exception during initialization of %s: %s",
+			s_initStage, ex.what());
+		RELEASE_CRASH((buf));
+	}
+	catch (XferStatus xs)
+	{
+		char buf[512];
+		snprintf(buf, sizeof(buf),
+			"XferStatus %d thrown during initialization of %s.",
+			(int)xs, s_initStage);
+		RELEASE_CRASH((buf));
+	}
+	catch (int i)
+	{
+		char buf[512];
+		snprintf(buf, sizeof(buf),
+			"Integer exception (%d / 0x%08X) during initialization of %s.",
+			i, (unsigned int)i, s_initStage);
+		RELEASE_CRASH((buf));
+	}
+	catch (unsigned int ui)
+	{
+		char buf[512];
+		snprintf(buf, sizeof(buf),
+			"Unsigned int exception (0x%08X) during initialization of %s.",
+			ui, s_initStage);
+		RELEASE_CRASH((buf));
 	}
 	catch (...)
 	{
-		RELEASE_CRASH(("Uncaught Exception during initialization."));
+		char buf[512];
+		snprintf(buf, sizeof(buf),
+			"Unknown exception during initialization of %s.",
+			s_initStage);
+		RELEASE_CRASH((buf));
 	}
+#undef INIT_STAGE
 
 	if(!TheGlobalData->m_playIntro)
 		TheWritableGlobalData->m_afterIntro = TRUE;
