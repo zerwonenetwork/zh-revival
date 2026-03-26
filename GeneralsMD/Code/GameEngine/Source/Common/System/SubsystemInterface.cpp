@@ -29,6 +29,7 @@
 #include "Common/SubsystemInterface.h"
 #include "Common/Xfer.h"
 #include "Common/INI.h"
+#include "Common/INIException.h"
 #include <stdio.h>
 
 #ifdef _INTERNAL
@@ -164,32 +165,40 @@ void SubsystemInterfaceList::initSubsystem(SubsystemInterface* sys, const char* 
 	sys->init();
 
 	INI ini;
-	auto iniLoadSafe = [&](const char* iniPath) {
-		// Wrap ini.load() to convert anonymous INI enum exceptions (INI_CANT_OPEN_FILE etc.)
-		// to INIException, which GameEngine.cpp's catch chain can handle with a useful message.
+	char iniBuf[512];
+	if (path1)
+	{
+		// Convert anonymous INI enum exceptions (INI_CANT_OPEN_FILE etc.) to INIException
+		// so GameEngine.cpp's typed catch chain reports a useful filename in the crash log.
 		try {
-			ini.load(iniPath, INI_LOAD_OVERWRITE, pXfer);
+			ini.load(path1, INI_LOAD_OVERWRITE, pXfer);
 		} catch (INIException&) {
 			throw;
 		} catch (...) {
-			char buf[512];
-			snprintf(buf, sizeof(buf), "Failed to load required INI file '%s'", iniPath);
-			throw INIException(buf);
+			snprintf(iniBuf, sizeof(iniBuf), "Failed to load required INI file '%s'", path1);
+			throw INIException(iniBuf);
 		}
-	};
-	if (path1)
-		iniLoadSafe(path1);
+	}
 	if (path2)
-		iniLoadSafe(path2);
-	if (dirpath) {
+	{
+		try {
+			ini.load(path2, INI_LOAD_OVERWRITE, pXfer);
+		} catch (INIException&) {
+			throw;
+		} catch (...) {
+			snprintf(iniBuf, sizeof(iniBuf), "Failed to load required INI file '%s'", path2);
+			throw INIException(iniBuf);
+		}
+	}
+	if (dirpath)
+	{
 		try {
 			ini.loadDirectory(dirpath, TRUE, INI_LOAD_OVERWRITE, pXfer);
 		} catch (INIException&) {
 			throw;
 		} catch (...) {
-			char buf[512];
-			snprintf(buf, sizeof(buf), "Failed to load required INI directory '%s'", dirpath);
-			throw INIException(buf);
+			snprintf(iniBuf, sizeof(iniBuf), "Failed to load required INI directory '%s'", dirpath);
+			throw INIException(iniBuf);
 		}
 	}
 
