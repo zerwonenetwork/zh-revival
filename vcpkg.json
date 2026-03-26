@@ -6,20 +6,6 @@
   "license": "GPL-3.0-only",
   "supports": "windows & x86",
   "dependencies": [
-    "zlib",
-    {
-      "name": "openal-soft",
-      "platform": "windows & !mingw"
-    },
-    {
-      "name": "ffmpeg",
-      "features": ["avcodec", "avformat", "swscale"],
-      "default-features": false,
-      "platform": "windows & !mingw"
-    },
-    {
-      "name": "sdl3",
-      "platform": "windows"
-    }
+    "zlib"
   ]
 }
