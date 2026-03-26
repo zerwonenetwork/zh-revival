@@ -83,50 +83,79 @@ typedef struct _D3DDISPLAYMODE {
   UINT Format;
 } D3DDISPLAYMODE;
 
+// D3DCAPS8 - must match the REAL DirectX 8 SDK layout exactly (212 bytes / 53 DWORDs).
+// Wrong field order or size causes GetDeviceCaps() to overflow the stack and corrupt
+// every field the engine subsequently reads.
+// Field offsets match Microsoft DX8 SDK d3d8.h exactly.
 typedef struct _D3DCAPS8 {
-  DWORD DevCaps;
-  DWORD Caps2;
-  DWORD RasterCaps;
-  DWORD PrimitiveMiscCaps;
-  DWORD TextureCaps;
-  DWORD TextureOpCaps;
-  DWORD MaxTextureWidth;
-  DWORD MaxTextureHeight;
-  DWORD MaxTextureBlendStages;
-  DWORD MaxSimultaneousTextures;
-  DWORD MaxActiveLights;
-  DWORD MaxUserClipPlanes;
-  DWORD MaxVertexBlendMatrices;
-  DWORD MaxVertexBlendMatrixIndex;
-  DWORD MaxPrimitiveCount;
-  DWORD MaxVertexIndex;
-  DWORD MaxStreams;
-  DWORD MaxStreamStride;
-  DWORD VertexShaderVersion;
-  DWORD MaxVertexShaderConst;
-  DWORD PixelShaderVersion;
-  float MaxPixelShaderValue;
-  float MaxPointSize;
-  // Texture filter capabilities â€” used by TextureFilterClass
-  DWORD TextureFilterCaps;
-  DWORD MaxAnisotropy;
-  // Volume texture capability
-  DWORD MaxVolumeExtent;
-  // Adapter/device info embedded in caps (used by CheckDeviceFormat)
-  UINT  AdapterOrdinal;
-  UINT  DeviceType;
-} D3DCAPS8;
+  /* +000 */ UINT  DeviceType;              // D3DDEVTYPE: HAL=1, SW=3, REF=2
+  /* +004 */ UINT  AdapterOrdinal;
+  /* +008 */ DWORD Caps;
+  /* +012 */ DWORD Caps2;
+  /* +016 */ DWORD Caps3;
+  /* +020 */ DWORD PresentationIntervals;
+  /* +024 */ DWORD CursorCaps;
+  /* +028 */ DWORD DevCaps;
+  /* +032 */ DWORD PrimitiveMiscCaps;
+  /* +036 */ DWORD RasterCaps;
+  /* +040 */ DWORD ZCmpCaps;
+  /* +044 */ DWORD SrcBlendCaps;
+  /* +048 */ DWORD DestBlendCaps;
+  /* +052 */ DWORD AlphaCmpCaps;
+  /* +056 */ DWORD ShadeCaps;
+  /* +060 */ DWORD TextureCaps;
+  /* +064 */ DWORD TextureFilterCaps;
+  /* +068 */ DWORD CubeTextureFilterCaps;
+  /* +072 */ DWORD VolumeTextureFilterCaps;
+  /* +076 */ DWORD TextureAddressCaps;
+  /* +080 */ DWORD VolumeTextureAddressCaps;
+  /* +084 */ DWORD LineCaps;
+  /* +088 */ DWORD MaxTextureWidth;
+  /* +092 */ DWORD MaxTextureHeight;
+  /* +096 */ DWORD MaxVolumeExtent;
+  /* +100 */ DWORD MaxTextureRepeat;
+  /* +104 */ DWORD MaxTextureAspectRatio;
+  /* +108 */ DWORD MaxAnisotropy;
+  /* +112 */ float MaxVertexW;
+  /* +116 */ float GuardBandLeft;
+  /* +120 */ float GuardBandTop;
+  /* +124 */ float GuardBandRight;
+  /* +128 */ float GuardBandBottom;
+  /* +132 */ float ExtentsAdjust;
+  /* +136 */ DWORD StencilCaps;
+  /* +140 */ DWORD FVFCaps;
+  /* +144 */ DWORD TextureOpCaps;
+  /* +148 */ DWORD MaxTextureBlendStages;
+  /* +152 */ DWORD MaxSimultaneousTextures;
+  /* +156 */ DWORD VertexProcessingCaps;
+  /* +160 */ DWORD MaxActiveLights;
+  /* +164 */ DWORD MaxUserClipPlanes;
+  /* +168 */ DWORD MaxVertexBlendMatrices;
+  /* +172 */ DWORD MaxVertexBlendMatrixIndex;
+  /* +176 */ float MaxPointSize;
+  /* +180 */ DWORD MaxPrimitiveCount;
+  /* +184 */ DWORD MaxVertexIndex;
+  /* +188 */ DWORD MaxStreams;
+  /* +192 */ DWORD MaxStreamStride;
+  /* +196 */ DWORD VertexShaderVersion;
+  /* +200 */ DWORD MaxVertexShaderConst;
+  /* +204 */ DWORD PixelShaderVersion;
+  /* +208 */ float MaxPixelShaderValue;
+} D3DCAPS8;  // sizeof = 212 bytes
 
+// D3DADAPTER_IDENTIFIER8 — 1068 bytes, matches DX8 SDK layout exactly.
+// Missing WHQLLevel caused a 4-byte stack overflow from GetAdapterIdentifier().
 typedef struct _D3DADAPTER_IDENTIFIER8 {
-  char Driver[512];
-  char Description[512];
-  LARGE_INTEGER DriverVersion;  // .HighPart / .LowPart used by dx8caps.cpp
-  DWORD VendorId;
-  DWORD DeviceId;
-  DWORD SubSysId;
-  DWORD Revision;
-  GUID  DeviceIdentifier;       // .Data1/.Data2/.Data3/.Data4[] used by dx8caps.cpp
-} D3DADAPTER_IDENTIFIER8;
+  char          Driver[512];
+  char          Description[512];
+  LARGE_INTEGER DriverVersion;    // .HighPart / .LowPart used by dx8caps.cpp
+  DWORD         VendorId;
+  DWORD         DeviceId;
+  DWORD         SubSysId;
+  DWORD         Revision;
+  GUID          DeviceIdentifier; // .Data1/.Data2/.Data3/.Data4[] used by dx8caps.cpp
+  DWORD         WHQLLevel;        // WHQL certification level — must be present for correct size
+} D3DADAPTER_IDENTIFIER8;  // sizeof = 1068 bytes
 
 typedef struct _D3DPRESENT_PARAMETERS {
   UINT  BackBufferWidth;
