@@ -214,10 +214,19 @@ namespace rts
 
 	template<> struct hash<AsciiString>
 	{
-		size_t operator()(AsciiString ast) const
-		{ 
-			std::hash<const char *> tmp;
-			return tmp((const char *) ast.str());
+		size_t operator()(const AsciiString& ast) const
+		{
+			// Hash the string CONTENT, not the pointer address.
+			// std::hash<const char*> in MSVC 2022 hashes the pointer value,
+			// which breaks unordered_map lookups when two AsciiString objects
+			// hold the same content but different internal buffers.
+			// Use FNV-1a over the bytes instead — fast, deterministic, correct.
+			size_t h = 14695981039346656037ULL;
+			for (const char* p = ast.str(); *p; ++p) {
+				h ^= static_cast<unsigned char>(*p);
+				h *= 1099511628211ULL;
+			}
+			return h;
 		}
 	};
 
