@@ -38,6 +38,7 @@
 #include <eh.h>
 #include <ole2.h>
 #include <dbt.h>
+#include <stdarg.h>
 
 // P5-03a: optional SDL3 window backend
 #ifdef ZH_SDL3_WINDOW
@@ -103,6 +104,37 @@ static HANDLE GeneralsMutex = NULL;
 static Bool ApplicationIsBorderless = false; // -borderless: WS_POPUP at desktop resolution
 static Int  ApplicationWidthOverride  = 0;   // -width N
 static Int  ApplicationHeightOverride = 0;   // -height N
+
+void AppendStartupTrace( const char *format, ... )
+{
+	char path[_MAX_PATH];
+	va_list args;
+	FILE *file = NULL;
+	int len = GetModuleFileName(NULL, path, _MAX_PATH);
+
+	if (len <= 0 || len >= _MAX_PATH)
+		return;
+
+	for (int i = len - 1; i >= 0; --i)
+	{
+		if (path[i] == '\\' || path[i] == '/')
+		{
+			path[i + 1] = '\0';
+			break;
+		}
+	}
+
+	strcat(path, "zh-startup-trace.log");
+	file = fopen(path, "a");
+	if (file == NULL)
+		return;
+
+	va_start(args, format);
+	vfprintf(file, format, args);
+	va_end(args);
+	fprintf(file, "\n");
+	fclose(file);
+}
 
 // P3-01: registry key for persisting window mode under HKCU (P1-05 path)
 #define ZH_REGKEY_WINDOWMODE "Software\\zh-revival\\Options"
@@ -729,13 +761,15 @@ static Bool initializeAppWindows( HINSTANCE hInstance, Int nCmdShow, Bool runWin
 	}
 
 	// register the window class
+	AppendStartupTrace("initializeAppWindows: start windowed=%d borderless=%d %dx%d",
+		runWindowed ? 1 : 0, ApplicationIsBorderless ? 1 : 0, startWidth, startHeight);
 
   WNDCLASS wndClass = { CS_HREDRAW | CS_VREDRAW | CS_DBLCLKS, WndProc, 0, 0, hInstance,
                        LoadIcon (hInstance, MAKEINTRESOURCE(IDI_ApplicationIcon)),
                        NULL/*LoadCursor(NULL, IDC_ARROW)*/,
                        (HBRUSH)GetStockObject(BLACK_BRUSH), NULL,
 	                     TEXT("Game Window") };
-  RegisterClass( &wndClass );
+	RegisterClass( &wndClass );
 
 	// Create our main window
 	// P3-01: borderless = WS_POPUP only (no title bar, no TOPMOST — lets Alt-Tab work)
@@ -837,6 +871,7 @@ static Bool initializeAppWindows( HINSTANCE hInstance, Int nCmdShow, Bool runWin
 	                     rect.right - rect.left,
 	                     rect.bottom - rect.top,
 	                     0L, 0L, hInstance, 0L );
+	AppendStartupTrace("initializeAppWindows: CreateWindow hwnd=%p lastError=%lu", hWnd, GetLastError());
 
 	if (ApplicationIsBorderless)
 	{
@@ -864,6 +899,7 @@ static Bool initializeAppWindows( HINSTANCE hInstance, Int nCmdShow, Bool runWin
 	if (!runWindowed) {
 		gDoPaint = false;
 	}
+	AppendStartupTrace("initializeAppWindows: success hwnd=%p", hWnd);
 
 	return true;  // success
 
@@ -991,6 +1027,7 @@ static CriticalSection critSec1, critSec2, critSec3, critSec4, critSec5;
 Int APIENTRY WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance,
                       LPSTR lpCmdLine, Int nCmdShow )
 {
+	AppendStartupTrace("WinMain: enter cmd='%s'", lpCmdLine ? lpCmdLine : "");
 	checkProtection();
 
 #ifdef _PROFILE
@@ -1211,7 +1248,11 @@ Int APIENTRY WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance,
 
 		// register windows class and create application window
 		if( initializeAppWindows( hInstance, nCmdShow, ApplicationIsWindowed) == false )
+		{
+			AppendStartupTrace("WinMain: initializeAppWindows failed");
 			return 0;
+		}
+		AppendStartupTrace("WinMain: initializeAppWindows ok hwnd=%p", ApplicationHWnd);
 
 		if (gLoadScreenBitmap!=NULL) {
 			::DeleteObject(gLoadScreenBitmap);
@@ -1249,8 +1290,10 @@ Int APIENTRY WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance,
 		//our app is already running.
 		//WARNING: DO NOT use this number for any other application except Generals.
 		GeneralsMutex = CreateMutex(NULL, FALSE, GENERALS_GUID);
+		AppendStartupTrace("WinMain: CreateMutex handle=%p lastError=%lu", GeneralsMutex, GetLastError());
 		if (GetLastError() == ERROR_ALREADY_EXISTS)
 		{
+			AppendStartupTrace("WinMain: mutex already exists");
 			HWND ccwindow = FindWindow(GENERALS_GUID, NULL);
 			if (ccwindow)
 			{
@@ -1282,9 +1325,11 @@ Int APIENTRY WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance,
 #endif
 
 		DEBUG_LOG(("CRC message is %d\n", GameMessage::MSG_LOGIC_CRC));
+		AppendStartupTrace("WinMain: before GameMain");
 
 		// run the game main loop
 		GameMain(argc, argv);
+		AppendStartupTrace("WinMain: after GameMain");
 
 #ifdef DO_COPY_PROTECTION
 		// Clean up copy protection
@@ -1307,10 +1352,10 @@ Int APIENTRY WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance,
 
 		// BGC - shut down COM
 	//	OleUninitialize();
-	}	
+	}
 	catch (...) 
 	{ 
-	
+		AppendStartupTrace("WinMain: caught top-level exception");
 	}
 
 	TheUnicodeStringCriticalSection = NULL;

@@ -34,25 +34,32 @@
 // P3-01: defined in WinMain.cpp — applies -width/-height overrides to TheGlobalData
 // after engine init, so command-line resolution takes priority over Options.ini
 extern void ApplyResolutionOverride( void );
+extern void AppendStartupTrace( const char *format, ... );
 
 /**
  * This is the entry point for the game system.
  */
 void GameMain( int argc, char *argv[] )
 {
+	AppendStartupTrace("GameMain: enter argc=%d", argc);
 	// initialize the game engine using factory function
 	TheGameEngine = CreateGameEngine();
+	AppendStartupTrace("GameMain: CreateGameEngine=%p", TheGameEngine);
 	TheGameEngine->init(argc, argv);
+	AppendStartupTrace("GameMain: after init");
 
 	// P3-01: apply command-line resolution overrides now that TheGlobalData is valid
 	ApplyResolutionOverride();
+	AppendStartupTrace("GameMain: after ApplyResolutionOverride");
 
 	// run it
 	TheGameEngine->execute();
+	AppendStartupTrace("GameMain: after execute");
 
 	// since execute() returned, we are exiting the game
 	delete TheGameEngine;
 	TheGameEngine = NULL;
+	AppendStartupTrace("GameMain: exit");
 
 }
 
