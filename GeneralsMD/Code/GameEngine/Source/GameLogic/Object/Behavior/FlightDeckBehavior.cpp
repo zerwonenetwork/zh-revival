@@ -183,9 +183,6 @@ void FlightDeckBehavior::buildInfo(Bool createUnits)
 
 	m_spaces.reserve( data->m_numRows * data->m_numCols );
 
-	//Initialize the spaces that planes will eventually be assigned to for parking purposes
-	FlightDeckInfo flightDeckInfo;
-
 	//We want to sort the spaces so that we have runway 1 space 1, runway 2 space 1, R1S2, R2S2, R1S3...
 	for( Int row = 0; row < data->m_numRows; row++ )
 	{
@@ -209,6 +206,9 @@ void FlightDeckBehavior::buildInfo(Bool createUnits)
 				continue;
 			}
 				
+			m_spaces.emplace_back();
+			FlightDeckInfo& flightDeckInfo = m_spaces.back();
+
 			AsciiString tmp;
 			Matrix3D mtx;
 
@@ -240,7 +240,6 @@ void FlightDeckBehavior::buildInfo(Bool createUnits)
 				}
 			}
 
-			m_spaces.push_back( flightDeckInfo );
 		}
 	}
 
