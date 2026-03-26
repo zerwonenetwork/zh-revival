@@ -260,6 +260,16 @@ void AudioManager::init()
 			}
 //#endif
 		}
+
+		// Modern digital installs often do not ship the legacy CD music layout.
+		// Treat missing music as "music unavailable" instead of a fatal startup
+		// condition; the game should still run with effects/speech intact.
+		if (!isMusicAlreadyLoaded())
+		{
+			DEBUG_LOG(("AudioManager::init: music assets unavailable, continuing with music disabled.\n"));
+			m_musicPlayingFromCD = FALSE;
+			m_musicOn = FALSE;
+		}
 	}
 	
 	m_music = NEW MusicManager;

@@ -439,7 +439,9 @@ void GameEngine::init( int argc, char *argv[] )
 	#endif/////////////////////////////////////////////////////////////////////////////////////////////
 		initSubsystem(TheAudio,"TheAudio", createAudioManager(), NULL);
 		if (!TheAudio->isMusicAlreadyLoaded())
-			setQuitting(TRUE);
+		{
+			DEBUG_LOG(("GameEngine::init: continuing without loaded music assets.\n"));
+		}
 
 	#ifdef DUMP_PERF_STATS///////////////////////////////////////////////////////////////////////////
 	GetPrecisionTimer(&endTime64);//////////////////////////////////////////////////////////////////
