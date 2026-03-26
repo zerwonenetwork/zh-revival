@@ -1,0 +1,46 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="18.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="C:\Users\zerwo\OneDrive\Desktop\ZH\zh-revival\GeneralsMD\Code\Libraries\Source\Compression\CompressionManager.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\zerwo\OneDrive\Desktop\ZH\zh-revival\GeneralsMD\Code\Libraries\Source\Compression\EAC\btreeabout.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\zerwo\OneDrive\Desktop\ZH\zh-revival\GeneralsMD\Code\Libraries\Source\Compression\EAC\btreedecode.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\zerwo\OneDrive\Desktop\ZH\zh-revival\GeneralsMD\Code\Libraries\Source\Compression\EAC\btreeencode.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\zerwo\OneDrive\Desktop\ZH\zh-revival\GeneralsMD\Code\Libraries\Source\Compression\EAC\huffabout.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\zerwo\OneDrive\Desktop\ZH\zh-revival\GeneralsMD\Code\Libraries\Source\Compression\EAC\huffdecode.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\zerwo\OneDrive\Desktop\ZH\zh-revival\GeneralsMD\Code\Libraries\Source\Compression\EAC\huffencode.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\zerwo\OneDrive\Desktop\ZH\zh-revival\GeneralsMD\Code\Libraries\Source\Compression\EAC\refabout.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\zerwo\OneDrive\Desktop\ZH\zh-revival\GeneralsMD\Code\Libraries\Source\Compression\EAC\refdecode.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\zerwo\OneDrive\Desktop\ZH\zh-revival\GeneralsMD\Code\Libraries\Source\Compression\EAC\refencode.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\zerwo\OneDrive\Desktop\ZH\zh-revival\GeneralsMD\Code\Libraries\Source\Compression\LZHCompress\NoxCompress.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="C:\Users\zerwo\OneDrive\Desktop\ZH\zh-revival\CMakeLists.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{A5D7065D-9142-32EE-B47F-40C016C197FC}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

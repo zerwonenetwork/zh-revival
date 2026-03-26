@@ -191,13 +191,22 @@ void FlightDeckBehavior::buildInfo(Bool createUnits)
 	{
 		for( Int col = 0; col < data->m_numCols; col++ )
 		{
-			std::vector<AsciiString> spaces = data->m_runwayInfo[ col ].m_spacesBoneNames;
-			std::vector<AsciiString>::const_iterator it;
-
-			Int counter = 0; 
-			for( it = spaces.begin(); it != spaces.end(), counter < row;	it++, counter++ )
+			const std::vector<AsciiString>& spaces = data->m_runwayInfo[ col ].m_spacesBoneNames;
+			if( row >= spaces.size() )
 			{
-				//just iterate to the spaces.
+				continue;
+			}
+
+			std::vector<AsciiString>::const_iterator it = spaces.begin();
+			Int counter = 0;
+			for( ; it != spaces.end() && counter < row; ++it, ++counter )
+			{
+				// just iterate to the requested parking space.
+			}
+
+			if( it == spaces.end() )
+			{
+				continue;
 			}
 				
 			AsciiString tmp;
@@ -236,19 +245,16 @@ void FlightDeckBehavior::buildInfo(Bool createUnits)
 	}
 
 	//Now initialize the runway take-off and landing information.
-	RunwayInfo info;
 	m_runways.reserve(data->m_numCols);
 	for( Int col = 0; col < data->m_numCols; ++col )
 	{
+		RunwayInfo info;
 		AsciiString tmp;
 
 		getObject()->getSingleLogicalBonePosition( data->m_runwayInfo[ col ].m_takeoffBoneNames[ RUNWAY_START_BONE ].str(), &info.m_start, NULL);
 		getObject()->getSingleLogicalBonePosition( data->m_runwayInfo[ col ].m_takeoffBoneNames[ RUNWAY_END_BONE ].str(), &info.m_end, NULL);
 		getObject()->getSingleLogicalBonePosition( data->m_runwayInfo[ col ].m_landingBoneNames[ RUNWAY_START_BONE ].str(), &info.m_landingStart, NULL);
 		getObject()->getSingleLogicalBonePosition( data->m_runwayInfo[ col ].m_landingBoneNames[ RUNWAY_END_BONE ].str(), &info.m_landingEnd, NULL);
-
-		info.m_inUseByForTakeoff = INVALID_ID;
-		info.m_inUseByForLanding = INVALID_ID;
 
 		//Get the taxi bones and store them as well (possible to have none!)
 		std::vector<AsciiString> locations = data->m_runwayInfo[ col ].m_taxiBoneNames;

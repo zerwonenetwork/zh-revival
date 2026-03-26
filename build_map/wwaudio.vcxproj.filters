@@ -1,0 +1,70 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="18.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="C:\Users\zerwo\OneDrive\Desktop\ZH\zh-revival\GeneralsMD\Code\Libraries\Source\WWVegas\WWAudio\AudibleSound.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\zerwo\OneDrive\Desktop\ZH\zh-revival\GeneralsMD\Code\Libraries\Source\WWVegas\WWAudio\AudioSaveLoad.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\zerwo\OneDrive\Desktop\ZH\zh-revival\GeneralsMD\Code\Libraries\Source\WWVegas\WWAudio\FilteredSound.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\zerwo\OneDrive\Desktop\ZH\zh-revival\GeneralsMD\Code\Libraries\Source\WWVegas\WWAudio\Listener.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\zerwo\OneDrive\Desktop\ZH\zh-revival\GeneralsMD\Code\Libraries\Source\WWVegas\WWAudio\LogicalListener.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\zerwo\OneDrive\Desktop\ZH\zh-revival\GeneralsMD\Code\Libraries\Source\WWVegas\WWAudio\LogicalSound.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\zerwo\OneDrive\Desktop\ZH\zh-revival\GeneralsMD\Code\Libraries\Source\WWVegas\WWAudio\Sound3D.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\zerwo\OneDrive\Desktop\ZH\zh-revival\GeneralsMD\Code\Libraries\Source\WWVegas\WWAudio\SoundBuffer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\zerwo\OneDrive\Desktop\ZH\zh-revival\GeneralsMD\Code\Libraries\Source\WWVegas\WWAudio\SoundPseudo3D.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\zerwo\OneDrive\Desktop\ZH\zh-revival\GeneralsMD\Code\Libraries\Source\WWVegas\WWAudio\SoundScene.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\zerwo\OneDrive\Desktop\ZH\zh-revival\GeneralsMD\Code\Libraries\Source\WWVegas\WWAudio\SoundSceneObj.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\zerwo\OneDrive\Desktop\ZH\zh-revival\GeneralsMD\Code\Libraries\Source\WWVegas\WWAudio\Threads.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\zerwo\OneDrive\Desktop\ZH\zh-revival\GeneralsMD\Code\Libraries\Source\WWVegas\WWAudio\Utils.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\zerwo\OneDrive\Desktop\ZH\zh-revival\GeneralsMD\Code\Libraries\Source\WWVegas\WWAudio\WWAudio.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\zerwo\OneDrive\Desktop\ZH\zh-revival\GeneralsMD\Code\Libraries\Source\WWVegas\WWAudio\listenerhandle.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\zerwo\OneDrive\Desktop\ZH\zh-revival\GeneralsMD\Code\Libraries\Source\WWVegas\WWAudio\sound2dhandle.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\zerwo\OneDrive\Desktop\ZH\zh-revival\GeneralsMD\Code\Libraries\Source\WWVegas\WWAudio\sound3dhandle.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\zerwo\OneDrive\Desktop\ZH\zh-revival\GeneralsMD\Code\Libraries\Source\WWVegas\WWAudio\soundhandle.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\zerwo\OneDrive\Desktop\ZH\zh-revival\GeneralsMD\Code\Libraries\Source\WWVegas\WWAudio\soundstreamhandle.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="C:\Users\zerwo\OneDrive\Desktop\ZH\zh-revival\CMakeLists.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{A5D7065D-9142-32EE-B47F-40C016C197FC}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

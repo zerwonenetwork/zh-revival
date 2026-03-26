@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Solution>
+	<Configurations>
+		<BuildType Name="Debug"/>
+		<BuildType Name="Release"/>
+		<BuildType Name="MinSizeRel"/>
+		<BuildType Name="RelWithDebInfo"/>
+		<Platform Name="x64"/>
+	</Configurations>
+	<Project Path="ALL_BUILD.vcxproj" Type="8bc9ceb8-8b4a-11d0-8d11-00a0c91bc942" Id="b308e58d-149a-3e91-8b1f-503384af6af9" DefaultStartup="true">
+		<BuildDependency Project="ZERO_CHECK.vcxproj"/>
+		<BuildDependency Project="benchmark_lib.vcxproj"/>
+		<BuildDependency Project="compression.vcxproj"/>
+		<BuildDependency Project="gameengine.vcxproj"/>
+		<BuildDependency Project="gameenginedevice.vcxproj"/>
+		<BuildDependency Project="profile.vcxproj"/>
+		<BuildDependency Project="ww3d2.vcxproj"/>
+		<BuildDependency Project="wwaudio.vcxproj"/>
+		<BuildDependency Project="wwdebug.vcxproj"/>
+		<BuildDependency Project="wwdownload.vcxproj"/>
+		<BuildDependency Project="wwlib.vcxproj"/>
+		<BuildDependency Project="wwmath.vcxproj"/>
+		<BuildDependency Project="wwsaveload.vcxproj"/>
+		<BuildDependency Project="wwutil.vcxproj"/>
+		<BuildDependency Project="tools/zh-replay-info.vcxproj"/>
+		<BuildDependency Project="tools/zh-replay-validate.vcxproj"/>
+		<BuildDependency Project="zh-revival.vcxproj"/>
+		<BuildDependency Project="zh_stubs.vcxproj"/>
+		<BuildDependency Project="tools/zhreplay.vcxproj"/>
+		<Build Solution="Debug|*" Project="false"/>
+		<Build Solution="Release|*" Project="false"/>
+		<Build Solution="MinSizeRel|*" Project="false"/>
+		<Build Solution="RelWithDebInfo|*" Project="false"/>
+	</Project>
+	<Project Path="ZERO_CHECK.vcxproj" Type="8bc9ceb8-8b4a-11d0-8d11-00a0c91bc942" Id="f1202849-c21a-3b9a-af67-36c59f5f54d2"/>
+	<Project Path="benchmark_lib.vcxproj" Type="8bc9ceb8-8b4a-11d0-8d11-00a0c91bc942" Id="6e35b4ed-e2fd-3308-9109-9e4f53e53bc7">
+		<BuildDependency Project="ZERO_CHECK.vcxproj"/>
+	</Project>
+	<Project Path="compression.vcxproj" Type="8bc9ceb8-8b4a-11d0-8d11-00a0c91bc942" Id="461db4b7-60b1-3a4b-b361-9533ff325671">
+		<BuildDependency Project="ZERO_CHECK.vcxproj"/>
+	</Project>
+	<Project Path="gameengine.vcxproj" Type="8bc9ceb8-8b4a-11d0-8d11-00a0c91bc942" Id="c8ffc219-ce46-3f4b-a125-081ebf64e0d6">
+		<BuildDependency Project="ZERO_CHECK.vcxproj"/>
+		<BuildDependency Project="benchmark_lib.vcxproj"/>
+		<BuildDependency Project="compression.vcxproj"/>
+		<BuildDependency Project="wwdebug.vcxproj"/>
+		<BuildDependency Project="wwlib.vcxproj"/>
+		<BuildDependency Project="wwmath.vcxproj"/>
+		<BuildDependency Project="wwsaveload.vcxproj"/>
+		<BuildDependency Project="wwutil.vcxproj"/>
+		<BuildDependency Project="zh_stubs.vcxproj"/>
+	</Project>
+	<Project Path="gameenginedevice.vcxproj" Type="8bc9ceb8-8b4a-11d0-8d11-00a0c91bc942" Id="28255668-6d50-3e0c-afe3-605c8600567b">
+		<BuildDependency Project="ZERO_CHECK.vcxproj"/>
+		<BuildDependency Project="benchmark_lib.vcxproj"/>
+		<BuildDependency Project="compression.vcxproj"/>
+		<BuildDependency Project="gameengine.vcxproj"/>
+		<BuildDependency Project="ww3d2.vcxproj"/>
+		<BuildDependency Project="wwaudio.vcxproj"/>
+		<BuildDependency Project="wwdebug.vcxproj"/>
+		<BuildDependency Project="wwlib.vcxproj"/>
+		<BuildDependency Project="wwmath.vcxproj"/>
+		<BuildDependency Project="wwsaveload.vcxproj"/>
+		<BuildDependency Project="wwutil.vcxproj"/>
+		<BuildDependency Project="zh_stubs.vcxproj"/>
+	</Project>
+	<Project Path="profile.vcxproj" Type="8bc9ceb8-8b4a-11d0-8d11-00a0c91bc942" Id="f2ee2a60-1101-3087-bf07-dde267b98106">
+		<BuildDependency Project="ZERO_CHECK.vcxproj"/>
+	</Project>
+	<Project Path="ww3d2.vcxproj" Type="8bc9ceb8-8b4a-11d0-8d11-00a0c91bc942" Id="ee66d956-060a-35f3-b0a1-1c310dffd5ed">
+		<BuildDependency Project="ZERO_CHECK.vcxproj"/>
+		<BuildDependency Project="wwdebug.vcxproj"/>
+		<BuildDependency Project="wwlib.vcxproj"/>
+		<BuildDependency Project="wwmath.vcxproj"/>
+		<BuildDependency Project="wwsaveload.vcxproj"/>
+		<BuildDependency Project="wwutil.vcxproj"/>
+	</Project>
+	<Project Path="wwaudio.vcxproj" Type="8bc9ceb8-8b4a-11d0-8d11-00a0c91bc942" Id="4a59dbad-5bc9-35aa-adee-45dd06ebbaed">
+		<BuildDependency Project="ZERO_CHECK.vcxproj"/>
+		<BuildDependency Project="wwdebug.vcxproj"/>
+		<BuildDependency Project="wwlib.vcxproj"/>
+		<BuildDependency Project="wwmath.vcxproj"/>
+		<BuildDependency Project="wwsaveload.vcxproj"/>
+		<BuildDependency Project="zh_stubs.vcxproj"/>
+	</Project>
+	<Project Path="wwdebug.vcxproj" Type="8bc9ceb8-8b4a-11d0-8d11-00a0c91bc942" Id="47c1eb99-bbc9-3808-953d-cedb8b63f770">
+		<BuildDependency Project="ZERO_CHECK.vcxproj"/>
+	</Project>
+	<Project Path="wwdownload.vcxproj" Type="8bc9ceb8-8b4a-11d0-8d11-00a0c91bc942" Id="bac699af-2594-3598-94ad-43bcfc5ec188">
+		<BuildDependency Project="ZERO_CHECK.vcxproj"/>
+	</Project>
+	<Project Path="wwlib.vcxproj" Type="8bc9ceb8-8b4a-11d0-8d11-00a0c91bc942" Id="5a23bab0-eb36-3be7-a479-285375196b37">
+		<BuildDependency Project="ZERO_CHECK.vcxproj"/>
+	</Project>
+	<Project Path="wwmath.vcxproj" Type="8bc9ceb8-8b4a-11d0-8d11-00a0c91bc942" Id="494baa28-d92b-331f-9557-a1e7ba2ef565">
+		<BuildDependency Project="ZERO_CHECK.vcxproj"/>
+	</Project>
+	<Project Path="wwsaveload.vcxproj" Type="8bc9ceb8-8b4a-11d0-8d11-00a0c91bc942" Id="1286b206-4076-3837-8c2d-08296f2ec735">
+		<BuildDependency Project="ZERO_CHECK.vcxproj"/>
+	</Project>
+	<Project Path="wwutil.vcxproj" Type="8bc9ceb8-8b4a-11d0-8d11-00a0c91bc942" Id="a3666948-a17c-3371-903b-a8fbbe02fc23">
+		<BuildDependency Project="ZERO_CHECK.vcxproj"/>
+	</Project>
+	<Project Path="tools/zh-replay-info.vcxproj" Type="8bc9ceb8-8b4a-11d0-8d11-00a0c91bc942" Id="240a82cc-9f0d-3399-a2c2-1fac5eb15da1">
+		<BuildDependency Project="ZERO_CHECK.vcxproj"/>
+		<BuildDependency Project="tools/zhreplay.vcxproj"/>
+	</Project>
+	<Project Path="tools/zh-replay-validate.vcxproj" Type="8bc9ceb8-8b4a-11d0-8d11-00a0c91bc942" Id="83d64467-f5d9-3104-b697-9bd5a1391601">
+		<BuildDependency Project="ZERO_CHECK.vcxproj"/>
+		<BuildDependency Project="tools/zhreplay.vcxproj"/>
+	</Project>
+	<Project Path="zh-revival.vcxproj" Type="8bc9ceb8-8b4a-11d0-8d11-00a0c91bc942" Id="18d44f20-fdd0-3a1b-92d0-16fa02abf18e">
+		<BuildDependency Project="ZERO_CHECK.vcxproj"/>
+		<BuildDependency Project="benchmark_lib.vcxproj"/>
+		<BuildDependency Project="compression.vcxproj"/>
+		<BuildDependency Project="gameengine.vcxproj"/>
+		<BuildDependency Project="gameenginedevice.vcxproj"/>
+		<BuildDependency Project="profile.vcxproj"/>
+		<BuildDependency Project="ww3d2.vcxproj"/>
+		<BuildDependency Project="wwaudio.vcxproj"/>
+		<BuildDependency Project="wwdebug.vcxproj"/>
+		<BuildDependency Project="wwdownload.vcxproj"/>
+		<BuildDependency Project="wwlib.vcxproj"/>
+		<BuildDependency Project="wwmath.vcxproj"/>
+		<BuildDependency Project="wwsaveload.vcxproj"/>
+		<BuildDependency Project="wwutil.vcxproj"/>
+		<BuildDependency Project="zh_stubs.vcxproj"/>
+	</Project>
+	<Project Path="zh_stubs.vcxproj" Type="8bc9ceb8-8b4a-11d0-8d11-00a0c91bc942" Id="14ec3349-9ff8-3633-a869-c65ab55da030">
+		<BuildDependency Project="ZERO_CHECK.vcxproj"/>
+	</Project>
+	<Project Path="tools/zhreplay.vcxproj" Type="8bc9ceb8-8b4a-11d0-8d11-00a0c91bc942" Id="2d3f6380-7076-3240-a25b-137f9c4c01b1">
+		<BuildDependency Project="ZERO_CHECK.vcxproj"/>
+	</Project>
+</Solution>

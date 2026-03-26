@@ -193,6 +193,18 @@ private:
 		Real			m_startOrient;
 		ObjectID	m_inUseByForTakeoff;
 		ObjectID	m_inUseByForLanding;
+
+		RunwayInfo()
+		{
+			m_start.zero();
+			m_end.zero();
+			m_landingStart.zero();
+			m_landingEnd.zero();
+			m_startTransform.Make_Identity();
+			m_startOrient = 0.0f;
+			m_inUseByForTakeoff = INVALID_ID;
+			m_inUseByForLanding = INVALID_ID;
+		}
 	};
 
 	struct HealingInfo
