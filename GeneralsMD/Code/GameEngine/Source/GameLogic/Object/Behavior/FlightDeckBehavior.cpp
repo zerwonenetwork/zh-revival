@@ -246,10 +246,11 @@ void FlightDeckBehavior::buildInfo(Bool createUnits)
 
 	//Now initialize the runway take-off and landing information.
 	m_runways.clear();
-	m_runways.resize(data->m_numCols);
+	m_runways.reserve(data->m_numCols);
 	for( Int col = 0; col < data->m_numCols; ++col )
 	{
-		RunwayInfo& info = m_runways[ col ];
+		m_runways.emplace_back();
+		RunwayInfo& info = m_runways.back();
 		AsciiString tmp;
 
 		getObject()->getSingleLogicalBonePosition( data->m_runwayInfo[ col ].m_takeoffBoneNames[ RUNWAY_START_BONE ].str(), &info.m_start, NULL);
