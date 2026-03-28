@@ -2620,7 +2620,21 @@ void W3DShaderManager::init(void)
 		m_currentChipset = res;	//cache the current chipset.
 
 		//Some of our effects require an offscreen render target, so try creating it here.
+		m_oldRenderSurface = NULL;
 		HRESULT hr=DX8Wrapper::_Get_D3D_Device8()->GetRenderTarget(&m_oldRenderSurface);
+
+		// Guard against GetRenderTarget failure (returns NULL on some modern GPU drivers).
+		// If the render target is unavailable, skip offscreen-render-target setup; shaders
+		// that need it will gracefully degrade in their own init checks.
+		if (FAILED(hr) || m_oldRenderSurface == NULL)
+		{
+			m_oldRenderSurface = NULL;
+			m_renderTexture = NULL;
+			m_newRenderSurface = NULL;
+			m_oldDepthSurface = NULL;
+		}
+		else
+		{
 
 		m_oldRenderSurface->GetDesc(&desc);
 
@@ -2650,7 +2664,8 @@ void W3DShaderManager::init(void)
 				}
 			}
 		}
-	}
+	} // end else (GetRenderTarget succeeded)
+	} // end if (getChipset() != 0)
 
 	W3DShaderInterface **shaders;
 
