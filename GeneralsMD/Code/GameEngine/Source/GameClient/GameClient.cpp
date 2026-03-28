@@ -29,6 +29,8 @@
 
 // SYSTEM INCLUDES ////////////////////////////////////////////////////////////
 #include "PreRTS.h"	// This must go first in EVERY cpp file int the GameEngine
+
+extern void AppendStartupTrace(const char *format, ...);
 #include "GameClient/GameClient.h"
 
 // USER INCLUDES //////////////////////////////////////////////////////////////
@@ -250,11 +252,13 @@ void GameClient::init( void )
 {
 
 	setFrameRate(MSEC_PER_LOGICFRAME_REAL);		// from GameCommon.h... tell W3D what our expected framerate is
+	AppendStartupTrace("GameClient::init after setFrameRate");
 
 	INI ini;
 	// Load the DrawGroupInfo here, before the Display Manager is loaded.
 	ini.load("Data\\INI\\DrawGroupInfo.ini", INI_LOAD_OVERWRITE, NULL);
-	
+	AppendStartupTrace("GameClient::init after DrawGroupInfo.ini");
+
 	// Override the ini values with localized versions:
 	if (TheGlobalLanguageData && TheGlobalLanguageData->m_drawGroupInfoFont.name.isNotEmpty())
 	{
@@ -269,20 +273,24 @@ void GameClient::init( void )
 		TheDisplayStringManager->init();
 		TheDisplayStringManager->setName("TheDisplayStringManager");
 	}
-	
+	AppendStartupTrace("GameClient::init after TheDisplayStringManager");
+
 	// create the keyboard
 	TheKeyboard = createKeyboard();
 	TheKeyboard->init();
 	TheKeyboard->setName("TheKeyboard");
+	AppendStartupTrace("GameClient::init after TheKeyboard");
 
 	// allocate and load image collection for the GUI and just load the 256x256 ones for now
 	TheMappedImageCollection = MSGNEW("GameClientSubsystem") ImageCollection;
 	TheMappedImageCollection->load( 512 );
+	AppendStartupTrace("GameClient::init after TheMappedImageCollection->load");
 
 	// now that we have all the images loaded ... load any animation definitions from those images
 	TheAnim2DCollection = MSGNEW("GameClientSubsystem") Anim2DCollection;
 	TheAnim2DCollection->init();
  	TheAnim2DCollection->setName("TheAnim2DCollection");
+	AppendStartupTrace("GameClient::init after TheAnim2DCollection");
 
 	// register message translators
 	if( TheMessageStream )
@@ -320,24 +328,29 @@ void GameClient::init( void )
 	TheFontLibrary = createFontLibrary();
 	if( TheFontLibrary )
 		TheFontLibrary->init();
+	AppendStartupTrace("GameClient::init after TheFontLibrary");
 
 	// create the mouse
 	TheMouse = createMouse();
 	TheMouse->parseIni();
 	TheMouse->initCursorResources();
  	TheMouse->setName("TheMouse");
+	AppendStartupTrace("GameClient::init after TheMouse->initCursorResources");
 
 	// instantiate the display
+	AppendStartupTrace("GameClient::init before TheDisplay->init");
 	TheDisplay = createGameDisplay();
 	if( TheDisplay ) {
 		TheDisplay->init();
  		TheDisplay->setName("TheDisplay");
 	}
-	
+	AppendStartupTrace("GameClient::init after TheDisplay->init");
+
 	TheHeaderTemplateManager = MSGNEW("GameClientSubsystem") HeaderTemplateManager;
 	if(TheHeaderTemplateManager){
 		TheHeaderTemplateManager->init();
 	}
+	AppendStartupTrace("GameClient::init after TheHeaderTemplateManager");
 
 	// create the window manager
 	TheWindowManager = createWindowManager();
@@ -349,6 +362,7 @@ void GameClient::init( void )
 //		TheWindowManager->initTestGUI();
 
 	}  // end if
+	AppendStartupTrace("GameClient::init after TheWindowManager");
 
 	// create the IME manager
 	TheIMEManager = CreateIMEManagerInterface();
@@ -357,6 +371,7 @@ void GameClient::init( void )
 		TheIMEManager->init();
  		TheIMEManager->setName("TheIMEManager");
 	}
+	AppendStartupTrace("GameClient::init after TheIMEManager");
 
 	// create the shell
 	TheShell = MSGNEW("GameClientSubsystem") Shell;
@@ -364,6 +379,7 @@ void GameClient::init( void )
 		TheShell->init();
  		TheShell->setName("TheShell");
 	}
+	AppendStartupTrace("GameClient::init after TheShell");
 
 	// instantiate the in-game user interface
 	TheInGameUI = createInGameUI();
@@ -371,24 +387,29 @@ void GameClient::init( void )
 		TheInGameUI->init();
  		TheInGameUI->setName("TheInGameUI");
 	}
+	AppendStartupTrace("GameClient::init after TheInGameUI");
 
  	TheChallengeGenerals = createChallengeGenerals();
  	if( TheChallengeGenerals ) {
  		TheChallengeGenerals->init();
  	}
+	AppendStartupTrace("GameClient::init after TheChallengeGenerals");
 
 	TheHotKeyManager = MSGNEW("GameClientSubsystem") HotKeyManager;
 	if( TheHotKeyManager ) {
 		TheHotKeyManager->init();
  		TheHotKeyManager->setName("TheHotKeyManager");
 	}
+	AppendStartupTrace("GameClient::init after TheHotKeyManager");
 
 	// instantiate the terrain visual display
+	AppendStartupTrace("GameClient::init before TheTerrainVisual->init");
 	TheTerrainVisual = createTerrainVisual();
 	if( TheTerrainVisual ) {
 		TheTerrainVisual->init();
  		TheTerrainVisual->setName("TheTerrainVisual");
 	}
+	AppendStartupTrace("GameClient::init after TheTerrainVisual->init");
 
 	// allocate the ray effects manager
 	TheRayEffects = MSGNEW("GameClientSubsystem") RayEffectSystem;
