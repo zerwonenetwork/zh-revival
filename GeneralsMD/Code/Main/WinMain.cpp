@@ -125,11 +125,25 @@ void AppendStartupTrace( const char *format, ... )
 	if (slash != NULL)
 		slash[1] = '\0';
 	else
+	{
+#if defined(_MSC_VER) && !defined(__clang__)
 		strcpy_s(path, sizeof(path), ".\\");
+#else
+		strncpy(path, ".\\", sizeof(path) - 1);
+		path[sizeof(path) - 1] = '\0';
+#endif
+	}
 
+#if defined(_MSC_VER) && !defined(__clang__)
 	strcat_s(path, sizeof(path), "zh-startup-trace.log");
 	if (fopen_s(&file, path, "a") != 0 || file == NULL)
 		return;
+#else
+	strncat(path, "zh-startup-trace.log", sizeof(path) - strlen(path) - 1);
+	file = fopen(path, "a");
+	if (file == NULL)
+		return;
+#endif
 
 	va_start(args, format);
 	vfprintf(file, format, args);
