@@ -22,6 +22,8 @@
 //																																						//
 ////////////////////////////////////////////////////////////////////////////////
 
+extern void AppendStartupTrace(const char *format, ...);
+
 // FILE: W3DShaderManager.cpp ////////////////////////////////////////////////
 //-----------------------------------------------------------------------------
 //                                                                          
@@ -2615,13 +2617,24 @@ void W3DShaderManager::init(void)
 	// For now, check & see if we are gf3 or higher on the food chain.
 
 	ChipsetType res=DC_UNKNOWN;
-	if ((res=W3DShaderManager::getChipset()) != 0)
+	AppendStartupTrace("W3DShaderManager::init start");
+	res = W3DShaderManager::getChipset();
+	AppendStartupTrace("W3DShaderManager::init getChipset=%d", (int)res);
+	if (res != 0)
 	{
 		m_currentChipset = res;	//cache the current chipset.
 
 		//Some of our effects require an offscreen render target, so try creating it here.
 		m_oldRenderSurface = NULL;
-		HRESULT hr=DX8Wrapper::_Get_D3D_Device8()->GetRenderTarget(&m_oldRenderSurface);
+		IDirect3DDevice8* pDevice = DX8Wrapper::_Get_D3D_Device8();
+		AppendStartupTrace("W3DShaderManager::init D3DDevice=%p", (void*)pDevice);
+		if (pDevice == NULL) {
+			m_renderTexture = NULL;
+			m_newRenderSurface = NULL;
+			m_oldDepthSurface = NULL;
+			goto shader_loop;
+		}
+		HRESULT hr=pDevice->GetRenderTarget(&m_oldRenderSurface);
 
 		// Guard against GetRenderTarget failure (returns NULL on some modern GPU drivers).
 		// If the render target is unavailable, skip offscreen-render-target setup; shaders
@@ -2636,9 +2649,10 @@ void W3DShaderManager::init(void)
 		else
 		{
 
+		AppendStartupTrace("W3DShaderManager::init GetRenderTarget ok surf=%p", (void*)m_oldRenderSurface);
 		m_oldRenderSurface->GetDesc(&desc);
 
-		hr=DX8Wrapper::_Get_D3D_Device8()->CreateTexture(desc.Width,desc.Height,1,D3DUSAGE_RENDERTARGET,desc.Format,D3DPOOL_DEFAULT,&m_renderTexture);
+		hr=pDevice->CreateTexture(desc.Width,desc.Height,1,D3DUSAGE_RENDERTARGET,desc.Format,D3DPOOL_DEFAULT,&m_renderTexture);
 
 		if (hr != S_OK)
 		{
@@ -2653,7 +2667,7 @@ void W3DShaderManager::init(void)
 				m_renderTexture = NULL;
 				m_newRenderSurface = NULL;
 			}	else {
-				hr = DX8Wrapper::_Get_D3D_Device8()->GetDepthStencilSurface(&m_oldDepthSurface);
+				hr = pDevice->GetDepthStencilSurface(&m_oldDepthSurface);
 				if (hr != S_OK)
 				{
 					if (m_newRenderSurface) m_newRenderSurface->Release();
@@ -2667,22 +2681,27 @@ void W3DShaderManager::init(void)
 	} // end else (GetRenderTarget succeeded)
 	} // end if (getChipset() != 0)
 
+shader_loop:
+	AppendStartupTrace("W3DShaderManager::init entering shader loop");
 	W3DShaderInterface **shaders;
 
 	for (i=0; MasterShaderList[i] != NULL; i++)
-	{	
+	{
 		shaders=MasterShaderList[i];
+		AppendStartupTrace("W3DShaderManager::init shader group %d", i);
 		for (j=0; shaders[j] != NULL; j++)
 		{
 			if (shaders[j]->init())
 				break;	//found a working shader
 		}
 	}
+	AppendStartupTrace("W3DShaderManager::init entering filter loop");
 	W3DFilterInterface **filters;
 
 	for (i=0; MasterFilterList[i] != NULL; i++)
-	{	
+	{
 		filters=MasterFilterList[i];
+		AppendStartupTrace("W3DShaderManager::init filter group %d", i);
 		for (j=0; filters[j] != NULL; j++)
 		{
 			if (filters[j]->init())
@@ -2690,6 +2709,7 @@ void W3DShaderManager::init(void)
 		}
 	}
 
+	AppendStartupTrace("W3DShaderManager::init done");
 	DEBUG_LOG(("ShaderManager ChipsetID %d\n", res));
 }
 
