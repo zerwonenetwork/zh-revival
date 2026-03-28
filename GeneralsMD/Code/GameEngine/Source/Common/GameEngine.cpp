@@ -419,10 +419,15 @@ void GameEngine::init( int argc, char *argv[] )
 		}
 
 		// read the water settings from INI (must do prior to initing GameClient, apparently)
+		AppendStartupTrace("GameEngine::init before Water.ini loads");
 		ini.load( AsciiString( "Data\\INI\\Default\\Water.ini" ), INI_LOAD_OVERWRITE, &xferCRC );
+		AppendStartupTrace("GameEngine::init after Default\\Water.ini");
 		ini.load( AsciiString( "Data\\INI\\Water.ini" ), INI_LOAD_OVERWRITE, &xferCRC );
+		AppendStartupTrace("GameEngine::init after Water.ini");
 		ini.load( AsciiString( "Data\\INI\\Default\\Weather.ini" ), INI_LOAD_OVERWRITE, &xferCRC );
+		AppendStartupTrace("GameEngine::init after Default\\Weather.ini");
 		ini.load( AsciiString( "Data\\INI\\Weather.ini" ), INI_LOAD_OVERWRITE, &xferCRC );
+		AppendStartupTrace("GameEngine::init after Weather.ini");
 
 
 
@@ -437,7 +442,9 @@ void GameEngine::init( int argc, char *argv[] )
 #ifdef DEBUG_CRC
 		initSubsystem(TheDeepCRCSanityCheck, "TheDeepCRCSanityCheck", MSGNEW("GameEngineSubystem") DeepCRCSanityCheck, NULL, NULL, NULL, NULL);
 #endif // DEBUG_CRC
+		AppendStartupTrace("GameEngine::init before TheGameText");
 		initSubsystem(TheGameText, "TheGameText", CreateGameTextInterface(), NULL);
+		AppendStartupTrace("GameEngine::init after TheGameText");
 
 	#ifdef DUMP_PERF_STATS///////////////////////////////////////////////////////////////////////////
 	GetPrecisionTimer(&endTime64);//////////////////////////////////////////////////////////////////
@@ -447,19 +454,28 @@ void GameEngine::init( int argc, char *argv[] )
 	#endif/////////////////////////////////////////////////////////////////////////////////////////////
 
 
+		AppendStartupTrace("GameEngine::init before TheScienceStore");
 		initSubsystem(TheScienceStore,"TheScienceStore", MSGNEW("GameEngineSubsystem") ScienceStore(), &xferCRC, "Data\\INI\\Default\\Science.ini", "Data\\INI\\Science.ini");
+		AppendStartupTrace("GameEngine::init after TheScienceStore");
 		initSubsystem(TheMultiplayerSettings,"TheMultiplayerSettings", MSGNEW("GameEngineSubsystem") MultiplayerSettings(), &xferCRC, "Data\\INI\\Default\\Multiplayer.ini", "Data\\INI\\Multiplayer.ini");
+		AppendStartupTrace("GameEngine::init after TheMultiplayerSettings");
 		initSubsystem(TheTerrainTypes,"TheTerrainTypes", MSGNEW("GameEngineSubsystem") TerrainTypeCollection(), &xferCRC, "Data\\INI\\Default\\Terrain.ini", "Data\\INI\\Terrain.ini");
+		AppendStartupTrace("GameEngine::init after TheTerrainTypes");
 		initSubsystem(TheTerrainRoads,"TheTerrainRoads", MSGNEW("GameEngineSubsystem") TerrainRoadCollection(), &xferCRC, "Data\\INI\\Default\\Roads.ini", "Data\\INI\\Roads.ini");
+		AppendStartupTrace("GameEngine::init after TheTerrainRoads");
 		initSubsystem(TheGlobalLanguageData,"TheGlobalLanguageData",MSGNEW("GameEngineSubsystem") GlobalLanguage, NULL); // must be before the game text
+		AppendStartupTrace("GameEngine::init after TheGlobalLanguageData");
 		initSubsystem(TheCDManager,"TheCDManager", CreateCDManager(), NULL);
+		AppendStartupTrace("GameEngine::init after TheCDManager");
 	#ifdef DUMP_PERF_STATS///////////////////////////////////////////////////////////////////////////
 	GetPrecisionTimer(&endTime64);//////////////////////////////////////////////////////////////////
 	sprintf(Buf,"----------------------------------------------------------------------------After TheCDManager = %f seconds \n",((double)(endTime64-startTime64)/(double)(freq64)));
   startTime64 = endTime64;//Reset the clock ////////////////////////////////////////////////////////
 	DEBUG_LOG(("%s", Buf));////////////////////////////////////////////////////////////////////////////
 	#endif/////////////////////////////////////////////////////////////////////////////////////////////
+		AppendStartupTrace("GameEngine::init before TheAudio");
 		initSubsystem(TheAudio,"TheAudio", createAudioManager(), NULL);
+		AppendStartupTrace("GameEngine::init after TheAudio");
 		if (!TheAudio->isMusicAlreadyLoaded())
 		{
 			DEBUG_LOG(("GameEngine::init: continuing without loaded music assets.\n"));

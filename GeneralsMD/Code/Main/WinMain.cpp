@@ -108,25 +108,27 @@ static Int  ApplicationHeightOverride = 0;   // -height N
 void AppendStartupTrace( const char *format, ... )
 {
 	char path[_MAX_PATH];
+	char *slash = NULL;
 	va_list args;
 	FILE *file = NULL;
-	int len = GetModuleFileName(NULL, path, _MAX_PATH);
+	DWORD len = GetModuleFileNameA(NULL, path, _MAX_PATH);
 
-	if (len <= 0 || len >= _MAX_PATH)
+	if (len == 0 || len >= _MAX_PATH)
 		return;
 
-	for (int i = len - 1; i >= 0; --i)
-	{
-		if (path[i] == '\\' || path[i] == '/')
-		{
-			path[i + 1] = '\0';
-			break;
-		}
-	}
+	path[len] = '\0';
 
-	strcat(path, "zh-startup-trace.log");
-	file = fopen(path, "a");
-	if (file == NULL)
+	slash = strrchr(path, '\\');
+	if (slash == NULL)
+		slash = strrchr(path, '/');
+
+	if (slash != NULL)
+		slash[1] = '\0';
+	else
+		strcpy_s(path, sizeof(path), ".\\");
+
+	strcat_s(path, sizeof(path), "zh-startup-trace.log");
+	if (fopen_s(&file, path, "a") != 0 || file == NULL)
 		return;
 
 	va_start(args, format);
