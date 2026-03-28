@@ -42,6 +42,8 @@
 //
 //-----------------------------------------------------------------------------
 
+extern void AppendStartupTrace(const char *format, ...);
+
 //-----------------------------------------------------------------------------
 //         Includes                                                      
 //-----------------------------------------------------------------------------
@@ -255,6 +257,7 @@ BaseHeightMapRenderObjClass::~BaseHeightMapRenderObjClass(void)
 //=============================================================================
 BaseHeightMapRenderObjClass::BaseHeightMapRenderObjClass(void)
 {
+	AppendStartupTrace("BaseHeightMapRenderObjClass::ctor start");
 	m_x=0;
 	m_y=0;
 	m_needFullUpdate = false;
@@ -289,23 +292,35 @@ BaseHeightMapRenderObjClass::BaseHeightMapRenderObjClass(void)
 	m_disableTextures = false;
 	TheTerrainRenderObject = this;
 	m_treeBuffer = NULL; 
+	AppendStartupTrace("BaseHeightMapRenderObjClass::ctor before W3DTreeBuffer");
 
 	m_treeBuffer = NEW W3DTreeBuffer;
+	AppendStartupTrace("BaseHeightMapRenderObjClass::ctor after W3DTreeBuffer ptr=%p", m_treeBuffer);
 
 	m_propBuffer = NULL; 
+	AppendStartupTrace("BaseHeightMapRenderObjClass::ctor before W3DPropBuffer");
 
 	m_propBuffer = NEW W3DPropBuffer;
+	AppendStartupTrace("BaseHeightMapRenderObjClass::ctor after W3DPropBuffer ptr=%p", m_propBuffer);
 
 
 	m_bibBuffer = NULL;
+	AppendStartupTrace("BaseHeightMapRenderObjClass::ctor before W3DBibBuffer");
 	m_bibBuffer = NEW W3DBibBuffer;
+	AppendStartupTrace("BaseHeightMapRenderObjClass::ctor after W3DBibBuffer ptr=%p", m_bibBuffer);
 	m_curImpassableSlope = 45.0f;	// default to 45 degrees.
 	m_bridgeBuffer = NULL;
+	AppendStartupTrace("BaseHeightMapRenderObjClass::ctor before W3DBridgeBuffer");
 	m_bridgeBuffer = NEW W3DBridgeBuffer;
+	AppendStartupTrace("BaseHeightMapRenderObjClass::ctor after W3DBridgeBuffer ptr=%p", m_bridgeBuffer);
+	AppendStartupTrace("BaseHeightMapRenderObjClass::ctor before W3DWaypointBuffer");
 	m_waypointBuffer = NEW W3DWaypointBuffer;
+	AppendStartupTrace("BaseHeightMapRenderObjClass::ctor after W3DWaypointBuffer ptr=%p", m_waypointBuffer);
 #ifdef DO_ROADS
 	m_roadBuffer = NULL;
+	AppendStartupTrace("BaseHeightMapRenderObjClass::ctor before W3DRoadBuffer");
 	m_roadBuffer = NEW W3DRoadBuffer;
+	AppendStartupTrace("BaseHeightMapRenderObjClass::ctor after W3DRoadBuffer ptr=%p", m_roadBuffer);
 #endif
 #ifdef DO_SCORCH
 	m_vertexScorch = NULL;
@@ -315,13 +330,21 @@ BaseHeightMapRenderObjClass::BaseHeightMapRenderObjClass(void)
 #endif
 #if defined(_DEBUG) || defined(_INTERNAL)
 	if (TheGlobalData->m_shroudOn)
+	{
+		AppendStartupTrace("BaseHeightMapRenderObjClass::ctor before W3DShroud");
 		m_shroud = NEW W3DShroud;
+		AppendStartupTrace("BaseHeightMapRenderObjClass::ctor after W3DShroud ptr=%p", m_shroud);
+	}
 	else
 		m_shroud = NULL;
 #else
+	AppendStartupTrace("BaseHeightMapRenderObjClass::ctor before W3DShroud");
 	m_shroud = NEW W3DShroud;
+	AppendStartupTrace("BaseHeightMapRenderObjClass::ctor after W3DShroud ptr=%p", m_shroud);
 #endif
+	AppendStartupTrace("BaseHeightMapRenderObjClass::ctor before DX8Wrapper::SetCleanupHook");
 	DX8Wrapper::SetCleanupHook(this);
+	AppendStartupTrace("BaseHeightMapRenderObjClass::ctor complete");
 }
 
 void BaseHeightMapRenderObjClass::setTextureLOD(Int lod)
