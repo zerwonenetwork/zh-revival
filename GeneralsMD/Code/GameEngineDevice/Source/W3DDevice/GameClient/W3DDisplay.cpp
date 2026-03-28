@@ -117,6 +117,31 @@ extern void AppendStartupTrace(const char *format, ...);
 //#pragma MESSAGE("************************************** WARNING, optimization disabled for debugging purposes")
 #endif
 
+static Bool TryInitW3DShaderManager(void)
+{
+#if defined(_MSC_VER) && !defined(__clang__)
+	__try
+	{
+		W3DShaderManager::init();
+		return TRUE;
+	}
+	__except(EXCEPTION_EXECUTE_HANDLER)
+	{
+		return FALSE;
+	}
+#else
+	try
+	{
+		W3DShaderManager::init();
+		return TRUE;
+	}
+	catch (...)
+	{
+		return FALSE;
+	}
+#endif
+}
+
 // DEFINE AND ENUMS ///////////////////////////////////////////////////////////
 #define W3D_DISPLAY_DEFAULT_BIT_DEPTH 32
 
@@ -826,8 +851,11 @@ void W3DDisplay::init( void )
 	AppendStartupTrace("W3DDisplay::init after init2DScene");
 	init3DScene();
 	AppendStartupTrace("W3DDisplay::init after init3DScene");
-	W3DShaderManager::init();
-	AppendStartupTrace("W3DDisplay::init after W3DShaderManager::init");
+	AppendStartupTrace("W3DDisplay::init before W3DShaderManager::init");
+	if (TryInitW3DShaderManager())
+		AppendStartupTrace("W3DDisplay::init after W3DShaderManager::init");
+	else
+		AppendStartupTrace("W3DDisplay::init shader manager crashed; continuing with custom shaders disabled");
 
 	// Create and initialize the debug display
 	m_nativeDebugDisplay = NEW W3DDebugDisplay();
