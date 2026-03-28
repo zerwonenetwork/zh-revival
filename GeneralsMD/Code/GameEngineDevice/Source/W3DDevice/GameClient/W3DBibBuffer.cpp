@@ -75,6 +75,33 @@ extern void AppendStartupTrace(const char *format, ...);
 
 static ShaderClass detailAlphaShader(SC_ALPHA_DETAIL);
 
+static Bool TryLoadBibTextures(TextureClass *&bibTexture, TextureClass *&highlightBibTexture)
+{
+#if defined(_MSC_VER)
+	__try
+	{
+		bibTexture = NEW_REF(TextureClass, ("TBBib.tga"));
+		highlightBibTexture = NEW_REF(TextureClass, ("TBRedBib.tga"));
+		return bibTexture != NULL && highlightBibTexture != NULL;
+	}
+	__except(EXCEPTION_EXECUTE_HANDLER)
+	{
+		return FALSE;
+	}
+#else
+	try
+	{
+		bibTexture = NEW_REF(TextureClass, ("TBBib.tga"));
+		highlightBibTexture = NEW_REF(TextureClass, ("TBRedBib.tga"));
+		return bibTexture != NULL && highlightBibTexture != NULL;
+	}
+	catch (...)
+	{
+		return FALSE;
+	}
+#endif
+}
+
 
 //-----------------------------------------------------------------------------
 //         Private Functions                                               
@@ -242,12 +269,16 @@ W3DBibBuffer::W3DBibBuffer(void)
 	allocateBibBuffers();
 	AppendStartupTrace("W3DBibBuffer::ctor after allocateBibBuffers vertex=%p index=%p", m_vertexBib, m_indexBib);
 
-	AppendStartupTrace("W3DBibBuffer::ctor before TBBib.tga");
-	m_bibTexture = NEW_REF(TextureClass, ("TBBib.tga"));
-	AppendStartupTrace("W3DBibBuffer::ctor after TBBib.tga ptr=%p", m_bibTexture);
-	AppendStartupTrace("W3DBibBuffer::ctor before TBRedBib.tga");
-	m_highlightBibTexture = NEW_REF(TextureClass, ("TBRedBib.tga"));
-	AppendStartupTrace("W3DBibBuffer::ctor after TBRedBib.tga ptr=%p", m_highlightBibTexture);
+	AppendStartupTrace("W3DBibBuffer::ctor before bib texture loads");
+	if (!TryLoadBibTextures(m_bibTexture, m_highlightBibTexture))
+	{
+		AppendStartupTrace("W3DBibBuffer::ctor bib texture load failed; disabling bib rendering");
+		freeBibBuffers();
+		REF_PTR_RELEASE(m_bibTexture);
+		REF_PTR_RELEASE(m_highlightBibTexture);
+		return;
+	}
+	AppendStartupTrace("W3DBibBuffer::ctor after bib texture loads bib=%p highlight=%p", m_bibTexture, m_highlightBibTexture);
 	m_bibTexture->Get_Filter().Set_U_Addr_Mode(TextureFilterClass::TEXTURE_ADDRESS_CLAMP);
 	m_bibTexture->Get_Filter().Set_V_Addr_Mode(TextureFilterClass::TEXTURE_ADDRESS_CLAMP);
 	m_highlightBibTexture->Get_Filter().Set_U_Addr_Mode(TextureFilterClass::TEXTURE_ADDRESS_CLAMP);
@@ -437,6 +468,9 @@ void W3DBibBuffer::removeBibDrawable(DrawableID id)
 //=============================================================================
 void W3DBibBuffer::renderBibs()
 {
+	if (!m_initialized || !m_bibTexture || !m_highlightBibTexture) {
+		return;
+	}
 
 	loadBibsInVertexAndIndexBuffers();
 
