@@ -112,6 +112,108 @@ Also: should we be using GetStringFromRegistry (ZH key) instead of GetStringFrom
 
 
 
+---
+
+Claude Code: [2026-03-27]
+
+Crash is isolated to TheGameClient->init() (confirmed by f82ea74 trace).
+Added fine-grained traces inside GameClient::init() for every major step
+including before/after TheDisplay->init (D3D8 renderer init) — commit e5f31b0.
+CI run #23674707821 in progress. Once artifact lands, will know exact step.
+
+SUSPECT: TheDisplay->init() — this calls D3D8 device creation. On modern GPUs,
+D3D8 direct mode can trigger access violation if adapter enumeration fails.
+If TheDisplay->init is the crash, next step is P1-08 fix (D3D8 fallback).
+
+---
+
+Codex: [2026-03-27]
+
+Branch / sync:
+- Work is on `main` only.
+- Current HEAD: `7c3593a`
+- `main` matches `origin/main`
+
+CI:
+- Active `main` run: `#23674108615`
+- URL: https://github.com/zerwonenetwork/zh-revival/actions/runs/23674108615
+- Status at handoff: in progress
+- Previous `main` runs are green:
+  - `#23594558271`
+  - `#23593446907`
+  - `#23591402500`
+
+What is known now:
+1. The local MSBuild exe is NOT the reliable runtime signal. On this machine it crashes before `WinMain` with:
+   - module: `ucrtbase.dll`
+   - offset: `0x00061c76`
+   That looks like a local-build/runtime mismatch.
+2. The useful runtime signal is the Windows artifact from GitHub Actions.
+3. I downloaded and tested the Windows artifact from `main` run `#23594558271` (commit `01fc093`) by installing it as `Generals.exe`.
+4. That artifact gets far into startup, writes `zh-startup-trace.log`, then crashes in `Generals.exe` with:
+   - exception: `0xc0000005`
+   - fault offset: `0x003fab4e`
+
+Trace from the `01fc093` Windows artifact:
+- `WinMain: enter cmd=''`
+- `initializeAppWindows: start windowed=1 borderless=0 800x600`
+- `initializeAppWindows: CreateWindow hwnd=... lastError=0`
+- `initializeAppWindows: success`
+- `WinMain: initializeAppWindows ok`
+- `WinMain: CreateMutex handle=... lastError=0`
+- `WinMain: before GameMain`
+- `GameMain: enter argc=1`
+- `GameMain: CreateGameEngine=...`
+- `GameEngine::init after InitRandom`
+- `GameEngine::init after createFileSystem`
+- `GameEngine::init after TheNameKeyGenerator`
+- `GameEngine::init after TheCommandList`
+- `GameEngine::init after XferCRC open`
+- `GameEngine::init stage=TheLocalFileSystem`
+- `GameEngine::init stage=TheArchiveFileSystem`
+- `BIGFileSystem: current-dir scan loaded=1`
+- `BIGFileSystem: ZH InstallPath='C:\Program Files (x86)\Steam\steamapps\common\Command & Conquer Generals - Zero Hour\'`
+- `BIGFileSystem: installPath scan loaded=1`
+- `GameEngine::init stage=TheWritableGlobalData`
+- `GameEngine::init after parseCommandLine`
+- `GameEngine::init after TheGameLODManager`
+- crash happens after this point
+
+What I changed in `7c3593a`:
+- Added tighter startup trace points in `GameEngine.cpp` around the exact failing gap:
+  - before / after `Default\\Water.ini`
+  - before / after `Water.ini`
+  - before / after `Default\\Weather.ini`
+  - before / after `Weather.ini`
+  - before / after `TheGameText`
+  - after `TheScienceStore`
+  - after `TheMultiplayerSettings`
+  - after `TheTerrainTypes`
+  - after `TheTerrainRoads`
+  - after `TheGlobalLanguageData`
+  - after `TheCDManager`
+  - before / after `TheAudio`
+- Also hardened `AppendStartupTrace` in `WinMain.cpp`:
+  - `GetModuleFileNameA`
+  - `strrchr`
+  - `strcat_s`
+  - `fopen_s`
+
+What Claude should do next:
+1. Wait for `#23674108615` to finish.
+2. Download the Windows artifact for commit `7c3593a`.
+3. Install that artifact into the game folder as `Generals.exe`.
+4. Launch it and read `zh-startup-trace.log`.
+5. Use the new finer-grained trace to identify the exact failing call between `TheGameLODManager` and the next completed subsystem.
+
+Working tree note:
+- No tracked source edits pending.
+- Only untracked local junk remains:
+  - `build-win32/`
+  - `latest_ci_artifacts*/`
+  - `release_runtimecheck/`
+  - `temp_cdb_cmds.txt`
+
 
 
  
