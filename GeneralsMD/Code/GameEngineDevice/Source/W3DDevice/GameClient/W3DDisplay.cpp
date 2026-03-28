@@ -33,6 +33,8 @@
 
 static void drawFramerateBar(void);
 
+extern void AppendStartupTrace(const char *format, ...);
+
 // SYSTEM INCLUDES ////////////////////////////////////////////////////////////
 #include <stdlib.h>
 #include <windows.h>
@@ -678,21 +680,29 @@ void W3DDisplay::init( void )
 
 	}  // end if
 	// Override the W3D File system
+	AppendStartupTrace("W3DDisplay::init start");
 	TheW3DFileSystem = NEW W3DFileSystem;
+	AppendStartupTrace("W3DDisplay::init after W3DFileSystem");
 
 	// init the Westwood math library
 	WWMath::Init();
+	AppendStartupTrace("W3DDisplay::init after WWMath::Init");
 
 	// create our 3D interface scene
 	m_3DInterfaceScene = NEW_REF( RTS3DInterfaceScene, () );
+	AppendStartupTrace("W3DDisplay::init after m_3DInterfaceScene NEW_REF");
 	m_3DInterfaceScene->Set_Ambient_Light( Vector3( 1, 1, 1 ) );
+	AppendStartupTrace("W3DDisplay::init after m_3DInterfaceScene->Set_Ambient_Light");
 
 	// create our 2D scene
 	m_2DScene = NEW_REF( RTS2DScene, () );
+	AppendStartupTrace("W3DDisplay::init after m_2DScene NEW_REF");
 	m_2DScene->Set_Ambient_Light( Vector3( 1, 1, 1 ) );
+	AppendStartupTrace("W3DDisplay::init after m_2DScene->Set_Ambient_Light");
 
 	// create our 3D scene
 	m_3DScene =NEW_REF( RTS3DScene, () );
+	AppendStartupTrace("W3DDisplay::init after m_3DScene NEW_REF");
 #if defined(_DEBUG) || defined(_INTERNAL)
 	if( TheGlobalData->m_wireframe )
 		m_3DScene->Set_Polygon_Mode( SceneClass::LINE );
@@ -728,18 +738,22 @@ void W3DDisplay::init( void )
 #endif
 
 	// create a new asset manager
-	m_assetManager = NEW W3DAssetManager;	
+	m_assetManager = NEW W3DAssetManager;
+	AppendStartupTrace("W3DDisplay::init after W3DAssetManager NEW");
 	m_assetManager->Register_Prototype_Loader(&_ParticleEmitterLoader );
 	m_assetManager->Register_Prototype_Loader(&_AggregateLoader);
 	m_assetManager->Set_WW3D_Load_On_Demand( true );
+	AppendStartupTrace("W3DDisplay::init after assetManager setup");
 
 
 	if (TheGlobalData->m_incrementalAGPBuf)
 	{
 		SortingRendererClass::SetMinVertexBufferSize(1);
 	}
+	AppendStartupTrace("W3DDisplay::init before WW3D::Init");
 	if (WW3D::Init( ApplicationHWnd ) != WW3D_ERROR_OK)
 		throw ERROR_INVALID_D3D;	//failed to initialize.  User probably doesn't have DX 8.1
+	AppendStartupTrace("W3DDisplay::init after WW3D::Init");
 
 	WW3D::Set_Prelit_Mode( WW3D::PRELIT_MODE_LIGHTMAP_MULTI_PASS );
 	WW3D::Set_Collision_Box_Display_Mask(0x00);	///<set to 0xff to make collision boxes visible
@@ -748,6 +762,7 @@ void W3DDisplay::init( void )
 	WW3D::Set_Screen_UV_Bias( TRUE );  ///< this makes text look good :)
 	WW3D::Set_Texture_Bitdepth(32);
 			
+	AppendStartupTrace("W3DDisplay::init before Set_Render_Device");
 	setWindowed( TheGlobalData->m_windowed );
 
 	// create a 2D renderer helper
@@ -804,10 +819,15 @@ void W3DDisplay::init( void )
 	if (TheGlobalData->m_displayGamma != 1.0f)
 		setGamma(TheGlobalData->m_displayGamma,0.0f,1.0f,FALSE);
 
+	AppendStartupTrace("W3DDisplay::init after Set_Render_Device");
 	initAssets();
+	AppendStartupTrace("W3DDisplay::init after initAssets");
 	init2DScene();
+	AppendStartupTrace("W3DDisplay::init after init2DScene");
 	init3DScene();
+	AppendStartupTrace("W3DDisplay::init after init3DScene");
 	W3DShaderManager::init();
+	AppendStartupTrace("W3DDisplay::init after W3DShaderManager::init");
 
 	// Create and initialize the debug display
 	m_nativeDebugDisplay = NEW W3DDebugDisplay();
