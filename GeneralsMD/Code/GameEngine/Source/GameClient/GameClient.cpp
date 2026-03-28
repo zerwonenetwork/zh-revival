@@ -403,13 +403,18 @@ void GameClient::init( void )
 	AppendStartupTrace("GameClient::init after TheHotKeyManager");
 
 	// instantiate the terrain visual display
-	AppendStartupTrace("GameClient::init before TheTerrainVisual->init");
+	AppendStartupTrace("GameClient::init before createTerrainVisual");
 	TheTerrainVisual = createTerrainVisual();
+	AppendStartupTrace("GameClient::init after createTerrainVisual ptr=%p", TheTerrainVisual);
 	if( TheTerrainVisual ) {
+		AppendStartupTrace("GameClient::init before TheTerrainVisual->init");
 		TheTerrainVisual->init();
+		AppendStartupTrace("GameClient::init after TheTerrainVisual->init");
  		TheTerrainVisual->setName("TheTerrainVisual");
 	}
-	AppendStartupTrace("GameClient::init after TheTerrainVisual->init");
+	else {
+		AppendStartupTrace("GameClient::init createTerrainVisual returned NULL");
+	}
 
 	// allocate the ray effects manager
 	TheRayEffects = MSGNEW("GameClientSubsystem") RayEffectSystem;
