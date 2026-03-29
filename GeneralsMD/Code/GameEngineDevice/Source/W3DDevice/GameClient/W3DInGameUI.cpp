@@ -52,6 +52,8 @@
 
 #include "Common/UnitTimings.h" //Contains the DO_UNIT_TIMINGS define jba.		 
 
+extern void AppendStartupTrace(const char *format, ...);
+
 #ifdef _INTERNAL
 // for occasional debugging...
 //#pragma optimize("", off)
@@ -392,11 +394,31 @@ void W3DInGameUI::reset( void )
 //-------------------------------------------------------------------------------------------------
 void W3DInGameUI::draw( void )
 {
+	static Bool s_traceFirstDraw = TRUE;
+	if (s_traceFirstDraw)
+	{
+		AppendStartupTrace("W3DInGameUI::draw first pass start");
+		AppendStartupTrace("W3DInGameUI::draw first pass before preDraw");
+	}
 	preDraw();
+	if (s_traceFirstDraw)
+	{
+		AppendStartupTrace("W3DInGameUI::draw first pass after preDraw");
+	}
 
 	// draw selection region if drag selecting
 	if( m_isDragSelecting )
+	{
+		if (s_traceFirstDraw)
+		{
+			AppendStartupTrace("W3DInGameUI::draw first pass before drawSelectionRegion");
+		}
 		drawSelectionRegion();
+		if (s_traceFirstDraw)
+		{
+			AppendStartupTrace("W3DInGameUI::draw first pass after drawSelectionRegion");
+		}
+	}
 
 	// for each view draw hints
 	/// @todo should the UI be iterating through views like this?
@@ -408,15 +430,33 @@ void W3DInGameUI::draw( void )
 				 view;
 				 view = TheDisplay->getNextView( view ) )
 		{
+			if (s_traceFirstDraw)
+			{
+				AppendStartupTrace("W3DInGameUI::draw first pass before drawMoveHints view=%p", view);
+			}
 
 			// draw move hints
 			drawMoveHints( view );
+			if (s_traceFirstDraw)
+			{
+				AppendStartupTrace("W3DInGameUI::draw first pass after drawMoveHints");
+				AppendStartupTrace("W3DInGameUI::draw first pass before drawAttackHints");
+			}
 
 			// draw attack hints
 			drawAttackHints( view );
+			if (s_traceFirstDraw)
+			{
+				AppendStartupTrace("W3DInGameUI::draw first pass after drawAttackHints");
+				AppendStartupTrace("W3DInGameUI::draw first pass before drawPlaceAngle");
+			}
 
 			// draw placement angle selection if needed
 			drawPlaceAngle( view );
+			if (s_traceFirstDraw)
+			{
+				AppendStartupTrace("W3DInGameUI::draw first pass after drawPlaceAngle");
+			}
 
 		}  // end for view
 
@@ -434,9 +474,23 @@ void W3DInGameUI::draw( void )
 	if (!g_UT_startTiming)
 #endif
 
+	if (s_traceFirstDraw)
+	{
+		AppendStartupTrace("W3DInGameUI::draw first pass before postDraw");
+	}
 	postDraw();
+	if (s_traceFirstDraw)
+	{
+		AppendStartupTrace("W3DInGameUI::draw first pass after postDraw");
+		AppendStartupTrace("W3DInGameUI::draw first pass before winRepaint");
+	}
 
 	TheWindowManager->winRepaint();
+	if (s_traceFirstDraw)
+	{
+		AppendStartupTrace("W3DInGameUI::draw first pass after winRepaint");
+		s_traceFirstDraw = FALSE;
+	}
 	
 #ifdef EXTENDED_STATS
 	}
@@ -733,4 +787,3 @@ void W3DInGameUI::drawPlaceAngle( View *view )
 	//TheDisplay->drawLine( start.x, start.y, end.x, end.y, width, color );
 
 }  // end drawPlaceAngle
-
