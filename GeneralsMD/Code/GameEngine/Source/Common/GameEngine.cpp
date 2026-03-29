@@ -824,13 +824,24 @@ void GameEngine::init( int argc, char *argv[] )
 
 	if(!TheGlobalData->m_playIntro)
 		TheWritableGlobalData->m_afterIntro = TRUE;
+	AppendStartupTrace("GameEngine::init post-try after afterIntro");
 
+	AppendStartupTrace("GameEngine::init post-try before initKindOfMasks");
 	initKindOfMasks();
+	AppendStartupTrace("GameEngine::init post-try after initKindOfMasks");
+	AppendStartupTrace("GameEngine::init post-try before initDisabledMasks");
 	initDisabledMasks();
+	AppendStartupTrace("GameEngine::init post-try after initDisabledMasks");
+	AppendStartupTrace("GameEngine::init post-try before initDamageTypeFlags");
 	initDamageTypeFlags();
+	AppendStartupTrace("GameEngine::init post-try after initDamageTypeFlags");
 
+	AppendStartupTrace("GameEngine::init post-try before TheSubsystemList->resetAll");
 	TheSubsystemList->resetAll();
+	AppendStartupTrace("GameEngine::init post-try after TheSubsystemList->resetAll");
+	AppendStartupTrace("GameEngine::init post-try before HideControlBar");
 	HideControlBar();
+	AppendStartupTrace("GameEngine::init post-try after HideControlBar");
 }  // end init
 
 /** -----------------------------------------------------------------------------------------------
