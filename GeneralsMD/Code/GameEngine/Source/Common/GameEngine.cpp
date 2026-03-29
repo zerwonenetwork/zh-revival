@@ -929,15 +929,23 @@ extern HWND ApplicationHWnd;
  */
 void GameEngine::execute( void )
 {
+	AppendStartupTrace("GameEngine::execute enter");
 	
 	DWORD prevTime = timeGetTime();
 #if defined(_DEBUG) || defined(_INTERNAL)
 	DWORD startTime = timeGetTime() / 1000;
 #endif
+	Bool loggedFirstLoop = FALSE;
+	Bool loggedFirstUpdate = FALSE;
+	Bool loggedFirstUpdateDone = FALSE;
 
 	// pretty basic for now
 	while( !m_quitting )
 	{
+		if (!loggedFirstLoop) {
+			AppendStartupTrace("GameEngine::execute first loop start");
+			loggedFirstLoop = TRUE;
+		}
 
 		//if (TheGlobalData->m_vTune)
 		{
@@ -973,8 +981,16 @@ void GameEngine::execute( void )
 			{
 				try 
 				{
+					if (!loggedFirstUpdate) {
+						AppendStartupTrace("GameEngine::execute before first update");
+						loggedFirstUpdate = TRUE;
+					}
 					// compute a frame
 					update();
+					if (!loggedFirstUpdateDone) {
+						AppendStartupTrace("GameEngine::execute after first update");
+						loggedFirstUpdateDone = TRUE;
+					}
 				}
 				catch (INIException e)
 				{
