@@ -853,6 +853,7 @@ void TextureLoader::Update(void (*network_callback)(void))
 	static bool s_traceFirstUpdate = true;
 	static const unsigned long kForegroundBudgetMs = 10;
 	static const int kForegroundTaskBudget = 32;
+	static bool s_skipFirstUpdate = true;
 	WWASSERT_PRINT(Is_DX8_Thread(), "TextureLoader::Update must be called from the main thread!");
 
 	if (TextureLoadSuspended) {
@@ -860,6 +861,13 @@ void TextureLoader::Update(void (*network_callback)(void))
 			AppendStartupTrace("TextureLoader::Update first pass suspended");
 			s_traceFirstUpdate = false;
 		}
+		return;
+	}
+
+	if (s_skipFirstUpdate) {
+		AppendStartupTrace("TextureLoader::Update first pass skipped to avoid startup deadlock");
+		s_skipFirstUpdate = false;
+		s_traceFirstUpdate = false;
 		return;
 	}
 
