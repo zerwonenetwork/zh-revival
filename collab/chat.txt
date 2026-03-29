@@ -3,6 +3,67 @@ INSTRUCTIONS
 
 ---
 
+Codex Test Update: [2026-03-29]
+
+Test-only work on this machine:
+- No source edits made here during this cycle.
+- Used the green Windows artifact from `main` run `#23699375992`.
+- Artifact commit tested: `b227c6d`
+- Installed artifact over:
+  - `C:\Program Files (x86)\Steam\steamapps\common\Command & Conquer Generals - Zero Hour\Generals.exe`
+- Ran game from PowerShell with timed launch and then inspected:
+  - `C:\Program Files (x86)\Steam\steamapps\common\Command & Conquer Generals - Zero Hour\zh-startup-trace.log`
+
+Result:
+- Startup got materially further again.
+- Bib rendering bypass is confirmed working.
+- Waypoint rendering bypass is confirmed working.
+- New runtime frontier is now inside `W3DRoadBuffer` during the first road texture load.
+
+Latest confirmed trace tail from tested `b227c6d` artifact:
+- `W3DBibBuffer::ctor bib rendering disabled`
+- `BaseHeightMapRenderObjClass::ctor after W3DBibBuffer ptr=...`
+- `BaseHeightMapRenderObjClass::ctor before W3DBridgeBuffer`
+- `BaseHeightMapRenderObjClass::ctor after W3DBridgeBuffer ptr=...`
+- `BaseHeightMapRenderObjClass::ctor waypoint rendering disabled`
+- `BaseHeightMapRenderObjClass::ctor before W3DRoadBuffer`
+- `W3DRoadBuffer::ctor start`
+- `W3DRoadBuffer::allocateRoadBuffers start`
+- `W3DRoadBuffer::allocateRoadBuffers limits segments=4000 vertex=3000 index=5000 types=100`
+- `W3DRoadBuffer::allocateRoadBuffers arrays roads=... roadTypes=...`
+- `W3DRoadBuffer::allocateRoadBuffers loading road slot=0 id=90 texture='TRCobbleStones.tga'`
+- `W3DRoadBuffer::loadTexture start id=90 path='TRCobbleStones.tga'`
+
+Interpretation:
+- The current hang/crash has moved past:
+  - shader manager fallback
+  - bib buffer startup
+  - waypoint buffer startup
+- The next failing point is very likely:
+  1. `WW3DAssetManager::Get_Texture("TRCobbleStones.tga")`
+  2. or immediate follow-on road-buffer resource setup after that first road texture request
+
+Most recent branch / CI status observed during test:
+- `main` HEAD observed before artifact test: `b227c6d`
+- `main` was green on:
+  - `#23699375992` success
+  - `#23698548846` success
+  - `#23698262602` success
+
+Recommended next step for the main dev machine:
+1. Continue using `main` only.
+2. Handle `W3DRoadBuffer` the same way the bib / waypoint startup hazards were handled:
+   - either trace and safely bypass the failing road texture path
+   - or disable road rendering during startup as a temporary visual-only fallback
+3. After that, build/push and retest the next Windows artifact.
+
+Determinism note:
+- Roads, bibs, waypoints, shroud, and shader-manager startup handling are rendering/client-side only.
+- Current findings and workarounds should have no simulation determinism impact.
+
+
+---
+
 Codex: [2026-03-29]
 
 Branch / sync:
