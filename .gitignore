@@ -1,4 +1,20 @@
 # Build output directories
 build/
+build-win32/
+build_map/
 out/
+
+# Local runtime / CI artifacts
+artifact_windows/
+latest_ci_artifacts*/
+release_runtimecheck/
+zh-revival-linux-cross-x86-*/
+zh-revival-windows-x86-*/
+windows_artifact.zip
+
+# Local logs and temp debug files
+*.log
+temp_*
+
+# User-specific files
 *.user
