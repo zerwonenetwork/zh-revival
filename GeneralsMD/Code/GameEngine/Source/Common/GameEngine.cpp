@@ -1121,14 +1121,32 @@ void GameEngine::execute( void )
 			tracedLoops++;
 		}
 
+		if (traceLoop) {
+			AppendStartupTrace("GameEngine::execute loop %d before perf epilogue", loopIndex);
+		}
 #ifdef PERF_TIMERS
 		if (!m_quitting && TheGameLogic->isInGame() && !TheGameLogic->isInShellGame() && !TheGameLogic->isGamePaused())
 		{
+			if (traceLoop) {
+				AppendStartupTrace("GameEngine::execute loop %d before PerfGather::dumpAll", loopIndex);
+			}
 			PerfGather::dumpAll(TheGameLogic->getFrame());
+			if (traceLoop) {
+				AppendStartupTrace("GameEngine::execute loop %d after PerfGather::dumpAll", loopIndex);
+			}
 			PerfGather::displayGraph(TheGameLogic->getFrame());
+			if (traceLoop) {
+				AppendStartupTrace("GameEngine::execute loop %d after PerfGather::displayGraph", loopIndex);
+			}
 			PerfGather::resetAll();
+			if (traceLoop) {
+				AppendStartupTrace("GameEngine::execute loop %d after PerfGather::resetAll", loopIndex);
+			}
 		}
 #endif
+		if (traceLoop) {
+			AppendStartupTrace("GameEngine::execute loop %d after perf epilogue", loopIndex);
+		}
 
 	}
 
