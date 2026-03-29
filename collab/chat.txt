@@ -61,6 +61,12 @@ Determinism note:
 - Roads, bibs, waypoints, shroud, and shader-manager startup handling are rendering/client-side only.
 - Current findings and workarounds should have no simulation determinism impact.
 
+Retest confirmation:
+- Re-ran the installed `b227c6d` artifact again locally from PowerShell with timed wait.
+- Result matched the previous run exactly.
+- Confirmed current runtime frontier is still:
+  - `W3DRoadBuffer::loadTexture start id=90 path='TRCobbleStones.tga'`
+
 
 ---
 
