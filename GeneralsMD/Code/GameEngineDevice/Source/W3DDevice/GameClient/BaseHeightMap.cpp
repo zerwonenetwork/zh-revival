@@ -313,9 +313,8 @@ BaseHeightMapRenderObjClass::BaseHeightMapRenderObjClass(void)
 	AppendStartupTrace("BaseHeightMapRenderObjClass::ctor before W3DBridgeBuffer");
 	m_bridgeBuffer = NEW W3DBridgeBuffer;
 	AppendStartupTrace("BaseHeightMapRenderObjClass::ctor after W3DBridgeBuffer ptr=%p", m_bridgeBuffer);
-	AppendStartupTrace("BaseHeightMapRenderObjClass::ctor before W3DWaypointBuffer");
-	m_waypointBuffer = NEW W3DWaypointBuffer;
-	AppendStartupTrace("BaseHeightMapRenderObjClass::ctor after W3DWaypointBuffer ptr=%p", m_waypointBuffer);
+	AppendStartupTrace("BaseHeightMapRenderObjClass::ctor waypoint rendering disabled");
+	m_waypointBuffer = NULL;
 #ifdef DO_ROADS
 	m_roadBuffer = NULL;
 	AppendStartupTrace("BaseHeightMapRenderObjClass::ctor before W3DRoadBuffer");
