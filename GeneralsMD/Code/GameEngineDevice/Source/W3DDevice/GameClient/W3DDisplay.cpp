@@ -1721,6 +1721,7 @@ void W3DDisplay::draw( void )
 {
 	//USE_PERF_TIMER(W3DDisplay_draw)
 	static UnsignedInt syncTime = 0;
+	static Bool s_traceFirstDraw = TRUE;
 
 	extern HWND ApplicationHWnd;
 	if (ApplicationHWnd && ::IsIconic(ApplicationHWnd)) {
@@ -1901,7 +1902,16 @@ AGAIN:
 		{	//Checking if we have the device before updating views because the heightmap crashes otherwise while
 			//trying to refresh the visible terrain geometry.
 //			if(TheGlobalData->m_loadScreenRender != TRUE)
+			if (s_traceFirstDraw)
+			{
+				AppendStartupTrace("W3DDisplay::draw first pass before updateViews");
+			}
 				updateViews();
+			if (s_traceFirstDraw)
+			{
+				AppendStartupTrace("W3DDisplay::draw first pass after updateViews");
+				AppendStartupTrace("W3DDisplay::draw first pass before TheParticleSystemManager->update");
+			}
      		TheParticleSystemManager->update();//LORENZEN AND WILCZYNSKI MOVED THIS FROM ITS NATIVE POSITION, ABOVE
                                            //FOR THE PURPOSE OF LETTING THE PARTICLE SYSTEM LOOK UP THE RENDER OBJECT"S
                                            //TRANSFORM MATRIX, WHILE IT IS STILL VALID (HAVING DONE ITS CLIENT TRANSFORMS
@@ -1910,15 +1920,39 @@ AGAIN:
                                            //MOVE WITH THE CLIENT TRANSFORMS, NOW.
                                            //REVOLUTIONARY!
                                            //-LORENZEN
+			if (s_traceFirstDraw)
+			{
+				AppendStartupTrace("W3DDisplay::draw first pass after TheParticleSystemManager->update");
+			}
 
 
 			if (TheWaterRenderObj && TheGlobalData->m_waterType == 2)
+			{
+				if (s_traceFirstDraw)
+				{
+					AppendStartupTrace("W3DDisplay::draw first pass before water render-target update");
+				}
 				TheWaterRenderObj->updateRenderTargetTextures(primaryW3DView->get3DCamera());	//do a render into each texture
+				if (s_traceFirstDraw)
+				{
+					AppendStartupTrace("W3DDisplay::draw first pass after water render-target update");
+				}
+			}
 
 			//Can't render into textures while rendering to screen so these textures need to be updated
 			//before we enter main rendering loop.
 			if (TheW3DProjectedShadowManager)
+			{
+				if (s_traceFirstDraw)
+				{
+					AppendStartupTrace("W3DDisplay::draw first pass before projected shadow update");
+				}
 				TheW3DProjectedShadowManager->updateRenderTargetTextures();
+				if (s_traceFirstDraw)
+				{
+					AppendStartupTrace("W3DDisplay::draw first pass after projected shadow update");
+				}
+			}
 		}
 
 		Debug_Statistics::End_Statistics();	//record number of polygons rendered in RenderTargetTextures.
@@ -1936,8 +1970,16 @@ AGAIN:
 		{
 			//USE_PERF_TIMER(BigAssRenderLoop)
 			static Bool couldRender = true;
+			if (s_traceFirstDraw)
+			{
+				AppendStartupTrace("W3DDisplay::draw first pass before WW3D::Begin_Render");
+			}
 			if ((TheGlobalData->m_breakTheMovie == FALSE) && (TheGlobalData->m_disableRender == false) && WW3D::Begin_Render( true, true, Vector3( 0.0f, 0.0f, 0.0f ), TheWaterTransparency->m_minWaterOpacity ) == WW3D_ERROR_OK)		
 			{
+				if (s_traceFirstDraw)
+				{
+					AppendStartupTrace("W3DDisplay::draw first pass after WW3D::Begin_Render");
+				}
 				
 				if(TheGlobalData->m_loadScreenRender == TRUE)
 				{	
@@ -1953,20 +1995,51 @@ AGAIN:
 					Debug_Statistics::Record_DX8_Polys_And_Vertices(numRenderTargetPolygons,numRenderTargetVertices,ShaderClass::_PresetOpaqueShader);
 
 				// draw all views of the world
+				if (s_traceFirstDraw)
+				{
+					AppendStartupTrace("W3DDisplay::draw first pass before drawViews");
+				}
 				drawViews();
+				if (s_traceFirstDraw)
+				{
+					AppendStartupTrace("W3DDisplay::draw first pass after drawViews");
+					AppendStartupTrace("W3DDisplay::draw first pass before TheInGameUI->DRAW");
+				}
 
 				// draw the user interface
 				TheInGameUI->DRAW();
+				if (s_traceFirstDraw)
+				{
+					AppendStartupTrace("W3DDisplay::draw first pass after TheInGameUI->DRAW");
+				}
 
 				// end of video example code
 
 				// draw the mouse
 				if( TheMouse )
+				{
+					if (s_traceFirstDraw)
+					{
+						AppendStartupTrace("W3DDisplay::draw first pass before TheMouse->DRAW");
+					}
 					TheMouse->DRAW();
+					if (s_traceFirstDraw)
+					{
+						AppendStartupTrace("W3DDisplay::draw first pass after TheMouse->DRAW");
+					}
+				}
 
 				if ( m_videoStream && m_videoBuffer )
 				{
+					if (s_traceFirstDraw)
+					{
+						AppendStartupTrace("W3DDisplay::draw first pass before drawVideoBuffer stream=%p buffer=%p", m_videoStream, m_videoBuffer);
+					}
 					drawVideoBuffer( m_videoBuffer, 0, 0, getWidth(), getHeight() );
+					if (s_traceFirstDraw)
+					{
+						AppendStartupTrace("W3DDisplay::draw first pass after drawVideoBuffer");
+					}
 				}
 				if( m_copyrightDisplayString )
 				{
@@ -1977,7 +2050,15 @@ AGAIN:
 					m_copyrightDisplayString->draw(x, y, GameMakeColor(0,0,0,255), GameMakeColor(0,0,0,0),0,0);
 				}
 				// render letter box before debug display so debug info isn't hidden
+				if (s_traceFirstDraw)
+				{
+					AppendStartupTrace("W3DDisplay::draw first pass before renderLetterBox");
+				}
 				renderLetterBox(now);
+				if (s_traceFirstDraw)
+				{
+					AppendStartupTrace("W3DDisplay::draw first pass after renderLetterBox");
+				}
 
 				// display cinematicText over the black
 				if( m_cinematicText != AsciiString::TheEmptyString && m_cinematicTextFrames != 0)
@@ -2034,7 +2115,16 @@ AGAIN:
 				TheGraphDraw->clear();
 #endif
 				// render is all done!
+				if (s_traceFirstDraw)
+				{
+					AppendStartupTrace("W3DDisplay::draw first pass before WW3D::End_Render");
+				}
 				WW3D::End_Render();	
+				if (s_traceFirstDraw)
+				{
+					AppendStartupTrace("W3DDisplay::draw first pass after WW3D::End_Render");
+					s_traceFirstDraw = FALSE;
+				}
 			}
 			else
 			{
