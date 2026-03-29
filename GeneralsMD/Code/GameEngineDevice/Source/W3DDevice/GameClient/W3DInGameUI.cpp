@@ -653,8 +653,26 @@ void W3DInGameUI::drawPlaceAngle( View *view )
 {
 //	Coord2D v, p, o;
 	//Real size = 15.0f;
+	Bool anchorInScene = m_buildingPlacementAnchor ? (m_buildingPlacementAnchor->Peek_Scene() != NULL) : FALSE;
+	Bool arrowInScene	 = m_buildingPlacementArrow ? (m_buildingPlacementArrow->Peek_Scene() != NULL) : FALSE;
 
-	//Create the anchor & arrow if not already created!
+	// get out of here if this display isn't up anyway
+	if( isPlacementAnchored() == FALSE )
+	{
+		if( anchorInScene )
+		{
+			//If our anchor is in the scene, remove it from the scene but don't delete it.
+			W3DDisplay::m_3DScene->Remove_Render_Object( m_buildingPlacementAnchor );
+		}
+		if( arrowInScene )
+		{
+			//If our arrow is in the scene, remove it from the scene but don't delete it.
+			W3DDisplay::m_3DScene->Remove_Render_Object( m_buildingPlacementArrow );
+		}
+		return;
+	}
+
+	// Create the anchor & arrow lazily only when placement mode is active.
 	if( !m_buildingPlacementAnchor )
 	{
 		m_buildingPlacementAnchor = W3DDisplay::m_assetManager->Create_Render_Obj( "Locater01" );
@@ -678,24 +696,8 @@ void W3DInGameUI::drawPlaceAngle( View *view )
 		}
 	}
 
-	Bool anchorInScene = m_buildingPlacementAnchor->Peek_Scene() != NULL;
-	Bool arrowInScene	 = m_buildingPlacementArrow->Peek_Scene() != NULL;
-
-	// get out of here if this display isn't up anyway
-	if( isPlacementAnchored() == FALSE )
-	{
-		if( anchorInScene )
-		{
-			//If our anchor is in the scene, remove it from the scene but don't delete it.
-			W3DDisplay::m_3DScene->Remove_Render_Object( m_buildingPlacementAnchor );
-		}
-		if( arrowInScene )
-		{
-			//If our arrow is in the scene, remove it from the scene but don't delete it.
-			W3DDisplay::m_3DScene->Remove_Render_Object( m_buildingPlacementArrow );
-		}
-		return;
-	}
+	anchorInScene = m_buildingPlacementAnchor->Peek_Scene() != NULL;
+	arrowInScene	 = m_buildingPlacementArrow->Peek_Scene() != NULL;
 
 	// get the anchor points
 	ICoord2D start, end;
