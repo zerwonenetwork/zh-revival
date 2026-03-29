@@ -935,12 +935,48 @@ void GameEngine::update( void )
 		}
 
 
-		if ((TheNetwork == NULL && !TheGameLogic->isGamePaused()) || (TheNetwork && TheNetwork->isFrameDataReady()))
+		Bool allowLogicUpdate = FALSE;
+		if (traceUpdatePass) {
+			AppendStartupTrace("GameEngine::update pass %d before logic update gate", tracePassIndex);
+		}
+		if (TheNetwork == NULL)
 		{
+			Bool paused = TheGameLogic->isGamePaused();
+			if (traceUpdatePass) {
+				AppendStartupTrace(
+					"GameEngine::update pass %d logic gate network=NULL paused=%d",
+					tracePassIndex,
+					paused ? 1 : 0
+				);
+			}
+			allowLogicUpdate = !paused;
+		}
+		else
+		{
+			Bool frameDataReady = TheNetwork->isFrameDataReady();
+			if (traceUpdatePass) {
+				AppendStartupTrace(
+					"GameEngine::update pass %d logic gate network!=NULL frameDataReady=%d",
+					tracePassIndex,
+					frameDataReady ? 1 : 0
+				);
+			}
+			allowLogicUpdate = frameDataReady;
+		}
+
+		if (allowLogicUpdate)
+		{
+			if (traceUpdatePass) {
+				AppendStartupTrace("GameEngine::update pass %d before TheGameLogic->UPDATE", tracePassIndex);
+			}
 			TheGameLogic->UPDATE();
 			if (traceUpdatePass) {
 				AppendStartupTrace("GameEngine::update pass %d after TheGameLogic->UPDATE", tracePassIndex);
 			}
+		}
+		else if (traceUpdatePass)
+		{
+			AppendStartupTrace("GameEngine::update pass %d skipped TheGameLogic->UPDATE", tracePassIndex);
 		}
 
 	}	// end perfGather

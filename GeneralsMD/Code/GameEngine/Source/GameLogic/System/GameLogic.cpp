@@ -78,6 +78,8 @@
 #include "GameClient/View.h"
 #include "GameClient/ControlBar.h"
 #include "GameClient/CampaignManager.h"
+
+extern void AppendStartupTrace(const char *fmt, ...);
 #include "GameClient/GameWindowTransitions.h"
 
 #include "GameLogic/AI.h"
@@ -3611,6 +3613,12 @@ extern __int64 Total_Load_3D_Assets;
 // ------------------------------------------------------------------------------------------------
 void GameLogic::update( void )
 {
+	static Int s_logicUpdateTraceCount = 0;
+	const Bool traceLogicPass = (s_logicUpdateTraceCount < 5);
+	const Int traceLogicPassIndex = s_logicUpdateTraceCount + 1;
+	if (traceLogicPass) {
+		AppendStartupTrace("GameLogic::update pass %d start", traceLogicPassIndex);
+	}
 	USE_PERF_TIMER(GameLogic_update)
 
 	LatchRestore<Bool> inUpdateLatch(m_isInUpdate, TRUE);
@@ -3658,10 +3666,16 @@ void GameLogic::update( void )
 	DEBUG_ASSERTCRASH(TheGameLogic == this, ("hmm, TheGameLogic is not right"));
 	UnsignedInt now = TheGameLogic->getFrame();
 	TheGameClient->setFrame(now);
+	if (traceLogicPass) {
+		AppendStartupTrace("GameLogic::update pass %d after setFrame now=%u", traceLogicPassIndex, now);
+	}
 
 	// update (execute) scripts
 	{
 		TheScriptEngine->UPDATE();
+	}
+	if (traceLogicPass) {
+		AppendStartupTrace("GameLogic::update pass %d after TheScriptEngine->UPDATE", traceLogicPassIndex);
 	}
 
 	Bool freezeTime = TheTacticalView->isTimeFrozen() && !TheTacticalView->isCameraMovementFinished();
@@ -3676,6 +3690,10 @@ void GameLogic::update( void )
 		else 
 		{
 			/// @todo - make sure this never happens during a network game.  jba.
+			if (traceLogicPass) {
+				AppendStartupTrace("GameLogic::update pass %d returning early due to freezeTime", traceLogicPassIndex);
+				s_logicUpdateTraceCount++;
+			}
 			return;
 		}
 	}
@@ -3684,6 +3702,9 @@ void GameLogic::update( void )
 	// This way changes in bridges are noted in the script engine before being cleared in TerrainLogic->update
 	{
 		TheTerrainLogic->UPDATE();
+	}
+	if (traceLogicPass) {
+		AppendStartupTrace("GameLogic::update pass %d after TheTerrainLogic->UPDATE", traceLogicPassIndex);
 	}
 
 	// force CRC calculation, so we can keep a cache of the last N CRCs.  We do this right where the recorder
@@ -3716,21 +3737,33 @@ void GameLogic::update( void )
 			//DEBUG_LOG(("Appended Playback CRC of %8.8X on frame %d\n", m_CRC, m_frame));
 		}
 	}
+	if (traceLogicPass) {
+		AppendStartupTrace("GameLogic::update pass %d after CRC block", traceLogicPassIndex);
+	}
 
 	// collect stats
 	if(TheStatsCollector)
 	{
 		TheStatsCollector->update();
 	}
+	if (traceLogicPass) {
+		AppendStartupTrace("GameLogic::update pass %d after TheStatsCollector->update", traceLogicPassIndex);
+	}
 
 	// Update the Recorder
 	{
 		TheRecorder->UPDATE();
 	}
+	if (traceLogicPass) {
+		AppendStartupTrace("GameLogic::update pass %d after TheRecorder->UPDATE", traceLogicPassIndex);
+	}
 
 	// process client commands
 	{
 		processCommandList( TheCommandList );
+	}
+	if (traceLogicPass) {
+		AppendStartupTrace("GameLogic::update pass %d after processCommandList", traceLogicPassIndex);
 	}
 
 #ifdef ALLOW_NONSLEEPY_UPDATES
@@ -3757,11 +3790,25 @@ void GameLogic::update( void )
 		}
 	}
 #endif
+	if (traceLogicPass) {
+		AppendStartupTrace("GameLogic::update pass %d after normal updates", traceLogicPassIndex);
+	}
 
 	{
+		UnsignedInt sleepyIterations = 0;
 		while (!m_sleepyUpdates.empty())
 		{
 			UpdateModulePtr u = peekSleepyUpdate();
+			if (traceLogicPass && (sleepyIterations < 5 || (sleepyIterations % 1000) == 0))
+			{
+				AppendStartupTrace(
+					"GameLogic::update pass %d sleepy iter=%u nextCall=%u now=%u",
+					traceLogicPassIndex,
+					sleepyIterations,
+					u ? u->friend_getNextCallFrame() : 0,
+					now
+				);
+			}
 
 			if (!u)
 			{
@@ -3798,24 +3845,40 @@ void GameLogic::update( void )
 			// else defer it till next frame and re-push it
 			u->friend_setNextCallFrame(now + sleepLen);
 			rebalanceSleepyUpdate(0);
+			++sleepyIterations;
+		}
+		if (traceLogicPass) {
+			AppendStartupTrace("GameLogic::update pass %d after sleepy updates", traceLogicPassIndex);
 		}
 	}
 
 	validateSleepyUpdate();
+	if (traceLogicPass) {
+		AppendStartupTrace("GameLogic::update pass %d after validateSleepyUpdate", traceLogicPassIndex);
+	}
 
 	// update the Artificial Intelligence system
 	{
 		TheAI->UPDATE();
+	}
+	if (traceLogicPass) {
+		AppendStartupTrace("GameLogic::update pass %d after TheAI->UPDATE", traceLogicPassIndex);
 	}
 
 	// production updates
 	{
 		TheBuildAssistant->UPDATE();
 	}
+	if (traceLogicPass) {
+		AppendStartupTrace("GameLogic::update pass %d after TheBuildAssistant->UPDATE", traceLogicPassIndex);
+	}
 
 	// update partition info
 	{
 		ThePartitionManager->UPDATE();
+	}
+	if (traceLogicPass) {
+		AppendStartupTrace("GameLogic::update pass %d after ThePartitionManager->UPDATE", traceLogicPassIndex);
 	}
 
 	//
@@ -3824,13 +3887,22 @@ void GameLogic::update( void )
 
 	// destroy all pending objects
 	processDestroyList();
+	if (traceLogicPass) {
+		AppendStartupTrace("GameLogic::update pass %d after processDestroyList", traceLogicPassIndex);
+	}
 
 	// reset the command list, destroying all messages
 	TheCommandList->reset();
+	if (traceLogicPass) {
+		AppendStartupTrace("GameLogic::update pass %d after TheCommandList->reset", traceLogicPassIndex);
+	}
 
 	TheWeaponStore->UPDATE();	
 	TheLocomotorStore->UPDATE();	
 	TheVictoryConditions->UPDATE();
+	if (traceLogicPass) {
+		AppendStartupTrace("GameLogic::update pass %d after store/victory updates", traceLogicPassIndex);
+	}
 
 #ifdef DO_COPY_PROTECTION
 	if (!isInShellGame() && isInGame())
@@ -3854,6 +3926,9 @@ void GameLogic::update( void )
 			}
 		}
 	}
+	if (traceLogicPass) {
+		AppendStartupTrace("GameLogic::update pass %d after disabled-status sweep", traceLogicPassIndex);
+	}
 
   
 
@@ -3863,6 +3938,10 @@ void GameLogic::update( void )
 	if (!m_startNewGame)
 	{
 		m_frame++;
+	}
+	if (traceLogicPass) {
+		AppendStartupTrace("GameLogic::update pass %d complete frame=%u", traceLogicPassIndex, m_frame);
+		s_logicUpdateTraceCount++;
 	}
 }
 
