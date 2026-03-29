@@ -3100,7 +3100,7 @@ W3DRoadBuffer::W3DRoadBuffer(void)	:
 
 {
 	AppendStartupTrace("W3DRoadBuffer::ctor start");
-	allocateRoadBuffers();
+	AppendStartupTrace("W3DRoadBuffer::ctor road rendering disabled during startup");
 	AppendStartupTrace("W3DRoadBuffer::ctor complete initialized=%d roadTypes=%d roadSegments=%d", (int)m_initialized, m_maxRoadTypes, m_maxRoadSegments);
 }
 
@@ -3248,6 +3248,9 @@ void W3DRoadBuffer::loadRoads()
 //=============================================================================
 void W3DRoadBuffer::updateLighting(void)
 {
+	if (!m_initialized || !m_roadTypes) {
+		return;
+	}
 	/*
 	CRASH FIX: Kris Morness
 	When the player alt-tabs out of the game, m_roads is freed up, but when the other player
@@ -3290,6 +3293,9 @@ void W3DRoadBuffer::updateLighting(void)
 //=============================================================================
 void W3DRoadBuffer::updateCenter(void)
 {
+	if (!m_initialized || !m_roadTypes) {
+		return;
+	}
 	m_updateBuffers = true;
 }
 
@@ -3301,6 +3307,9 @@ void W3DRoadBuffer::updateCenter(void)
 void W3DRoadBuffer::drawRoads(CameraClass * camera, TextureClass *cloudTexture, TextureClass *noiseTexture, Bool wireframe,
 															Int minX, Int maxX, Int minY, Int maxY, RefRenderObjListIterator *pDynamicLightsIterator)
 {
+	if (!m_initialized || !m_roadTypes) {
+		return;
+	}
 	IRegion2D bounds;
 	bounds.lo.x = minX*MAP_XY_FACTOR;
 	bounds.hi.x = maxX*MAP_XY_FACTOR;
