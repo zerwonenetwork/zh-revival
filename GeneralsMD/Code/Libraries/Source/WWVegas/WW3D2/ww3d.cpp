@@ -111,6 +111,8 @@
 #include "Vector3i.h"
 #include <cstdio>
 #include "dx8wrapper.h"
+
+extern void AppendStartupTrace(const char *format, ...);
 #include "targa.h"
 #include "sortingrenderer.h"
 #include "thread.h"
@@ -793,6 +795,7 @@ void WW3D::Set_Texture_Filter(int texture_filter)
  *=============================================================================================*/
 WW3DErrorType WW3D::Begin_Render(bool clear,bool clearz,const Vector3 & color, float dest_alpha, void(*network_callback)(void))
 {
+	static bool s_traceFirstBeginRender = true;
 	if (!IsInitted) {
 		return(WW3D_ERROR_OK);
 	}
@@ -819,6 +822,9 @@ WW3DErrorType WW3D::Begin_Render(bool clear,bool clearz,const Vector3 & color, f
 
 		return WW3D_ERROR_GENERIC;
 	}
+	if (s_traceFirstBeginRender) {
+		AppendStartupTrace("WW3D::Begin_Render first pass after TestCooperativeLevel");
+	}
 
 	// Memory allocation statistics
 	LastFrameMemoryAllocations=WWMemoryLogClass::Get_Allocate_Count();
@@ -826,13 +832,28 @@ WW3DErrorType WW3D::Begin_Render(bool clear,bool clearz,const Vector3 & color, f
 	WWMemoryLogClass::Reset_Counters();
 
 	TextureLoader::Update(network_callback);
+	if (s_traceFirstBeginRender) {
+		AppendStartupTrace("WW3D::Begin_Render first pass after TextureLoader::Update");
+	}
 //	TextureClass::_Reset_Time_Stamp();
 	DynamicVBAccessClass::_Reset(true);
+	if (s_traceFirstBeginRender) {
+		AppendStartupTrace("WW3D::Begin_Render first pass after DynamicVBAccessClass::_Reset");
+	}
 	DynamicIBAccessClass::_Reset(true);
+	if (s_traceFirstBeginRender) {
+		AppendStartupTrace("WW3D::Begin_Render first pass after DynamicIBAccessClass::_Reset");
+	}
 #ifdef WW3D_DX8
 	TextureFileClass::Update_Texture_Flash();
+	if (s_traceFirstBeginRender) {
+		AppendStartupTrace("WW3D::Begin_Render first pass after TextureFileClass::Update_Texture_Flash");
+	}
 #endif //WW3D_DX8
 	Debug_Statistics::Begin_Statistics();
+	if (s_traceFirstBeginRender) {
+		AppendStartupTrace("WW3D::Begin_Render first pass after Debug_Statistics::Begin_Statistics");
+	}
 
 	if (IsCapturing && (!PauseRecord || RecordNextFrame)) {
 		Update_Movie_Capture();
@@ -841,6 +862,9 @@ WW3DErrorType WW3D::Begin_Render(bool clear,bool clearz,const Vector3 & color, f
 
 	WWASSERT(!IsRendering);
 	IsRendering = true;
+	if (s_traceFirstBeginRender) {
+		AppendStartupTrace("WW3D::Begin_Render first pass after IsRendering=true");
+	}
 
 	// If we want to clear the screen, we need to set the viewport to include the entire screen:
 	if (clear || clearz) {
@@ -855,11 +879,24 @@ WW3DErrorType WW3D::Begin_Render(bool clear,bool clearz,const Vector3 & color, f
 		vp.MinZ = 0.0f;;
 		vp.MaxZ = 1.0f;
 		DX8Wrapper::Set_Viewport(&vp);
+		if (s_traceFirstBeginRender) {
+			AppendStartupTrace("WW3D::Begin_Render first pass after Set_Viewport");
+		}
 		DX8Wrapper::Clear(clear, clearz, color, dest_alpha);
+		if (s_traceFirstBeginRender) {
+			AppendStartupTrace("WW3D::Begin_Render first pass after DX8Wrapper::Clear");
+		}
 	}
 
 	// Notify D3D that we are beginning to render the frame
+	if (s_traceFirstBeginRender) {
+		AppendStartupTrace("WW3D::Begin_Render first pass before DX8Wrapper::Begin_Scene");
+	}
 	DX8Wrapper::Begin_Scene();
+	if (s_traceFirstBeginRender) {
+		AppendStartupTrace("WW3D::Begin_Render first pass after DX8Wrapper::Begin_Scene");
+		s_traceFirstBeginRender = false;
+	}
 
 	return WW3D_ERROR_OK;
 }
