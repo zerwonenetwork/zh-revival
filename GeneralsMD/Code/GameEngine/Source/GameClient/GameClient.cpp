@@ -539,9 +539,14 @@ DECLARE_PERF_TIMER(GameClient_draw)
 void GameClient::update( void )
 {
 	USE_PERF_TIMER(GameClient_update)
+	static Bool s_traceFirstUpdate = TRUE;
 	// create the FRAME_TICK message
 	GameMessage *frameMsg = TheMessageStream->appendMessage( GameMessage::MSG_FRAME_TICK );
 	frameMsg->appendTimestampArgument( getFrame() );
+	if (s_traceFirstUpdate)
+	{
+		AppendStartupTrace("GameClient::update first pass after frame message");
+	}
 	static Bool playSizzle = FALSE;
 	// We need to show the movie first.
 	if(TheGlobalData->m_playIntro && !TheDisplay->isMoviePlaying())
@@ -609,27 +614,49 @@ void GameClient::update( void )
 
 	//Update snow particles.
 	if (TheSnowManager)
+	{
 		TheSnowManager->UPDATE();
+		if (s_traceFirstUpdate)
+		{
+			AppendStartupTrace("GameClient::update first pass after TheSnowManager->UPDATE");
+		}
+	}
 
 	// update animation 2d collection
 	TheAnim2DCollection->UPDATE();
+	if (s_traceFirstUpdate)
+	{
+		AppendStartupTrace("GameClient::update first pass after TheAnim2DCollection->UPDATE");
+	}
 
 	// update the keyboard
 	if( TheKeyboard )
 	{
 		TheKeyboard->UPDATE();
 		TheKeyboard->createStreamMessages();
+		if (s_traceFirstUpdate)
+		{
+			AppendStartupTrace("GameClient::update first pass after TheKeyboard");
+		}
 
 	}  // end if
 
 	// Update the Eva stuff
 	TheEva->UPDATE();
+	if (s_traceFirstUpdate)
+	{
+		AppendStartupTrace("GameClient::update first pass after TheEva->UPDATE");
+	}
 
 	// update the mouse
 	if( TheMouse )
 	{
 		TheMouse->UPDATE();
 		TheMouse->createStreamMessages();
+		if (s_traceFirstUpdate)
+		{
+			AppendStartupTrace("GameClient::update first pass after TheMouse");
+		}
 
 	}  // end if
 	
@@ -648,12 +675,28 @@ void GameClient::update( void )
 
 	if(TheGlobalData->m_playIntro || TheGlobalData->m_afterIntro)
 	{
+		if (s_traceFirstUpdate)
+		{
+			AppendStartupTrace("GameClient::update first pass entering intro branch playIntro=%d afterIntro=%d",
+				TheGlobalData->m_playIntro, TheGlobalData->m_afterIntro);
+			AppendStartupTrace("GameClient::update first pass before intro TheDisplay->DRAW");
+		}
 		// redraw all views, update the GUI
 		{
 			TheDisplay->DRAW();
 		}
+		if (s_traceFirstUpdate)
+		{
+			AppendStartupTrace("GameClient::update first pass after intro TheDisplay->DRAW");
+			AppendStartupTrace("GameClient::update first pass before intro TheDisplay->UPDATE");
+		}
 		{
 			TheDisplay->UPDATE();
+		}
+		if (s_traceFirstUpdate)
+		{
+			AppendStartupTrace("GameClient::update first pass after intro TheDisplay->UPDATE");
+			s_traceFirstUpdate = FALSE;
 		}
 		return;
 	}
@@ -662,10 +705,18 @@ void GameClient::update( void )
 	{
 		TheWindowManager->UPDATE();
 	}
+	if (s_traceFirstUpdate)
+	{
+		AppendStartupTrace("GameClient::update first pass after TheWindowManager->UPDATE");
+	}
 
 	// update the video player
 	{
 		TheVideoPlayer->UPDATE();
+	}
+	if (s_traceFirstUpdate)
+	{
+		AppendStartupTrace("GameClient::update first pass after TheVideoPlayer->UPDATE");
 	}
 
 	Bool freezeTime = TheTacticalView->isTimeFrozen() && !TheTacticalView->isCameraMovementFinished();
@@ -770,10 +821,18 @@ void GameClient::update( void )
 	{
 		TheTerrainVisual->UPDATE();
 	}
+	if (s_traceFirstUpdate)
+	{
+		AppendStartupTrace("GameClient::update first pass after TheTerrainVisual->UPDATE");
+	}
 
 	// update display
 	{
 		TheDisplay->UPDATE();
+	}
+	if (s_traceFirstUpdate)
+	{
+		AppendStartupTrace("GameClient::update first pass after TheDisplay->UPDATE");
 	}
 
 	{
@@ -784,20 +843,37 @@ void GameClient::update( void )
 		
 		TheDisplay->DRAW();
 	}
+	if (s_traceFirstUpdate)
+	{
+		AppendStartupTrace("GameClient::update first pass after main TheDisplay->DRAW");
+	}
 
 	{
 		// let display string factory handle its update
 		TheDisplayStringManager->update();
+	}
+	if (s_traceFirstUpdate)
+	{
+		AppendStartupTrace("GameClient::update first pass after TheDisplayStringManager->update");
 	}
 
 	{
 		// update the shell
 		TheShell->UPDATE();
 	}
+	if (s_traceFirstUpdate)
+	{
+		AppendStartupTrace("GameClient::update first pass after TheShell->UPDATE");
+	}
 
 	{
 		// update the in game UI 
 		TheInGameUI->UPDATE();
+	}
+	if (s_traceFirstUpdate)
+	{
+		AppendStartupTrace("GameClient::update first pass after TheInGameUI->UPDATE");
+		s_traceFirstUpdate = FALSE;
 	}
 }  // end update
 
