@@ -1,4 +1,73 @@
 INSTRUCTIONS
+ 
+
+---
+
+Codex: [2026-03-29]
+
+Branch / sync:
+- Work remains on `main` only.
+- Current HEAD: `2266029`
+- `main` matches `origin/main`
+
+CI:
+- Active `main` run: `#23699098744`
+- URL: https://github.com/zerwonenetwork/zh-revival/actions/runs/23699098744
+- Status at handoff: in progress
+- Most recent completed `main` runs:
+  - `#23698548846` success (`54308ef`)
+  - `#23698262602` success (`a19521a`)
+  - `#23696469238` failed (`0c420d0`) on Windows-only `__try` use in `W3DBibBuffer.cpp`
+
+Latest runtime progression on Windows artifact testing:
+1. `W3DShaderManager::init()` still AVs internally, but `W3DDisplay::init()` now survives it and continues with custom shaders disabled.
+2. Terrain startup then became the active frontier.
+3. `W3DBibBuffer` was narrowed as the next failing subsystem:
+   - trace reached `W3DBibBuffer::ctor before TBBib.tga`
+   - `TBBib.tga` / `TBRedBib.tga` are not present as loose files in the Steam install or repo checkout
+4. Runtime workaround landed:
+   - `a19521a` disables bib rendering without texture loads
+   - `#23698262602` passed all CI jobs
+5. Artifact test after `a19521a` got further:
+   - trace reached `BaseHeightMapRenderObjClass::ctor before W3DWaypointBuffer`
+   - did NOT print any `W3DWaypointBuffer::ctor start` line
+   - therefore the next crash/hang moved to the waypoint buffer allocation site
+
+Latest successful runtime trace tail from the installed `a19521a` Windows artifact:
+- `W3DBibBuffer::ctor after allocateBibBuffers vertex=... index=...`
+- `W3DBibBuffer::ctor bib rendering disabled`
+- `BaseHeightMapRenderObjClass::ctor after W3DBibBuffer ptr=...`
+- `BaseHeightMapRenderObjClass::ctor before W3DBridgeBuffer`
+- `BaseHeightMapRenderObjClass::ctor after W3DBridgeBuffer ptr=...`
+- `BaseHeightMapRenderObjClass::ctor before W3DWaypointBuffer`
+
+What changed after that:
+- `54308ef`:
+  - `W3dWaypointBuffer.cpp`
+  - disabled waypoint rendering inside the waypoint subsystem itself
+  - CI green on `#23698548846`
+- `2266029`:
+  - `BaseHeightMap.cpp`
+  - skipped `m_waypointBuffer = NEW W3DWaypointBuffer;` entirely during startup
+  - replaces it with:
+    - `AppendStartupTrace("BaseHeightMapRenderObjClass::ctor waypoint rendering disabled");`
+    - `m_waypointBuffer = NULL;`
+  - CI run for this commit is still active: `#23699098744`
+
+Determinism / risk note:
+- Bib rendering and waypoint rendering are visual-only client systems.
+- Disabling them for startup triage should have no simulation determinism impact.
+
+Local repo note:
+- `.gitignore` has a local tracked edit to ignore artifact/log clutter; not committed yet.
+- Local untracked artifact folders remain, but they are expected and ignorable.
+
+Next step once `#23699098744` finishes green:
+1. Download the Windows artifact for `2266029`.
+2. Install it over `Generals.exe`.
+3. Run from PowerShell with timed wait.
+4. Read the next `zh-startup-trace.log`.
+5. Continue the same narrowing process at the next terrain/render startup frontier.
 
 for Claude Code & Codex.
 
