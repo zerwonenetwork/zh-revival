@@ -886,6 +886,11 @@ DECLARE_PERF_TIMER(GameEngine_update)
  */
 void GameEngine::update( void )
 { 
+	static Bool s_loggedFirstUpdatePass = FALSE;
+	const Bool traceFirstUpdate = !s_loggedFirstUpdatePass;
+	if (traceFirstUpdate) {
+		AppendStartupTrace("GameEngine::update first pass start");
+	}
 	USE_PERF_TIMER(GameEngine_update)
 	{
 
@@ -895,28 +900,53 @@ void GameEngine::update( void )
 			VERIFY_CRC
 
 			TheRadar->UPDATE();
+			if (traceFirstUpdate) {
+				AppendStartupTrace("GameEngine::update after TheRadar->UPDATE");
+			}
 
 			/// @todo Move audio init, update, etc, into GameClient update
 			
 			TheAudio->UPDATE();
+			if (traceFirstUpdate) {
+				AppendStartupTrace("GameEngine::update after TheAudio->UPDATE");
+			}
 			TheGameClient->UPDATE();
+			if (traceFirstUpdate) {
+				AppendStartupTrace("GameEngine::update after TheGameClient->UPDATE");
+			}
 			TheMessageStream->propagateMessages();
+			if (traceFirstUpdate) {
+				AppendStartupTrace("GameEngine::update after TheMessageStream->propagateMessages");
+			}
 
 			if (TheNetwork != NULL)
 			{
 				TheNetwork->UPDATE();
+				if (traceFirstUpdate) {
+					AppendStartupTrace("GameEngine::update after TheNetwork->UPDATE");
+				}
 			}
 			 
 			TheCDManager->UPDATE();
+			if (traceFirstUpdate) {
+				AppendStartupTrace("GameEngine::update after TheCDManager->UPDATE");
+			}
 		}
 
 
 		if ((TheNetwork == NULL && !TheGameLogic->isGamePaused()) || (TheNetwork && TheNetwork->isFrameDataReady()))
 		{
 			TheGameLogic->UPDATE();
+			if (traceFirstUpdate) {
+				AppendStartupTrace("GameEngine::update after TheGameLogic->UPDATE");
+			}
 		}
 
 	}	// end perfGather
+	if (traceFirstUpdate) {
+		AppendStartupTrace("GameEngine::update first pass complete");
+		s_loggedFirstUpdatePass = TRUE;
+	}
 
 }
 
