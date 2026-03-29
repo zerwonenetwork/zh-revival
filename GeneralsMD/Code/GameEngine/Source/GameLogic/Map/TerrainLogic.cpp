@@ -59,6 +59,8 @@
 #include "WWMath/plane.h"
 #include "WWMath/tri.h"
 
+extern void AppendStartupTrace(const char *format, ...);
+
 #ifdef _INTERNAL
 // for occasional debugging...
 //#pragma optimize("", off)
@@ -1253,6 +1255,7 @@ look at some data rather than running a game, so don't pass this load to the cli
 //-------------------------------------------------------------------------------------------------
 Bool TerrainLogic::loadMap( AsciiString filename, Bool query )
 {
+	AppendStartupTrace("TerrainLogic::loadMap start query=%d file='%s'", query ? 1 : 0, filename.str());
 
 	// sanity
 	if( filename.isEmpty() )
@@ -1268,6 +1271,7 @@ Bool TerrainLogic::loadMap( AsciiString filename, Bool query )
 			addWaypoint(pObj);
 		}
 	}
+	AppendStartupTrace("TerrainLogic::loadMap after waypoint object scan");
 
 	CachedFileInputStream theInputStream;
 	if (theInputStream.open(AsciiString(m_filenameString.str()))) 
@@ -1316,9 +1320,12 @@ Bool TerrainLogic::loadMap( AsciiString filename, Bool query )
 
 	if (!query) {
 		// tell the game interface a new terrain file has been loaded up
+		AppendStartupTrace("TerrainLogic::loadMap before TheTerrainVisual->load");
 		TheTerrainVisual->load( getSourceFilename() );
+		AppendStartupTrace("TerrainLogic::loadMap after TheTerrainVisual->load");
 	}
 
+	AppendStartupTrace("TerrainLogic::loadMap complete");
 	return TRUE;  // success
 
 }  // end load
@@ -3031,4 +3038,3 @@ void TerrainLogic::loadPostProcess( void )
 	}
 
 }  // end loadPostProcess
-

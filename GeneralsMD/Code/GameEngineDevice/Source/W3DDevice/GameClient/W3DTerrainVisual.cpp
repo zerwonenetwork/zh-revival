@@ -554,6 +554,7 @@ void W3DTerrainVisual::updateSeismicSimulations( void )
 //-------------------------------------------------------------------------------------------------
 Bool W3DTerrainVisual::load( AsciiString filename )
 {
+	AppendStartupTrace("W3DTerrainVisual::load start file='%s'", filename.str());
 	
 #if 0	
 	// (gth) Testing exclusion list asset releasing
@@ -578,6 +579,7 @@ Bool W3DTerrainVisual::load( AsciiString filename )
 	// enhancing functionality specific for W3D terrain
 	if( TerrainVisual::load( filename ) == FALSE )
 		return FALSE;  // failed
+	AppendStartupTrace("W3DTerrainVisual::load after TerrainVisual::load");
 
 	// open the terrain file
 	CachedFileInputStream fileStrm;
@@ -588,9 +590,11 @@ Bool W3DTerrainVisual::load( AsciiString filename )
 		return FALSE;
 
 	}  // end if
+	AppendStartupTrace("W3DTerrainVisual::load after file open");
 
 	if( m_terrainRenderObject == NULL )
 		return FALSE;
+	AppendStartupTrace("W3DTerrainVisual::load terrainRenderObject=%p", m_terrainRenderObject);
 
 
   ChunkInputStream *pStrm = &fileStrm;
@@ -598,6 +602,7 @@ Bool W3DTerrainVisual::load( AsciiString filename )
   // allocate new height map data to read from file
   REF_PTR_RELEASE( m_logicHeightMap );
 	m_logicHeightMap = NEW WorldHeightMap(pStrm);
+	AppendStartupTrace("W3DTerrainVisual::load after logic heightmap");
 
 
 
@@ -651,6 +656,7 @@ Bool W3DTerrainVisual::load( AsciiString filename )
 		}
 		pMapObj = pMapObj->getNext();
 	}
+	AppendStartupTrace("W3DTerrainVisual::load after light pass");
 
 
 	RefRenderObjListIterator *it = W3DDisplay::m_3DScene->createLightsIterator();
@@ -667,14 +673,17 @@ Bool W3DTerrainVisual::load( AsciiString filename )
 																				 m_logicHeightMap,
 																				 it);
 #endif
+	AppendStartupTrace("W3DTerrainVisual::load after initHeightData");
 
 
 	if (it) {
 	 W3DDisplay::m_3DScene->destroyLightsIterator(it);
 	 it = NULL;
 	}
+	AppendStartupTrace("W3DTerrainVisual::load after destroyLightsIterator");
 	// add our terrain render object to the scene
 	W3DDisplay::m_3DScene->Add_Render_Object( m_terrainRenderObject );
+	AppendStartupTrace("W3DTerrainVisual::load after Add_Render_Object terrain");
 
 #if defined _DEBUG || defined _INTERNAL
 	// Icon drawing utility object for pathfinding.
@@ -707,13 +716,16 @@ Bool W3DTerrainVisual::load( AsciiString filename )
 		}
 		pMapObj = pMapObj->getNext();
 	}
+	AppendStartupTrace("W3DTerrainVisual::load after scorch pass");
 
 	// reset water render object if present
 	if( m_waterRenderObject )
 	{
 		m_waterRenderObject->load();
+		AppendStartupTrace("W3DTerrainVisual::load after waterRenderObject->load");
 	}
 
+	AppendStartupTrace("W3DTerrainVisual::load complete");
 	return TRUE;  // success
 
 }  // end load
