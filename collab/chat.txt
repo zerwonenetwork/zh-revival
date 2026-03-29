@@ -284,5 +284,73 @@ Working tree note:
   - `temp_cdb_cmds.txt`
 
 
+---
+
+Codex: [2026-03-28]
+
+Branch / sync:
+- Active work is on `main` only.
+- Current local branch: `main`
+- `task/runtime-startup-frontier` was temporary and is being removed so there is no parallel branch drift.
+
+What I changed just now on `main`:
+- Added tighter startup trace coverage in:
+  - `GeneralsMD/Code/GameEngineDevice/Source/W3DDevice/GameClient/W3DRoadBuffer.cpp`
+  - `GeneralsMD/Code/GameEngineDevice/Source/W3DDevice/GameClient/W3DShroud.cpp`
+
+Why:
+- After waypoint rendering was disabled/skipped, the next likely terrain/render startup frontier is:
+  1. `W3DRoadBuffer`
+  2. `W3DShroud`
+- We need the test laptop to tell us whether the next crash is:
+  - inside road buffer construction / road texture loading
+  - inside shroud texture/surface setup
+  - or after both complete
+
+New trace markers added:
+- Road buffer:
+  - `W3DRoadBuffer::ctor start`
+  - `W3DRoadBuffer::allocateRoadBuffers start`
+  - `W3DRoadBuffer::allocateRoadBuffers limits ...`
+  - `W3DRoadBuffer::allocateRoadBuffers arrays ...`
+  - `W3DRoadBuffer::allocateRoadBuffers loading road slot=... id=... texture='...'`
+  - `W3DRoadBuffer::loadTexture start ...`
+  - `W3DRoadBuffer::loadTexture after Get_Texture ...`
+  - `W3DRoadBuffer::loadTexture buffers ready ...`
+  - `W3DRoadBuffer::allocateRoadBuffers complete loaded=...`
+  - `W3DRoadBuffer::ctor complete ...`
+- Shroud:
+  - `W3DShroud::ctor start`
+  - `W3DShroud::ctor complete`
+  - `W3DShroud::init start ...`
+  - `W3DShroud::init dimensions ...`
+  - `W3DShroud::init source texture=...`
+  - `W3DShroud::init after _Create_DX8_Surface ...`
+  - `W3DShroud::init after LockRect ...`
+  - `W3DShroud::init before ReAcquireResources ...`
+  - `W3DShroud::init after ReAcquireResources ...`
+  - `W3DShroud::ReAcquireResources start ...`
+  - `W3DShroud::ReAcquireResources after texture alloc ...`
+  - `W3DShroud::ReAcquireResources complete`
+  - `W3DShroud::init complete`
+
+Need from test laptop:
+1. Build or artifact-run current `main`.
+2. Launch the game and reproduce the startup crash/hang.
+3. Open `zh-startup-trace.log`.
+4. Send back the last 20-40 lines.
+5. If the last line is a `W3DRoadBuffer::allocateRoadBuffers loading road slot=... texture='...'` line, include that exact texture name.
+
+Important note:
+- I could not do a trustworthy local compile on this machine because:
+  - there is no usable local build tool in PATH here
+  - the existing `build_map` cache points to a different machine path/generator
+- So runtime confirmation must come from the other laptop, but the code edits are isolated to trace-only changes in visual systems.
+
+Determinism / risk note:
+- `W3DRoadBuffer` and `W3DShroud` are rendering-side systems.
+- Current changes are trace-only and should have no simulation determinism impact.
+
+
 
  

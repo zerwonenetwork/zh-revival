@@ -27,6 +27,8 @@
 // Desc:      Code to support rendering of shrouded units/terrain.
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+extern void AppendStartupTrace(const char *format, ...);
+
 #include "Lib/BaseType.h"
 #include "camera.h"
 #include "simplevec.h"
@@ -75,6 +77,7 @@
 //-----------------------------------------------------------------------------
 W3DShroud::W3DShroud(void)
 {
+	AppendStartupTrace("W3DShroud::ctor start");
 	m_finalFogData=NULL;
 	m_currentFogData=NULL;
 	m_pSrcTexture=NULL;
@@ -91,6 +94,7 @@ W3DShroud::W3DShroud(void)
 	m_numCellsX=0;
 	m_numCellsY=0;
 	m_shroudFilter=TextureFilterClass::FILTER_TYPE_DEFAULT;
+	AppendStartupTrace("W3DShroud::ctor complete");
 }
 
 //-----------------------------------------------------------------------------
@@ -114,6 +118,7 @@ W3DShroud::~W3DShroud(void)
 */
 void W3DShroud::init(WorldHeightMap *pMap, Real worldCellSizeX, Real worldCellSizeY)
 {
+	AppendStartupTrace("W3DShroud::init start map=%p cellX=%f cellY=%f", pMap, worldCellSizeX, worldCellSizeY);
 	DEBUG_ASSERTCRASH( m_pSrcTexture == NULL, ("ReAcquire of existing shroud textures"));
 	DEBUG_ASSERTCRASH( pMap != NULL, ("Shroud init with NULL WorldHeightMap"));
 
@@ -141,6 +146,7 @@ void W3DShroud::init(WorldHeightMap *pMap, Real worldCellSizeX, Real worldCellSi
 		dstTextureHeight += 2;	//enlarge by 2 pixels so we can have border color all the way around.
 		TextureLoader::Validate_Texture_Size((unsigned int &)dstTextureWidth,(unsigned int &)dstTextureHeight, depth);
 	}
+	AppendStartupTrace("W3DShroud::init dimensions cells=%d x %d dst=%d x %d", m_numCellsX, m_numCellsY, dstTextureWidth, dstTextureHeight);
 
 
 	UnsignedInt srcWidth,srcHeight;
@@ -151,6 +157,7 @@ void W3DShroud::init(WorldHeightMap *pMap, Real worldCellSizeX, Real worldCellSi
   //memory texture to a known value because you can't lock it - only copy into it.
 	srcHeight=m_numCellsY;
 	srcHeight += 1;
+	AppendStartupTrace("W3DShroud::init source texture=%u x %u", srcWidth, srcHeight);
 
 #ifdef DO_FOG_INTERPOLATION
 	m_finalFogData = new W3DShroudLevel[srcWidth*srcHeight];
@@ -166,6 +173,7 @@ void W3DShroud::init(WorldHeightMap *pMap, Real worldCellSizeX, Real worldCellSi
 	else
 #endif
 		m_pSrcTexture = DX8Wrapper::_Create_DX8_Surface(srcWidth,srcHeight, WW3D_FORMAT_R5G6B5);
+	AppendStartupTrace("W3DShroud::init after _Create_DX8_Surface src=%p", m_pSrcTexture);
 
 	DEBUG_ASSERTCRASH( m_pSrcTexture != NULL, ("Failed to Allocate Shroud Src Surface"));
 
@@ -174,6 +182,7 @@ void W3DShroud::init(WorldHeightMap *pMap, Real worldCellSizeX, Real worldCellSi
 	//Get a pointer to source surface pixels.
 	HRESULT res = m_pSrcTexture->LockRect(&rect,NULL,D3DLOCK_NO_DIRTY_UPDATE);
 	m_pSrcTexture->UnlockRect();
+	AppendStartupTrace("W3DShroud::init after LockRect hr=0x%08x pitch=%ld bits=%p", (unsigned int)res, (long)rect.Pitch, rect.pBits);
 
 	DEBUG_ASSERTCRASH( res == D3D_OK, ("Failed to lock shroud src surface"));
 	res = 0;// just to avoid compiler warnings
@@ -195,12 +204,15 @@ void W3DShroud::init(WorldHeightMap *pMap, Real worldCellSizeX, Real worldCellSi
 	if (!m_pDstTexture )
 	{	m_dstTextureWidth = dstTextureWidth;
 		m_dstTextureHeight = dstTextureHeight;
+		AppendStartupTrace("W3DShroud::init before ReAcquireResources dst=%d x %d", m_dstTextureWidth, m_dstTextureHeight);
 		ReAcquireResources();	//allocate video memory surface
+		AppendStartupTrace("W3DShroud::init after ReAcquireResources dstTex=%p", m_pDstTexture);
 	}
 
 	//Force a refresh of shroud data since we just created a new source texture.
 	if (ThePartitionManager)
 		ThePartitionManager->refreshShroudForLocalPlayer();
+	AppendStartupTrace("W3DShroud::init complete");
 }
 
 //-----------------------------------------------------------------------------
@@ -231,6 +243,7 @@ void W3DShroud::ReleaseResources(void)
 ///Restore resources that are lost on D3D device reset.
 Bool W3DShroud::ReAcquireResources(void)
 {
+		AppendStartupTrace("W3DShroud::ReAcquireResources start dst=%d x %d", m_dstTextureWidth, m_dstTextureHeight);
 		if (!m_dstTextureWidth)
 			return TRUE;	//nothing to reaquire since shroud was never initialized with valid data
 
@@ -244,6 +257,7 @@ Bool W3DShroud::ReAcquireResources(void)
 		else
 #endif
 			m_pDstTexture = MSGNEW("TextureClass") TextureClass(m_dstTextureWidth,m_dstTextureHeight,WW3D_FORMAT_R5G6B5,MIP_LEVELS_1, TextureClass::POOL_DEFAULT);
+		AppendStartupTrace("W3DShroud::ReAcquireResources after texture alloc dstTex=%p", m_pDstTexture);
 
 		DEBUG_ASSERTCRASH( m_pDstTexture != NULL, ("Failed ReAcquire of shroud texture"));
 
@@ -257,6 +271,7 @@ Bool W3DShroud::ReAcquireResources(void)
 		m_pDstTexture->Get_Filter().Set_V_Addr_Mode(TextureFilterClass::TEXTURE_ADDRESS_CLAMP);
 		m_pDstTexture->Get_Filter().Set_Mip_Mapping(TextureFilterClass::FILTER_TYPE_NONE);
 		m_clearDstTexture = TRUE;	//force clearing of destination texture first time it's used.
+		AppendStartupTrace("W3DShroud::ReAcquireResources complete");
 
 		return TRUE;
 }

@@ -45,6 +45,8 @@
 //-----------------------------------------------------------------------------
 //         Includes                                                      
 //-----------------------------------------------------------------------------
+extern void AppendStartupTrace(const char *format, ...);
+
 #include "W3DDevice/GameClient/W3DRoadBuffer.h"
 
 #include <stdio.h>
@@ -179,8 +181,10 @@ void RoadType::loadTexture(AsciiString path, Int ID)
 {
 	/// @todo - delay loading textures and only load textures referenced by map.
 	WW3DAssetManager *pMgr = W3DAssetManager::Get_Instance();
+	AppendStartupTrace("W3DRoadBuffer::loadTexture start id=%d path='%s'", ID, path.str());
 
 	m_roadTexture = pMgr->Get_Texture(path.str(), MIP_LEVELS_3);
+	AppendStartupTrace("W3DRoadBuffer::loadTexture after Get_Texture id=%d texture=%p", ID, m_roadTexture);
 	//Hack to disable texture reduction
 	//m_roadTexture = pMgr->Get_Texture(path.str(), MIP_LEVELS_3, WW3D_FORMAT_UNKNOWN,true,TextureBaseClass::TEX_REGULAR, false);
 
@@ -193,6 +197,7 @@ void RoadType::loadTexture(AsciiString path, Int ID)
 	m_indexRoad=NEW_REF(DX8IndexBufferClass,(TheGlobalData->m_maxRoadIndex+4, (s_dynamic?DX8IndexBufferClass::USAGE_DYNAMIC:DX8IndexBufferClass::USAGE_DEFAULT)));
 	m_numRoadVertices=0;
 	m_numRoadIndices=0;
+	AppendStartupTrace("W3DRoadBuffer::loadTexture buffers ready id=%d vertex=%p index=%p", ID, m_vertexRoad, m_indexRoad);
 
 #ifdef LOAD_TEST_ASSETS
 	m_texturePath = path;
@@ -3094,7 +3099,9 @@ W3DRoadBuffer::W3DRoadBuffer(void)	:
 	m_curRoadType(0)
 
 {
+	AppendStartupTrace("W3DRoadBuffer::ctor start");
 	allocateRoadBuffers();
+	AppendStartupTrace("W3DRoadBuffer::ctor complete initialized=%d roadTypes=%d roadSegments=%d", (int)m_initialized, m_maxRoadTypes, m_maxRoadSegments);
 }
 
 
@@ -3123,12 +3130,15 @@ void W3DRoadBuffer::freeRoadBuffers(void)
 void W3DRoadBuffer::allocateRoadBuffers(void)
 {
 	Int i = 0;
+	AppendStartupTrace("W3DRoadBuffer::allocateRoadBuffers start");
 
 	// save data for max limits
 	m_maxRoadSegments = TheGlobalData->m_maxRoadSegments;
 	m_maxRoadVertex = TheGlobalData->m_maxRoadVertex;
 	m_maxRoadIndex = TheGlobalData->m_maxRoadIndex;
 	m_maxRoadTypes = TheGlobalData->m_maxRoadTypes;
+	AppendStartupTrace("W3DRoadBuffer::allocateRoadBuffers limits segments=%d vertex=%d index=%d types=%d",
+		m_maxRoadSegments, m_maxRoadVertex, m_maxRoadIndex, m_maxRoadTypes);
 
 #ifdef LOAD_TEST_ASSETS
 	m_maxRoadTypes+=4;
@@ -3138,6 +3148,7 @@ void W3DRoadBuffer::allocateRoadBuffers(void)
 	m_curNumRoadIndices=0;
 	m_roads = MSGNEW("RoadBuffer") RoadSegment[m_maxRoadSegments];
 	m_roadTypes = MSGNEW("RoadBuffer") RoadType[m_maxRoadTypes];
+	AppendStartupTrace("W3DRoadBuffer::allocateRoadBuffers arrays roads=%p roadTypes=%p", m_roads, m_roadTypes);
 
 	// load roads from INI
 	TerrainRoadType *road;
@@ -3149,6 +3160,8 @@ void W3DRoadBuffer::allocateRoadBuffers(void)
 		if( i < m_maxRoadTypes )
 		{
 			Int id = road->getID();
+			AppendStartupTrace("W3DRoadBuffer::allocateRoadBuffers loading road slot=%d id=%d texture='%s'",
+				i, id, road->getTexture().str());
 			m_roadTypes[ i++ ].loadTexture( road->getTexture(), id );
 #ifdef LOAD_TEST_ASSETS
 			if( m_maxUID < id )
@@ -3167,6 +3180,7 @@ void W3DRoadBuffer::allocateRoadBuffers(void)
 #endif
 
 	m_initialized = true;
+	AppendStartupTrace("W3DRoadBuffer::allocateRoadBuffers complete loaded=%d", i);
 
 }
 
