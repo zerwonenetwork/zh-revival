@@ -886,10 +886,11 @@ DECLARE_PERF_TIMER(GameEngine_update)
  */
 void GameEngine::update( void )
 { 
-	static Bool s_loggedFirstUpdatePass = FALSE;
-	const Bool traceFirstUpdate = !s_loggedFirstUpdatePass;
-	if (traceFirstUpdate) {
-		AppendStartupTrace("GameEngine::update first pass start");
+	static Int s_updateTraceCount = 0;
+	const Bool traceUpdatePass = (s_updateTraceCount < 5);
+	const Int tracePassIndex = s_updateTraceCount + 1;
+	if (traceUpdatePass) {
+		AppendStartupTrace("GameEngine::update pass %d start", tracePassIndex);
 	}
 	USE_PERF_TIMER(GameEngine_update)
 	{
@@ -900,36 +901,36 @@ void GameEngine::update( void )
 			VERIFY_CRC
 
 			TheRadar->UPDATE();
-			if (traceFirstUpdate) {
-				AppendStartupTrace("GameEngine::update after TheRadar->UPDATE");
+			if (traceUpdatePass) {
+				AppendStartupTrace("GameEngine::update pass %d after TheRadar->UPDATE", tracePassIndex);
 			}
 
 			/// @todo Move audio init, update, etc, into GameClient update
 			
 			TheAudio->UPDATE();
-			if (traceFirstUpdate) {
-				AppendStartupTrace("GameEngine::update after TheAudio->UPDATE");
+			if (traceUpdatePass) {
+				AppendStartupTrace("GameEngine::update pass %d after TheAudio->UPDATE", tracePassIndex);
 			}
 			TheGameClient->UPDATE();
-			if (traceFirstUpdate) {
-				AppendStartupTrace("GameEngine::update after TheGameClient->UPDATE");
+			if (traceUpdatePass) {
+				AppendStartupTrace("GameEngine::update pass %d after TheGameClient->UPDATE", tracePassIndex);
 			}
 			TheMessageStream->propagateMessages();
-			if (traceFirstUpdate) {
-				AppendStartupTrace("GameEngine::update after TheMessageStream->propagateMessages");
+			if (traceUpdatePass) {
+				AppendStartupTrace("GameEngine::update pass %d after TheMessageStream->propagateMessages", tracePassIndex);
 			}
 
 			if (TheNetwork != NULL)
 			{
 				TheNetwork->UPDATE();
-				if (traceFirstUpdate) {
-					AppendStartupTrace("GameEngine::update after TheNetwork->UPDATE");
+				if (traceUpdatePass) {
+					AppendStartupTrace("GameEngine::update pass %d after TheNetwork->UPDATE", tracePassIndex);
 				}
 			}
 			 
 			TheCDManager->UPDATE();
-			if (traceFirstUpdate) {
-				AppendStartupTrace("GameEngine::update after TheCDManager->UPDATE");
+			if (traceUpdatePass) {
+				AppendStartupTrace("GameEngine::update pass %d after TheCDManager->UPDATE", tracePassIndex);
 			}
 		}
 
@@ -937,15 +938,15 @@ void GameEngine::update( void )
 		if ((TheNetwork == NULL && !TheGameLogic->isGamePaused()) || (TheNetwork && TheNetwork->isFrameDataReady()))
 		{
 			TheGameLogic->UPDATE();
-			if (traceFirstUpdate) {
-				AppendStartupTrace("GameEngine::update after TheGameLogic->UPDATE");
+			if (traceUpdatePass) {
+				AppendStartupTrace("GameEngine::update pass %d after TheGameLogic->UPDATE", tracePassIndex);
 			}
 		}
 
 	}	// end perfGather
-	if (traceFirstUpdate) {
-		AppendStartupTrace("GameEngine::update first pass complete");
-		s_loggedFirstUpdatePass = TRUE;
+	if (traceUpdatePass) {
+		AppendStartupTrace("GameEngine::update pass %d complete", tracePassIndex);
+		s_updateTraceCount++;
 	}
 
 }
@@ -965,16 +966,15 @@ void GameEngine::execute( void )
 #if defined(_DEBUG) || defined(_INTERNAL)
 	DWORD startTime = timeGetTime() / 1000;
 #endif
-	Bool loggedFirstLoop = FALSE;
-	Bool loggedFirstUpdate = FALSE;
-	Bool loggedFirstUpdateDone = FALSE;
+	Int tracedLoops = 0;
 
 	// pretty basic for now
 	while( !m_quitting )
 	{
-		if (!loggedFirstLoop) {
-			AppendStartupTrace("GameEngine::execute first loop start");
-			loggedFirstLoop = TRUE;
+		const Bool traceLoop = (tracedLoops < 5);
+		const Int loopIndex = tracedLoops + 1;
+		if (traceLoop) {
+			AppendStartupTrace("GameEngine::execute loop %d start", loopIndex);
 		}
 
 		//if (TheGlobalData->m_vTune)
@@ -1011,15 +1011,13 @@ void GameEngine::execute( void )
 			{
 				try 
 				{
-					if (!loggedFirstUpdate) {
-						AppendStartupTrace("GameEngine::execute before first update");
-						loggedFirstUpdate = TRUE;
+					if (traceLoop) {
+						AppendStartupTrace("GameEngine::execute loop %d before update", loopIndex);
 					}
 					// compute a frame
 					update();
-					if (!loggedFirstUpdateDone) {
-						AppendStartupTrace("GameEngine::execute after first update");
-						loggedFirstUpdateDone = TRUE;
+					if (traceLoop) {
+						AppendStartupTrace("GameEngine::execute loop %d after update", loopIndex);
 					}
 				}
 				catch (INIException e)
@@ -1082,6 +1080,10 @@ void GameEngine::execute( void )
 			}
 
 		}	// perfgather for execute_loop
+		if (traceLoop) {
+			AppendStartupTrace("GameEngine::execute loop %d end", loopIndex);
+			tracedLoops++;
+		}
 
 #ifdef PERF_TIMERS
 		if (!m_quitting && TheGameLogic->isInGame() && !TheGameLogic->isInShellGame() && !TheGameLogic->isGamePaused())
