@@ -1111,6 +1111,7 @@ void GameLogic::deleteLoadScreen( void )
 // ------------------------------------------------------------------------------------------------
 void GameLogic::startNewGame( Bool loadingSaveGame )
 {
+	AppendStartupTrace("GameLogic::startNewGame enter loadingSaveGame=%d m_startNewGame=%d", loadingSaveGame ? 1 : 0, m_startNewGame ? 1 : 0);
 
 	#ifdef DUMP_PERF_STATS
 	__int64 startTime64;
@@ -1120,6 +1121,7 @@ void GameLogic::startNewGame( Bool loadingSaveGame )
 	#endif
 
 	setLoadingMap( TRUE );
+	AppendStartupTrace("GameLogic::startNewGame after setLoadingMap");
 
 	if( loadingSaveGame == FALSE )
 	{
@@ -1140,6 +1142,7 @@ void GameLogic::startNewGame( Bool loadingSaveGame )
 
 		if( m_startNewGame == FALSE )
 		{
+			AppendStartupTrace("GameLogic::startNewGame first-entry preflight");
 			/// @todo: Here is where we would look at the game mode & play an intro movie or something.
 			// Failing that, we just set the flag so the actual game can start from a uniform
 			// entry point (startNewGame() called from update()).
@@ -1162,6 +1165,7 @@ void GameLogic::startNewGame( Bool loadingSaveGame )
 			}
 
 			m_startNewGame = TRUE;
+			AppendStartupTrace("GameLogic::startNewGame first-entry returning with m_startNewGame=TRUE");
 			return;
 
 		}  
@@ -1169,9 +1173,12 @@ void GameLogic::startNewGame( Bool loadingSaveGame )
 	}  // end if
 
 	m_rankLevelLimit = 1000;	// this is reset every game.
+	AppendStartupTrace("GameLogic::startNewGame before setDefaults");
 	setDefaults( loadingSaveGame );
+	AppendStartupTrace("GameLogic::startNewGame after setDefaults");
 	TheWritableGlobalData->m_loadScreenRender = TRUE;	///< mark it so only a few select things are rendered during load	
 	TheWritableGlobalData->m_TiVOFastMode = FALSE;	//always disable the TIVO fast-forward mode at the start of a new game.
+	AppendStartupTrace("GameLogic::startNewGame after loadScreen/tivo flags");
 
 	m_showBehindBuildingMarkers = TRUE;
 	m_drawIconUI = TRUE;
@@ -1286,24 +1293,30 @@ void GameLogic::startNewGame( Bool loadingSaveGame )
 	if(TheCampaignManager)
 		TheCampaignManager->SetVictorious(FALSE);
 	m_startNewGame = FALSE;
+	AppendStartupTrace("GameLogic::startNewGame after SetVictorious and m_startNewGame=FALSE");
 
 	// update the loadscreen 
 	if(m_loadScreen)
 		updateLoadProgress(LOAD_PROGRESS_POST_PARTICLE_INI_LOAD);
+	AppendStartupTrace("GameLogic::startNewGame after initial load progress");
 
 	// reset the frame counter
 	m_frame = 0;
+	AppendStartupTrace("GameLogic::startNewGame after m_frame reset");
 
 	// before loading the map, load the map.ini file in the same directory.
 	loadMapINI( TheGlobalData->m_mapName );
+	AppendStartupTrace("GameLogic::startNewGame after loadMapINI");
 
 	// load a map
 	TheTerrainLogic->loadMap( TheGlobalData->m_mapName, false );
+	AppendStartupTrace("GameLogic::startNewGame after TheTerrainLogic->loadMap");
 	// anytime the world's size changes, must reset the partition mgr
 	//ThePartitionManager->init();
 
 	// update the loadscreen 
 	updateLoadProgress(LOAD_PROGRESS_POST_LOAD_MAP);
+	AppendStartupTrace("GameLogic::startNewGame after LOAD_PROGRESS_POST_LOAD_MAP");
 
 	#ifdef DUMP_PERF_STATS
 	GetPrecisionTimer(&endTime64);
@@ -3627,10 +3640,21 @@ void GameLogic::update( void )
 #endif
 
 	setFPMode();
+	if (traceLogicPass) {
+		AppendStartupTrace(
+			"GameLogic::update pass %d after setFPMode m_startNewGame=%d moviePlaying=%d",
+			traceLogicPassIndex,
+			m_startNewGame ? 1 : 0,
+			TheDisplay->isMoviePlaying() ? 1 : 0
+		);
+	}
 	
 	/// @todo remove this hack
 	if ( m_startNewGame && !TheDisplay->isMoviePlaying())
 	{
+		if (traceLogicPass) {
+			AppendStartupTrace("GameLogic::update pass %d before startNewGame(FALSE)", traceLogicPassIndex);
+		}
 	#ifdef DUMP_PERF_STATS
 		Total_Get_Texture_Time=0;
 		Total_Get_HAnim_Time=0;
@@ -3645,7 +3669,13 @@ void GameLogic::update( void )
 #ifdef _PROFILE
     Profile::StopRange("map_load");
 #endif
+		if (traceLogicPass) {
+			AppendStartupTrace("GameLogic::update pass %d after startNewGame(FALSE)", traceLogicPassIndex);
+		}
 		m_startNewGame = FALSE;
+		if (traceLogicPass) {
+			AppendStartupTrace("GameLogic::update pass %d after clearing m_startNewGame", traceLogicPassIndex);
+		}
 
 	#ifdef DUMP_PERF_STATS
 		char Buf[1024];
