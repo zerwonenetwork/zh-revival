@@ -421,3 +421,41 @@ Determinism / risk note:
 
 
  
+=== 2026-03-29 Codex runtime handoff ===
+Branch: main
+Current HEAD: 0a4cc87
+Current CI run: 23705143028 (green)
+
+Latest verified runtime trace on this machine:
+- Verified artifact: a6d1da2
+- Startup now reaches W3DInGameUI::draw
+- Exact last trace frontier before the newest fix:
+  W3DInGameUI::draw first pass before drawPlaceAngle
+- Concrete fix pushed on main after that:
+  0a4cc87 fix(runtime): defer placement angle asset creation
+  File: GeneralsMD/Code/GameEngineDevice/Source/W3DDevice/GameClient/W3DInGameUI.cpp
+  Change: drawPlaceAngle() no longer creates Locater01/Locater02 render objects before checking isPlacementAnchored().
+
+Current blocker on this test machine:
+- The freshly installed 0a4cc87 Windows artifact is blocked before launch by Windows Application Control:
+  "An Application Control policy has blocked this file."
+- So I could not execute the newest hash locally after the placement-angle fix.
+
+What was already fixed and verified by trace progression:
+- shader-manager startup crash bypassed
+- bib rendering disabled during startup
+- waypoint rendering disabled during startup
+- road rendering disabled during startup
+- water rendering disabled during startup
+- radar reset guarded
+- first texture-loader render deadlock bypassed by skipping first TextureLoader::Update()
+- UI draw narrowed to drawPlaceAngle and then fixed in 0a4cc87
+
+Next step on an unblocked/main PC:
+1. Run the 0a4cc87 Windows artifact.
+2. Read zh-startup-trace.log.
+3. Confirm whether startup moves past drawPlaceAngle.
+4. If it still hangs, the next likely boundaries are:
+   - W3DInGameUI::draw after drawPlaceAngle
+   - postDraw()
+   - TheWindowManager->winRepaint()
