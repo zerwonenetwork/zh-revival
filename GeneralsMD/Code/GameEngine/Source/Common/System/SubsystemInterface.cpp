@@ -26,6 +26,8 @@
 // ----------------------------------------------------------------------------
 #include "PreRTS.h"	// This must go first in EVERY cpp file int the GameEngine
 
+extern void AppendStartupTrace( const char *format, ... );
+
 #include "Common/SubsystemInterface.h"
 #include "Common/Xfer.h"
 #include "Common/INI.h"
@@ -220,7 +222,11 @@ void SubsystemInterfaceList::resetAll()
 //	for (SubsystemList::iterator it = m_subsystems.begin(); it != m_subsystems.end(); ++it)
 	for (SubsystemList::reverse_iterator it = m_subsystems.rbegin(); it != m_subsystems.rend(); ++it)
 	{
+		AppendStartupTrace("SubsystemInterfaceList::resetAll before reset name='%s' ptr=%p",
+			(*it)->getName().str(), *it);
 		(*it)->reset();
+		AppendStartupTrace("SubsystemInterfaceList::resetAll after reset name='%s' ptr=%p",
+			(*it)->getName().str(), *it);
 	}
 }
 
