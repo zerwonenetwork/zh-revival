@@ -29,6 +29,8 @@
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 // INCLUDES ///////////////////////////////////////////////////////////////////////////////////////
+extern void AppendStartupTrace( const char *format, ... );
+
 #include "Common/AudioEventRTS.h"
 #include "Common/Debug.h"
 #include "Common/GlobalData.h"
@@ -957,9 +959,18 @@ void W3DRadar::init( void )
 //-------------------------------------------------------------------------------------------------
 void W3DRadar::reset( void )
 {
+	AppendStartupTrace("W3DRadar::reset start");
 
 	// extending functionality, call base class
 	Radar::reset();
+	AppendStartupTrace("W3DRadar::reset after Radar::reset");
+
+	if( !m_terrainTexture || !m_overlayTexture || !m_shroudTexture )
+	{
+		AppendStartupTrace("W3DRadar::reset radar textures unavailable terrain=%p overlay=%p shroud=%p",
+			m_terrainTexture, m_overlayTexture, m_shroudTexture);
+		return;
+	}
 
 	// clear our texture data, but do not delete the resources
 	SurfaceClass *surface;
@@ -981,6 +992,7 @@ void W3DRadar::reset( void )
 	// don't call Clear(); that wips to transparent. do this instead.
 	//gs Dude, it's called CLEARshroud.  It needs to clear the shroud.
 	clearShroud();
+	AppendStartupTrace("W3DRadar::reset complete");
 	
 }  // end reset
 
@@ -1260,7 +1272,12 @@ void W3DRadar::clearShroud()
 		return;
 #endif
 
+	if( !m_shroudTexture )
+		return;
+
 	SurfaceClass *surface = m_shroudTexture->Get_Surface_Level();
+	if( !surface )
+		return;
 	
 	// fill to clear, shroud will make black.  Don't want to make something black that logic can't clear
 	unsigned int color = GameMakeColor( 0, 0, 0, 0 );
@@ -1281,11 +1298,12 @@ void W3DRadar::setShroudLevel(Int shroudX, Int shroudY, CellShroudStatus setting
 #endif
 
 	W3DShroud* shroud = TheTerrainRenderObject ? TheTerrainRenderObject->getShroud() : NULL;
-	if (!shroud)
+	if (!shroud || !m_shroudTexture)
 		return;
 
 	SurfaceClass* surface = m_shroudTexture->Get_Surface_Level();
-	DEBUG_ASSERTCRASH( surface, ("W3DRadar: Can't get surface for Shroud texture\n") );
+	if( !surface )
+		return;
 
 	Int mapMinX = shroudX * shroud->getCellWidth();
 	Int mapMinY = shroudY * shroud->getCellHeight();
@@ -1349,6 +1367,11 @@ void W3DRadar::setShroudLevel(Int shroudX, Int shroudY, CellShroudStatus setting
 //-------------------------------------------------------------------------------------------------
 void W3DRadar::draw( Int pixelX, Int pixelY, Int width, Int height )
 {
+	if( !m_terrainImage || !m_overlayImage || !m_shroudImage ||
+			!m_terrainTexture || !m_overlayTexture || !m_shroudTexture )
+	{
+		return;
+	}
 
 	// if the local player does not have a radar then we can't draw anything
 	Player *player = ThePlayerList->getLocalPlayer();
