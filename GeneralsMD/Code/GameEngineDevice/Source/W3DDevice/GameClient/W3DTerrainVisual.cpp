@@ -265,13 +265,10 @@ void W3DTerrainVisual::init( void )
  	TheW3DShadowManager->init();
 	AppendStartupTrace("W3DTerrainVisual::init after W3DShadowManager->init");
 	
-	// create a water plane render object
-	TheWaterRenderObj=m_waterRenderObject = NEW_REF( WaterRenderObjClass, () );
-	AppendStartupTrace("W3DTerrainVisual::init after WaterRenderObjClass NEW_REF ptr=%p", m_waterRenderObject);
-	m_waterRenderObject->init(TheGlobalData->m_waterPositionZ, TheGlobalData->m_waterExtentX, TheGlobalData->m_waterExtentY, W3DDisplay::m_3DScene, (WaterRenderObjClass::WaterType)TheGlobalData->m_waterType);	//create a water plane that's 128x128 units
-	AppendStartupTrace("W3DTerrainVisual::init after waterRenderObject->init");
-	m_waterRenderObject->Set_Position(Vector3(TheGlobalData->m_waterPositionX,TheGlobalData->m_waterPositionY,TheGlobalData->m_waterPositionZ));	//place water in world
-	AppendStartupTrace("W3DTerrainVisual::init after waterRenderObject->Set_Position");
+	// Water rendering is visual-only; skip it during startup while modern D3D8 wrapper compatibility is stabilized.
+	TheWaterRenderObj = NULL;
+	m_waterRenderObject = NULL;
+	AppendStartupTrace("W3DTerrainVisual::init water rendering disabled during startup");
 
 	// create smudge rendering system.
 	TheSmudgeManager = NEW(W3DSmudgeManager);
@@ -279,23 +276,7 @@ void W3DTerrainVisual::init( void )
 	TheSmudgeManager->init();
 	AppendStartupTrace("W3DTerrainVisual::init after W3DSmudgeManager->init");
 
-#ifdef DO_UNIT_TIMINGS
-#pragma MESSAGE("********************* WARNING- Doing UNIT TIMINGS. ")
-#else 
-		if (TheGlobalData->m_waterType == WaterRenderObjClass::WATER_TYPE_1_FB_REFLECTION)
-		{	// add water render object to the pre-pass scene (to be rendered before main scene)
- 			//W3DDisplay::m_prePass3DScene->Add_Render_Object( m_waterRenderObject);
-		}
-		else
-		{	// add water render object to the post-pass scene (to be rendered after main scene)
-			W3DDisplay::m_3DScene->Add_Render_Object( m_waterRenderObject);
-		}
-#endif
 	AppendStartupTrace("W3DTerrainVisual::init after water render object scene hookup");
-	if (TheGlobalData->m_useCloudPlane)
-		m_waterRenderObject->toggleCloudLayer(true);
-	else
-		m_waterRenderObject->toggleCloudLayer(false);
 	AppendStartupTrace("W3DTerrainVisual::init after toggleCloudLayer");
 
 	// set the vertex animated water properties
