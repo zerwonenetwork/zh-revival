@@ -1184,9 +1184,11 @@ void GameLogic::startNewGame( Bool loadingSaveGame )
 	m_drawIconUI = TRUE;
 	m_showDynamicLOD = TRUE;
 	m_scriptHulkMaxLifetimeOverride = -1;
+	AppendStartupTrace("GameLogic::startNewGame after visual flags");
 
 	Campaign* currentCampaign = TheCampaignManager->getCurrentCampaign();
 	Bool isChallengeCampaign = m_gameMode == GAME_SINGLE_PLAYER && currentCampaign && currentCampaign->m_isChallengeCampaign;
+	AppendStartupTrace("GameLogic::startNewGame after currentCampaign gameMode=%d challenge=%d", (int)m_gameMode, isChallengeCampaign ? 1 : 0);
 
 	// Fill in the game color and Factions before we do the Load Screen
 	GameInfo *game = NULL;
@@ -1220,6 +1222,7 @@ void GameLogic::startNewGame( Bool loadingSaveGame )
 			TheGameInfo = game = TheChallengeGameInfo;
 		}
 	}
+	AppendStartupTrace("GameLogic::startNewGame after game info selection game=%p network=%p", game, TheNetwork);
 
   // On a NEW game, we need to copy the superweapon restrictions from the game info to here
   // (because TheGameInfo is not always saved and doesn't carry over to replays). On a save
@@ -1236,8 +1239,10 @@ void GameLogic::startNewGame( Bool loadingSaveGame )
       m_superweaponRestriction = 0;
     }
   }
+	AppendStartupTrace("GameLogic::startNewGame after superweapon restriction");
 
 	checkForDuplicateColors( game );
+	AppendStartupTrace("GameLogic::startNewGame after checkForDuplicateColors");
 
 	Bool isSkirmishOrSkirmishReplay = FALSE;
 	if (game)
@@ -1262,9 +1267,12 @@ void GameLogic::startNewGame( Bool loadingSaveGame )
 			}
 		}
 	}
+	AppendStartupTrace("GameLogic::startNewGame after skirmish/replay scan");
 
 	populateRandomSideAndColor( game );
+	AppendStartupTrace("GameLogic::startNewGame after populateRandomSideAndColor");
 	populateRandomStartPosition( game );
+	AppendStartupTrace("GameLogic::startNewGame after populateRandomStartPosition");
 
 	//****************************//
 	// Start the LoadScreen Now!	//
@@ -1283,12 +1291,14 @@ void GameLogic::startNewGame( Bool loadingSaveGame )
 			updateLoadProgress( LOAD_PROGRESS_START );
 		}
 	}
+	AppendStartupTrace("GameLogic::startNewGame after loadscreen init");
 	if(m_background)
 	{
 		m_background->destroyWindows();
 		m_background->deleteInstance();
 		m_background = NULL;
 	}
+	AppendStartupTrace("GameLogic::startNewGame after background cleanup");
 	setFPMode();
 	if(TheCampaignManager)
 		TheCampaignManager->SetVictorious(FALSE);
