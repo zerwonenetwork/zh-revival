@@ -846,23 +846,43 @@ void TextureLoader::Flush_Pending_Load_Tasks(void)
 		}                                               \
 	}                                                  \
 
+extern void AppendStartupTrace(const char *format, ...);
 
 void TextureLoader::Update(void (*network_callback)(void))
 {
+	static bool s_traceFirstUpdate = true;
+	static const unsigned long kForegroundBudgetMs = 10;
+	static const int kForegroundTaskBudget = 32;
 	WWASSERT_PRINT(Is_DX8_Thread(), "TextureLoader::Update must be called from the main thread!");
 
 	if (TextureLoadSuspended) {
+		if (s_traceFirstUpdate) {
+			AppendStartupTrace("TextureLoader::Update first pass suspended");
+			s_traceFirstUpdate = false;
+		}
 		return;
 	}
 
 	// grab foreground lock to prevent any other thread from
 	// modifying texture tasks.
 	FastCriticalSectionClass::LockClass lock(_ForegroundCriticalSection);
+	if (s_traceFirstUpdate) {
+		AppendStartupTrace("TextureLoader::Update first pass after foreground lock");
+	}
 
 	unsigned long time = timeGetTime();
+	unsigned long budgetStart = time;
+	int processedTasks = 0;
 
 	// while we have tasks on the foreground queue
 	while (TextureLoadTaskClass *task = _ForegroundQueue.Pop_Front()) {
+		if (s_traceFirstUpdate && processedTasks < 4) {
+			AppendStartupTrace("TextureLoader::Update first pass task=%d type=%d state=%d priority=%d",
+				processedTasks,
+				(int)task->Get_Type(),
+				(int)task->Get_State(),
+				(int)task->Get_Priority());
+		}
 		UPDATE_NETWORK;
 		// dispatch to proper task handler
 		switch (task->Get_Type()) {
@@ -874,9 +894,22 @@ void TextureLoader::Update(void (*network_callback)(void))
 				Process_Foreground_Load(task);
 				break;
 		}
+		++processedTasks;
+		if (processedTasks >= kForegroundTaskBudget || (timeGetTime() - budgetStart) >= kForegroundBudgetMs) {
+			if (s_traceFirstUpdate) {
+				AppendStartupTrace("TextureLoader::Update first pass budget hit processed=%d elapsed=%lu",
+					processedTasks, (unsigned long)(timeGetTime() - budgetStart));
+			}
+			break;
+		}
 	}
 
 	TextureBaseClass::Invalidate_Old_Unused_Textures(TextureInactiveOverrideTime);
+	if (s_traceFirstUpdate) {
+		AppendStartupTrace("TextureLoader::Update first pass complete processed=%d elapsed=%lu",
+			processedTasks, (unsigned long)(timeGetTime() - budgetStart));
+		s_traceFirstUpdate = false;
+	}
 }
 
 void TextureLoader::Suspend_Texture_Load()
