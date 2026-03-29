@@ -1281,27 +1281,43 @@ void GameLogic::startNewGame( Bool loadingSaveGame )
 	// Get the m_loadScreen for this kind of game
 	if(!m_loadScreen)
 	{
+		AppendStartupTrace("GameLogic::startNewGame before getLoadScreen");
 		m_loadScreen = getLoadScreen( loadingSaveGame );
+		AppendStartupTrace("GameLogic::startNewGame after getLoadScreen loadScreen=%p", m_loadScreen);
 		if(m_loadScreen)
 		{
+			AppendStartupTrace("GameLogic::startNewGame before TheMouse->setVisibility(FALSE)");
 			TheMouse->setVisibility(FALSE);
+			AppendStartupTrace("GameLogic::startNewGame after TheMouse->setVisibility(FALSE)");
+			AppendStartupTrace("GameLogic::startNewGame before m_loadScreen->init(game)");
 			m_loadScreen->init(game);
+			AppendStartupTrace("GameLogic::startNewGame after m_loadScreen->init(game)");
 
 			// 
 			updateLoadProgress( LOAD_PROGRESS_START );
+			AppendStartupTrace("GameLogic::startNewGame after LOAD_PROGRESS_START");
 		}
 	}
 	AppendStartupTrace("GameLogic::startNewGame after loadscreen init");
 	if(m_background)
 	{
+		AppendStartupTrace("GameLogic::startNewGame before background destroy");
 		m_background->destroyWindows();
+		AppendStartupTrace("GameLogic::startNewGame after background destroy");
 		m_background->deleteInstance();
+		AppendStartupTrace("GameLogic::startNewGame after background deleteInstance");
 		m_background = NULL;
 	}
 	AppendStartupTrace("GameLogic::startNewGame after background cleanup");
+	AppendStartupTrace("GameLogic::startNewGame before setFPMode post-loadscreen");
 	setFPMode();
+	AppendStartupTrace("GameLogic::startNewGame after setFPMode post-loadscreen");
 	if(TheCampaignManager)
+	{
+		AppendStartupTrace("GameLogic::startNewGame before SetVictorious(FALSE)");
 		TheCampaignManager->SetVictorious(FALSE);
+		AppendStartupTrace("GameLogic::startNewGame after SetVictorious(FALSE)");
+	}
 	m_startNewGame = FALSE;
 	AppendStartupTrace("GameLogic::startNewGame after SetVictorious and m_startNewGame=FALSE");
 
