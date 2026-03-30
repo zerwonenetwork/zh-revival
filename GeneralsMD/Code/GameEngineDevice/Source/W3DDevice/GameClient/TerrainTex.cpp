@@ -108,17 +108,19 @@ TerrainTextureClass::TerrainTextureClass(int height) :
 	TextureClass(TEXTURE_WIDTH, height,
 		WW3D_FORMAT_A1R5G5B5, MIP_LEVELS_3 )
 {
+	AppendStartupTrace("TerrainTextureClass ctor(h): peek=%p device=%p h=%d", Peek_D3D_Texture(), DX8Wrapper::_Get_D3D_Device8(), height);
 	// D3DXCreateTexture may fail with DXWrapper (D3D8→D3D9 proxy).
 	// Fall back to direct CreateTexture with the universally-supported A8R8G8B8 format.
-	if (!Peek_D3D_Texture() && DX8Wrapper::_Get_D3D_Device8()) {
+	IDirect3DDevice8 *dev = DX8Wrapper::_Get_D3D_Device8();
+	if (!Peek_D3D_Texture() && dev) {
 		IDirect3DTexture8 *tex = NULL;
-		HRESULT hr = DX8Wrapper::_Get_D3D_Device8()->CreateTexture(
+		HRESULT hr = dev->CreateTexture(
 			TEXTURE_WIDTH, height, 3, 0, D3DFMT_A8R8G8B8, D3DPOOL_MANAGED, &tex);
 		if (SUCCEEDED(hr) && tex) {
-			AppendStartupTrace("TerrainTextureClass ctor: A1R5G5B5 failed; A8R8G8B8 direct CreateTexture ok tex=%p h=%d", tex, height);
+			AppendStartupTrace("TerrainTextureClass ctor(h): A8R8G8B8 fallback ok tex=%p", tex);
 			Poke_Texture(tex);
 		} else {
-			AppendStartupTrace("TerrainTextureClass ctor: both formats failed hr=%08x", (unsigned)hr);
+			AppendStartupTrace("TerrainTextureClass ctor(h): both failed hr=%08x", (unsigned)hr);
 		}
 	}
 }

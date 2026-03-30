@@ -1045,6 +1045,10 @@ void W3DRadar::buildTerrainTexture( TerrainLogic *terrain )
 
 	// get the terrain surface to draw in
 	surface = m_terrainTexture->Get_Surface_Level();
+	if (!surface) {
+		AppendStartupTrace("W3DRadar::buildTerrainTexture: terrain texture surface is NULL (D3D texture creation failed); skipping radar build");
+		return;
+	}
 	DEBUG_ASSERTCRASH( surface, ("W3DRadar: Can't get surface for terrain texture\n") );
 
 	// build the terrain
