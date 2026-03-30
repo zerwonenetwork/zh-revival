@@ -1674,6 +1674,10 @@ void BaseHeightMapRenderObjClass::updateShorelineTile(Int i, Int j, Int border, 
 water.*/
 void BaseHeightMapRenderObjClass::updateShorelineTiles(Int minX, Int minY, Int maxX, Int maxY, WorldHeightMap *pMap)
 {
+	// Water rendering is disabled during startup; both globals will be NULL.
+	if (!TheWaterRenderObj || !TheWaterTransparency)
+		return;
+
 	Int border = pMap->getBorderSizeInline();
 
 	//Clamp region to valid terrain tiles
@@ -1764,6 +1768,8 @@ for smoothing water/terrain border*/
 void BaseHeightMapRenderObjClass::initDestAlphaLUT(void)
 {
 	if (!m_destAlphaTexture)
+		return;
+	if (!TheWaterTransparency)
 		return;
 
 	SurfaceClass *surf=m_destAlphaTexture->Get_Surface_Level();
@@ -1862,7 +1868,7 @@ Int BaseHeightMapRenderObjClass::initHeightData(Int x, Int y, WorldHeightMap *pM
 
 			//Find all shoreline tiles so they can get extra alpha blend
 			updateShorelineTiles(0,0,m_mapDX-1,m_mapDY-1,pMap);
-			if (TheWaterTransparency->m_minWaterOpacity != m_currentMinWaterOpacity)
+			if (TheWaterTransparency && TheWaterTransparency->m_minWaterOpacity != m_currentMinWaterOpacity)
 				initDestAlphaLUT();
 		}
 		AppendStartupTrace("BaseHeightMapRenderObjClass::initHeightData after extra-pass preprocessing");
@@ -2501,7 +2507,7 @@ void BaseHeightMapRenderObjClass::renderShoreLines(CameraClass *pCamera)
 
 	m_numVisibleShoreLineTiles=0;
 
-	if (!TheGlobalData->m_showSoftWaterEdge || TheWaterTransparency->m_transparentWaterDepth==0 || m_numShoreLineTiles == 0)
+	if (!TheGlobalData->m_showSoftWaterEdge || !TheWaterTransparency || TheWaterTransparency->m_transparentWaterDepth==0 || m_numShoreLineTiles == 0)
 		return;
 
 	//Check if video card is capable of using this effect
@@ -2669,7 +2675,7 @@ void BaseHeightMapRenderObjClass::renderShoreLinesSorted(CameraClass *pCamera)
 {
 	m_numVisibleShoreLineTiles=0;
 
-	if (!TheGlobalData->m_showSoftWaterEdge || TheWaterTransparency->m_transparentWaterDepth==0 || m_numShoreLineTiles == 0)
+	if (!TheGlobalData->m_showSoftWaterEdge || !TheWaterTransparency || TheWaterTransparency->m_transparentWaterDepth==0 || m_numShoreLineTiles == 0)
 		return;
 
 	//Check if video card is capable of using this effect
