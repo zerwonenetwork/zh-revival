@@ -1886,9 +1886,15 @@ Int BaseHeightMapRenderObjClass::initHeightData(Int x, Int y, WorldHeightMap *pM
 		freeMapResources();	//free old data and ib/vb
 		AppendStartupTrace("BaseHeightMapRenderObjClass::initHeightData after freeMapResources");
 		REF_PTR_SET(m_map,pMap);	//update our heightmap pointer in case it changed since last call.
+		AppendStartupTrace("BaseHeightMapRenderObjClass::initHeightData before CloudMapTerrainTextureClass");
 		m_stageTwoTexture=NEW CloudMapTerrainTextureClass;
+		AppendStartupTrace("BaseHeightMapRenderObjClass::initHeightData after CloudMapTerrainTextureClass");
+		AppendStartupTrace("BaseHeightMapRenderObjClass::initHeightData before LightMapTerrainTextureClass");
 		m_stageThreeTexture=NEW LightMapTerrainTextureClass(m_macroTextureName);
+		AppendStartupTrace("BaseHeightMapRenderObjClass::initHeightData after LightMapTerrainTextureClass");
+		AppendStartupTrace("BaseHeightMapRenderObjClass::initHeightData before destAlphaTexture alloc");
 		m_destAlphaTexture=MSGNEW("TextureClass") TextureClass(256,1,WW3D_FORMAT_A8R8G8B8,MIP_LEVELS_1);
+		AppendStartupTrace("BaseHeightMapRenderObjClass::initHeightData after destAlphaTexture alloc");
 		AppendStartupTrace("BaseHeightMapRenderObjClass::initHeightData after terrain textures alloc");
 		initDestAlphaLUT();
 		AppendStartupTrace("BaseHeightMapRenderObjClass::initHeightData after initDestAlphaLUT");
