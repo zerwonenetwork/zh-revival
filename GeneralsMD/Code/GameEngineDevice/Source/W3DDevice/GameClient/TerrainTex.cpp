@@ -105,9 +105,22 @@ namespace
 texture of the desired height and mip level. */
 //=============================================================================
 TerrainTextureClass::TerrainTextureClass(int height) :
-	TextureClass(TEXTURE_WIDTH, height, 
+	TextureClass(TEXTURE_WIDTH, height,
 		WW3D_FORMAT_A1R5G5B5, MIP_LEVELS_3 )
 {
+	// D3DXCreateTexture may fail with DXWrapper (D3D8→D3D9 proxy).
+	// Fall back to direct CreateTexture with the universally-supported A8R8G8B8 format.
+	if (!Peek_D3D_Texture() && DX8Wrapper::_Get_D3D_Device8()) {
+		IDirect3DTexture8 *tex = NULL;
+		HRESULT hr = DX8Wrapper::_Get_D3D_Device8()->CreateTexture(
+			TEXTURE_WIDTH, height, 3, 0, D3DFMT_A8R8G8B8, D3DPOOL_MANAGED, &tex);
+		if (SUCCEEDED(hr) && tex) {
+			AppendStartupTrace("TerrainTextureClass ctor: A1R5G5B5 failed; A8R8G8B8 direct CreateTexture ok tex=%p h=%d", tex, height);
+			Poke_Texture(tex);
+		} else {
+			AppendStartupTrace("TerrainTextureClass ctor: both formats failed hr=%08x", (unsigned)hr);
+		}
+	}
 }
 
 //=============================================================================
@@ -158,18 +171,9 @@ int TerrainTextureClass::update(WorldHeightMap *htMap)
 	//DEBUG_ASSERTCRASH(tilesPerRow*numRows >= htMap->m_numBitmapTiles, ("Too many tiles."));
 	DEBUG_ASSERTCRASH((Int)surface_desc.Width >= tilePixelExtent*tilesPerRow, ("Bitmap too small."));
 #endif
-	if (surface_desc.Format == D3DFMT_A1R5G5B5) {
-#if 0
-		UnsignedInt cellX, cellY;
-		for (cellX = 0; cellX < surface_desc.Width; cellX++) {
-			for (cellY = 0; cellY < surface_desc.Height; cellY++) {
-				UnsignedByte *pBGR = ((UnsignedByte *)locked_rect.pBits)+(cellY*surface_desc.Width+cellX)*2;
-				*((Short*)pBGR) = (((255-2*cellY)>>3)<<10) + ((4*cellX)>>4);
-			}
-		}
-#endif
+	if (surface_desc.Format == D3DFMT_A1R5G5B5 || surface_desc.Format == D3DFMT_A8R8G8B8) {
 		Int tileNdx;
-		Int pixelBytes = 2;
+		Int pixelBytes = (surface_desc.Format == D3DFMT_A8R8G8B8) ? 4 : 2;
 		for (tileNdx=0; tileNdx < htMap->m_numBitmapTiles; tileNdx++) {
 			TileData *pTile = htMap->getSourceTile(tileNdx);
 			if (!pTile) continue;
@@ -187,7 +191,12 @@ int TerrainTextureClass::update(WorldHeightMap *htMap)
 				Int column = position.x;
 				pBGRX += column*pixelBytes;
 				for (i=0; i<tilePixelExtent; i++) {
-					*((Short*)pBGRX) = 0x8000 + ((pBGR[2]>>3)<<10) + ((pBGR[1]>>3)<<5) + (pBGR[0]>>3);
+					if (pixelBytes == 4) {
+						// A8R8G8B8: source is BGR, write as BGRA (little-endian 0xAARRGGBB)
+						*((UnsignedInt*)pBGRX) = 0xFF000000u | ((UnsignedInt)pBGR[2]<<16) | ((UnsignedInt)pBGR[1]<<8) | pBGR[0];
+					} else {
+						*((Short*)pBGRX) = 0x8000 + ((pBGR[2]>>3)<<10) + ((pBGR[1]>>3)<<5) + (pBGR[0]>>3);
+					}
 					pBGRX +=pixelBytes;
 					pBGR +=TILE_BYTES_PER_PIXEL;
 				}
@@ -812,6 +821,7 @@ int AlphaEdgeTextureClass::update256(WorldHeightMap *htMap)
 int AlphaEdgeTextureClass::update(WorldHeightMap *htMap)
 {
 	// D3DTexture is our texture;
+	if (!Peek_D3D_Texture()) return 0;	// D3D texture creation failed; skip fill
 
 	IDirect3DSurface8 *surface_level;
 	D3DSURFACE_DESC surface_desc;
