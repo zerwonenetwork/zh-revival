@@ -586,3 +586,54 @@ How to unblock on this PC:
    - allow the exe by policy (hash/path/publisher) from the admin side
 3. If you only need a quick runtime lane:
    - do the artifact launch/testing on the main unblocked PC instead of this one
+
+=== 2026-03-29 Codex runtime handoff update ===
+Branch: main
+Current HEAD pushed: 4707a3d
+Latest green CI run: 23723752598
+
+What changed since the older notes above:
+- `dfb662d`:
+  - `TerrainTex.cpp`
+  - replaced the terrain cloud and light/noise overlay textures with procedural 4x4 placeholder textures
+  - this removed the runtime stop at:
+    - `BaseHeightMapRenderObjClass::initHeightData before CloudMapTerrainTextureClass`
+- `4707a3d`:
+  - `BaseHeightMap.cpp`
+  - disabled terrain scorch buffer/texture allocation during startup
+  - this removed the next stop immediately after `initDestAlphaLUT()`
+
+What I verified locally by downloading and running the Windows artifacts:
+- `dfb662d` launched here and progressed further than before.
+- The trace moved past:
+  - `before CloudMapTerrainTextureClass`
+  - `after CloudMapTerrainTextureClass`
+  - `before LightMapTerrainTextureClass`
+  - `after LightMapTerrainTextureClass`
+  - `after destAlphaTexture alloc`
+  - `after initDestAlphaLUT`
+- With `dfb662d`, the process then hung/stopped before the next trace point, which identified the next suspect block as scorch allocation.
+
+- `4707a3d` launched here and ran far enough to complete:
+  - `BaseHeightMapRenderObjClass::initHeightData after allocateScorchBuffers`
+  - `BaseHeightMapRenderObjClass::initHeightData after shader/material setup`
+  - `BaseHeightMapRenderObjClass::initHeightData complete`
+- During that `4707a3d` test the process was already gone by the 70-second check:
+  - `PROCESS_NOT_RUNNING`
+- So the current terrain startup frontier is no longer inside shroud, road-buffer setMap, extra-pass preprocessing, cloud/light terrain textures, destination-alpha LUT, or scorch allocation.
+
+Current verified frontier:
+- The most recent trace now ends at:
+  - `BaseHeightMapRenderObjClass::initHeightData complete`
+- The process exited after that, so the next failing step is after heightmap init returns.
+
+Best next debug move for Claude:
+1. Add traces immediately after the `initHeightData()` return path / after `W3DTerrainVisual::load` resumes.
+2. Trace the next calls in `W3DTerrainVisual::load` and `TerrainLogic::loadMap` after heightmap init completes.
+3. Also check the Windows Application / WER crash event for the `4707a3d` run, because this is now an exit/crash after the terrain init block rather than the previous in-place hang.
+
+Operational note:
+- Local repo source is synced to `main`.
+- Only local artifact zip leftovers remain untracked:
+  - `latest_ci_artifacts_30c68a2.zip`
+  - `latest_ci_artifacts_81e076d.zip`
