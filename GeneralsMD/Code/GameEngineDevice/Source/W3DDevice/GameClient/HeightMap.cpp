@@ -327,7 +327,9 @@ Int HeightMapRenderObjClass::updateVB(DX8VertexBufferClass	*pVB, char *data, Int
 		cellOffset = 2;
 	}
 
+	AppendStartupTrace("updateVB enter pVB=%p data=%p x0=%d y0=%d x1=%d y1=%d originX=%d originY=%d", pVB, data, x0, y0, x1, y1, originX, originY);
 	REF_PTR_SET(m_map, pMap);	//update our heightmap pointer in case it changed since last call.
+	AppendStartupTrace("updateVB after REF_PTR_SET m_map");
 	if (m_vertexBufferTiles && pMap && pVB)
 	{
 #ifdef _DEBUG
@@ -336,8 +338,10 @@ Int HeightMapRenderObjClass::updateVB(DX8VertexBufferClass	*pVB, char *data, Int
 
 		DX8VertexBufferClass::WriteLockClass lockVtxBuffer(pVB);
 		VERTEX_FORMAT *vbHardware = (VERTEX_FORMAT*)lockVtxBuffer.Get_Vertex_Array();
+		AppendStartupTrace("updateVB after VB lock vbHardware=%p", vbHardware);
 		if (!vbHardware) return -1;	// VB lock failed (device lost?); skip tile
 		VERTEX_FORMAT *vBase = (VERTEX_FORMAT*)data;
+		AppendStartupTrace("updateVB after vBase=%p", vBase);
 		if (!vBase) return -1;	// backup buffer is NULL; skip tile
 		// Note that we are building the vertex buffer data in the memory buffer, data.
 		// At the bottom, we will copy the final vertex data for one cell into the
@@ -1022,7 +1026,7 @@ void HeightMapRenderObjClass::doPartialUpdate(const IRegion2D &partialRange, Wor
 The vertex coordinates and texture coordinates, as well as static lighting are updated.
 */
 Int HeightMapRenderObjClass::updateBlock(Int x0, Int y0, Int x1, Int y1,  WorldHeightMap *pMap, RefRenderObjListIterator *pLightsIterator)
-{	
+{
 #ifdef _DEBUG
 	DEBUG_ASSERTCRASH(x0>=0,  ("HeightMapRenderObjClass::UpdateBlock parameters extend beyond left edge."));
 	DEBUG_ASSERTCRASH(y0>=0,  ("HeightMapRenderObjClass::UpdateBlock parameters extend beyond bottom edge."));
@@ -1031,15 +1035,20 @@ Int HeightMapRenderObjClass::updateBlock(Int x0, Int y0, Int x1, Int y1,  WorldH
 	DEBUG_ASSERTCRASH(x0<=x1, ("HeightMapRenderObjClass::UpdateBlock parameters have inside-out rectangle (on X)."));
 	DEBUG_ASSERTCRASH(y0<=y1, ("HeightMapRenderObjClass::UpdateBlock parameters have inside-out rectangle (on Y)."));
 #endif
+	AppendStartupTrace("updateBlock start x0=%d y0=%d x1=%d y1=%d pMap=%p", x0, y0, x1, y1, pMap);
 	Invalidate_Cached_Bounding_Volumes();
+	AppendStartupTrace("updateBlock after Invalidate_Cached_Bounding_Volumes");
 	if (pMap) {
 		REF_PTR_SET(m_stageZeroTexture, pMap->getTerrainTexture());
+		AppendStartupTrace("updateBlock after stageZero tex=%p", m_stageZeroTexture);
 		REF_PTR_SET(m_stageOneTexture, pMap->getAlphaTerrainTexture());
+		AppendStartupTrace("updateBlock after stageOne tex=%p", m_stageOneTexture);
 	}
 
 	Int i,j;
 	DX8VertexBufferClass	**pVB;
 	Int originX,originY;
+	AppendStartupTrace("updateBlock entering tile loops numX=%d numY=%d", m_numVBTilesX, m_numVBTilesY);
 	//step through each vertex buffer that needs updating
 	for (j=0; j<m_numVBTilesY; j++)
 	{
@@ -1053,7 +1062,7 @@ Int HeightMapRenderObjClass::updateBlock(Int x0, Int y0, Int x1, Int y1,  WorldH
 			continue;
 		}
 		for (i=0; i<m_numVBTilesX; i++)
-		{	
+		{
 			originX=i*VERTEX_BUFFER_TILE_LENGTH;	//location of this VB on the large full-size heightmap
 			Int xMin, xMax;
 			xMin = originX;
@@ -1063,9 +1072,11 @@ Int HeightMapRenderObjClass::updateBlock(Int x0, Int y0, Int x1, Int y1,  WorldH
 			if (xMin >= xMax) {
 				continue;
 			}
-			pVB=m_vertexBufferTiles+j*m_numVBTilesX+i;	//point to correct row/column of vertex buffers 
+			pVB=m_vertexBufferTiles+j*m_numVBTilesX+i;	//point to correct row/column of vertex buffers
 			char **pData = m_vertexBufferBackup+j*m_numVBTilesX+i;
+			AppendStartupTrace("updateBlock before updateVB tile j=%d i=%d vb=%p data=%p xMin=%d yMin=%d xMax=%d yMax=%d", j, i, *pVB, *pData, xMin, yMin, xMax, yMax);
 			updateVB(*pVB, *pData, xMin, yMin, xMax, yMax, originX, originY, pMap, pLightsIterator);
+			AppendStartupTrace("updateBlock after updateVB tile j=%d i=%d", j, i);
 		}
 	}
 
