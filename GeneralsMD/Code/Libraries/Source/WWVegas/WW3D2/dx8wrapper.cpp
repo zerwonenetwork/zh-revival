@@ -47,6 +47,7 @@
 
 #include "dx8wrapper.h"
 #include "dx8webbrowser.h"
+extern void AppendStartupTrace(const char *format, ...);
 #include "dx8fvf.h"
 #include "dx8vertexbuffer.h"
 #include "dx8indexbuffer.h"
@@ -2545,6 +2546,28 @@ IDirect3DTexture8 * DX8Wrapper::_Create_DX8_Texture
 
 	}
 	DX8_ErrorCode(ret);
+
+	// D3DXCreateTexture may fail with D3D8-to-D3D9 proxy wrappers (e.g. DXWrapper).
+	// Fall back to direct IDirect3DDevice8::CreateTexture with A8R8G8B8 which is
+	// universally supported by all D3D9 hardware.
+	if (!texture && DX8Wrapper::_Get_D3D_Device8()) {
+		D3DFORMAT fallbackFmt = WW3DFormat_To_D3DFormat(format);
+		HRESULT hr = DX8Wrapper::_Get_D3D_Device8()->CreateTexture(
+			width, height, mip_level_count, 0, fallbackFmt, pool, &texture);
+		if (FAILED(hr) || !texture) {
+			// If exact format failed, try universally supported A8R8G8B8
+			hr = DX8Wrapper::_Get_D3D_Device8()->CreateTexture(
+				width, height, mip_level_count, 0, D3DFMT_A8R8G8B8, pool, &texture);
+			if (SUCCEEDED(hr) && texture) {
+				AppendStartupTrace("_Create_DX8_Texture: D3DX failed; direct A8R8G8B8 fallback ok %ux%u mips=%u", width, height, mip_level_count);
+			} else {
+				AppendStartupTrace("_Create_DX8_Texture: all creation methods failed %ux%u hr=%08x", width, height, (unsigned)hr);
+				texture = NULL;
+			}
+		} else {
+			AppendStartupTrace("_Create_DX8_Texture: D3DX failed; direct exact-format fallback ok %ux%u fmt=%d", width, height, (int)fallbackFmt);
+		}
+	}
 
 	return texture;
 }
