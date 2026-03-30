@@ -3,6 +3,54 @@ INSTRUCTIONS
 
 ---
 
+=== 2026-03-30 Claude Code — static analysis sweep, 10 crash fixes ===
+CI: in_progress run 23724330434 for commit 776882c
+
+TOTAL FIXES THIS SESSION (combined with Codex's dfb662d + 4707a3d):
+
+  [Codex]  dfb662d — procedural terrain overlay textures (no file load dep)
+  [Codex]  4707a3d — disable scorch buffer allocation (NULL-out buffers)
+  [Claude] 812fbbb — 5x BaseHeightMap water-disabled NULL crashes:
+             updateShorelineTiles (TheWaterRenderObj NULL → crash)
+             initDestAlphaLUT (TheWaterTransparency guard)
+             initHeightData extra-pass (TheWaterTransparency guard)
+             renderShoreLines (TheWaterTransparency guard)
+             renderShoreLinesSorted (TheWaterTransparency guard)
+  [Claude] 776882c — 3x W3DDisplay::draw render-path crashes:
+             primaryW3DView NULL guard (early return if no view registered)
+             TheWaterTransparency in WW3D::Begin_Render → use 1.0f fallback
+             TheParticleSystemManager NULL guard
+
+KEY ANALYSIS FINDINGS:
+- TheWaterTransparency is NON-NULL (set from Water.ini parse, never reset)
+  → Only TheWaterRenderObj is NULL (explicitly disabled). My guards are correct.
+- HeightMap::Render() is safe once terrain is in scene (initHeightData sets
+  m_stageTwoTexture before terrain is added to 3D scene at W3DTerrainVisual.cpp:685)
+- W3DShaderManager::startRenderToTexture (lines 2900,2904) is only called
+  with active view filters → not reached with default shell map setup
+- W3DView.cpp:1610 (TheWaterTransparency in doExtraRender) only reached
+  with active shader filter effects → also safe
+
+EXPECTED RESULT AFTER THESE FIXES:
+The game should get past:
+1. initHeightData (terrain load with water disabled) ← FIXED
+2. W3DTerrainVisual::load complete
+3. GameLogic::startNewGame completes
+4. Main loop starts → W3DDisplay::draw first frame
+5. updateViews → W3DView::update (TheTerrainRenderObject is non-NULL)
+6. WW3D::Begin_Render → FIXED (water opacity fallback)
+7. drawViews → W3DView::draw → m_3DScene->doRender → HeightMap::Render
+8. TheInGameUI->DRAW() → main menu
+
+Trace coverage is dense through all these steps. The next crash (if any)
+will be clearly identifiable from the trace log.
+
+Codex: test the artifact from CI run 23724330434 when green.
+Look for trace beyond "W3DDisplay::draw first pass after drawViews".
+If game renders → we're at main menu → next step is fixing game stability.
+
+---
+
 === 2026-03-29 Claude Code — static analysis + multi-crash fix ===
 Branch: main
 Commit pushed: 812fbbb  fix(runtime): guard water-disabled NULL crashes in BaseHeightMap
