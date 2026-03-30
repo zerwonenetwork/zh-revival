@@ -1,5 +1,39 @@
 INSTRUCTIONS
- 
+
+
+---
+
+=== 2026-03-29 Claude Code — static analysis + multi-crash fix ===
+Branch: main
+Commit pushed: 812fbbb  fix(runtime): guard water-disabled NULL crashes in BaseHeightMap
+
+What I found (static analysis — no artifact needed):
+- Current crash is at updateShorelineTiles() → TheWaterRenderObj->getWaterHeight()
+- Root cause: water rendering disabled during startup → TheWaterRenderObj = NULL
+  But updateShorelineTiles() derefs it unconditionally right after W3DShroud::init
+- This explains exactly why trace ends at "W3DShroud::init complete"
+
+Fixed ALL 5 crash sites in BaseHeightMap.cpp in one commit:
+1. updateShorelineTiles — guard TheWaterRenderObj + TheWaterTransparency NULL at entry
+2. initDestAlphaLUT — guard TheWaterTransparency NULL
+3. initHeightData (extra-pass block) — guard TheWaterTransparency before compare
+4. renderShoreLines — add !TheWaterTransparency to early-exit condition
+5. renderShoreLinesSorted — same
+
+All visual-only / shoreline blending. Zero simulation determinism impact.
+CI building now for 812fbbb. Will test artifact when green.
+
+Next expected frontier after this fix:
+- initHeightData should now complete (textures allocate, scorch buffers allocate)
+- W3DTerrainVisual::load should complete
+- GameLogic::startNewGame continues past TheTerrainLogic->loadMap
+- Trace should show "GameLogic::startNewGame after TheTerrainLogic->loadMap"
+- Next crash is likely somewhere in the post-loadMap section of startNewGame
+  or in the first rendering pass of the shell map terrain
+
+Note for Codex: The 734a55c CI was still in_progress when I started. You can cancel
+or let it finish — those traces will confirm where in initHeightData the crash was,
+but the fix is already in 812fbbb which goes further.
 
 ---
 
@@ -459,3 +493,96 @@ Next step on an unblocked/main PC:
    - W3DInGameUI::draw after drawPlaceAngle
    - postDraw()
    - TheWindowManager->winRepaint()
+
+=== 2026-03-29 Codex artifact test update ===
+Branch: main
+Tested artifact commit: 81e076d
+CI run: 23706996879 (green)
+
+What I did:
+- Downloaded the Windows artifact for 81e076d from zerwonenetwork/zh-revival Actions.
+- Installed it over the local Steam Zero Hour Generals.exe.
+- Deleted the old zh-startup-trace.log before launch.
+- Launched the game and let it run for 60 seconds, then another 45 seconds.
+
+Observed behavior:
+- Process stayed alive for more than 105 seconds.
+- Process remained non-responsive.
+- CPU kept moving slightly, but the startup trace stopped growing.
+
+Clean trace result:
+- Full init completed successfully.
+- Full first frame completed successfully.
+- GameEngine::execute loop 1 completed.
+- GameEngine::execute loop 2 completed.
+- Loop 3 started and progressed through:
+  - GameEngine::update pass 3 after TheGameClient->UPDATE
+  - GameEngine::update pass 3 after TheMessageStream->propagateMessages
+  - GameEngine::update pass 3 after TheCDManager->UPDATE
+- Trace then stopped permanently at:
+  GameEngine::update pass 3 after TheCDManager->UPDATE
+
+Current verified frontier:
+- The startup problem is no longer in init, terrain startup, render begin, or the first frame.
+- The current hang is later, inside GameEngine::update pass 3, after TheCDManager->UPDATE and before the next trace line.
+
+Implication for next debug step:
+- The next likely boundary is one of:
+  - TheGameLogic->UPDATE
+  - later GameEngine::update pass-3 code immediately after TheCDManager
+- The fastest next move is to add tighter pass-3 tracing in GameEngine::update after TheCDManager->UPDATE.
+
+=== 2026-03-29 Codex runtime trace follow-up ===
+Branch: main
+Current HEAD pushed: 30c68a2
+CI run: 23707788721 (green on all jobs)
+
+What changed in 30c68a2:
+- GameEngine.cpp:
+  - traces the logic-update gate after TheCDManager->UPDATE
+  - logs whether TheNetwork is null / whether frame data is ready
+  - logs before and after TheGameLogic->UPDATE
+- GameLogic.cpp:
+  - adds startup trace phases for the first 5 GameLogic updates
+  - covers script engine, terrain logic, CRC block, stats, recorder, command processing,
+    normal updates, sleepy updates, AI, build assistant, partition manager, destroy/reset/store phases
+  - includes sleepy-update iteration tracing so an infinite sleepy loop becomes visible
+
+Local test machine result:
+- The new Windows artifact for 30c68a2 downloaded and installed successfully.
+- CI artifact path was valid and the binary copied over Generals.exe cleanly.
+- Launch failed before process creation on this machine:
+  "An Application Control policy has blocked this file."
+- Verified this is not Mark-of-the-Web / Zone.Identifier:
+  there is no Zone.Identifier stream on the zip, extracted exe, or installed Generals.exe.
+- Direct invocation with `& Generals.exe` is also blocked the same way.
+
+Current practical status:
+- Latest successful local runtime trace is still the 81e076d artifact result:
+  hang after `GameEngine::update pass 3 after TheCDManager->UPDATE`
+- The new 30c68a2 trace points are ready and CI-green, but they need to be run on an unblocked PC.
+
+Next step on the main/unblocked PC:
+1. Download the Windows artifact for commit 30c68a2 from run 23707788721.
+2. Install it over Generals.exe.
+3. Launch once and capture zh-startup-trace.log.
+4. The new exact frontier should now be inside one of the named GameLogic phases instead of the old blind spot.
+
+Local block note for this test PC:
+- AppLocker policy is active on this machine.
+- Recent local log check:
+  - Microsoft-Windows-AppLocker/EXE and DLL shows policy application events (8001)
+  - direct launch of the freshly installed 30c68a2 Generals.exe is blocked before process creation
+  - there is still no Zone.Identifier stream on the zip, extracted exe, or installed exe
+- Practical conclusion:
+  - this is a machine policy / application control issue, not a downloaded-file MOTW issue
+  - this PC cannot be relied on to launch every new unsigned artifact hash unless the local policy is relaxed or an allow rule is added
+
+How to unblock on this PC:
+1. If this is your own unmanaged PC:
+   - disable or relax the active AppLocker / Windows Application Control rule set for local unsigned binaries, or
+   - create an allow rule for the Zero Hour install path / specific Generals.exe hash
+2. If this is a managed/company policy:
+   - allow the exe by policy (hash/path/publisher) from the admin side
+3. If you only need a quick runtime lane:
+   - do the artifact launch/testing on the main unblocked PC instead of this one
