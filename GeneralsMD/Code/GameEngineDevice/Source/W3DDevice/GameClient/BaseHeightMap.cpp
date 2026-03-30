@@ -1939,19 +1939,12 @@ void BaseHeightMapRenderObjClass::freeScorchBuffers(void)
 //=============================================================================
 void BaseHeightMapRenderObjClass::allocateScorchBuffers(void)
 {
-	m_vertexScorch=NEW_REF(DX8VertexBufferClass,(DX8_FVF_XYZDUV1,MAX_SCORCH_VERTEX,DX8VertexBufferClass::USAGE_DEFAULT));
-	m_indexScorch=NEW_REF(DX8IndexBufferClass,(MAX_SCORCH_INDEX));
-	m_scorchTexture=NEW ScorchTextureClass;
+	m_vertexScorch = NULL;
+	m_indexScorch = NULL;
+	m_scorchTexture = NULL;
 	m_scorchesInBuffer = 0; // If we just allocated the buffers, we got no scorches in the buffer.
 	m_curNumScorchVertices=0;
 	m_curNumScorchIndices=0;
-#ifdef _DEBUG
-	Vector3 loc(4*MAP_XY_FACTOR,4*MAP_XY_FACTOR,0);
-	addScorch(loc, 1*MAP_XY_FACTOR, SCORCH_1);
-	loc.Y += 10*MAP_XY_FACTOR;
-	loc.X += 5*MAP_XY_FACTOR;
-	addScorch(loc, 3*MAP_XY_FACTOR, SCORCH_1);
-#endif
 
 }
 
