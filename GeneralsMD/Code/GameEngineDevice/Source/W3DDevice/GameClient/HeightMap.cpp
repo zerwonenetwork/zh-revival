@@ -328,19 +328,21 @@ Int HeightMapRenderObjClass::updateVB(DX8VertexBufferClass	*pVB, char *data, Int
 	}
 
 	REF_PTR_SET(m_map, pMap);	//update our heightmap pointer in case it changed since last call.
-	if (m_vertexBufferTiles && pMap)
+	if (m_vertexBufferTiles && pMap && pVB)
 	{
 #ifdef _DEBUG
 		assert(x0 >= originX && y0 >= originY && x1>x0 && y1>y0 && x1<=originX+VERTEX_BUFFER_TILE_LENGTH && y1<=originY+VERTEX_BUFFER_TILE_LENGTH);
-#endif 
+#endif
 
 		DX8VertexBufferClass::WriteLockClass lockVtxBuffer(pVB);
 		VERTEX_FORMAT *vbHardware = (VERTEX_FORMAT*)lockVtxBuffer.Get_Vertex_Array();
+		if (!vbHardware) return -1;	// VB lock failed (device lost?); skip tile
 		VERTEX_FORMAT *vBase = (VERTEX_FORMAT*)data;
+		if (!vBase) return -1;	// backup buffer is NULL; skip tile
 		// Note that we are building the vertex buffer data in the memory buffer, data.
-		// At the bottom, we will copy the final vertex data for one cell into the 
-		// hardware vertex buffer. 
-		
+		// At the bottom, we will copy the final vertex data for one cell into the
+		// hardware vertex buffer.
+
 		for (j=y0; j<y1; j++)
 		{
 			VERTEX_FORMAT *vb = vBase;
@@ -591,8 +593,9 @@ Int HeightMapRenderObjClass::updateVBForLight(DX8VertexBufferClass	*pVB, char *d
 
 		DX8VertexBufferClass::WriteLockClass lockVtxBuffer(pVB);
 		VERTEX_FORMAT *vBase = (VERTEX_FORMAT*)lockVtxBuffer.Get_Vertex_Array();
+		if (!vBase) return -1;	// VB lock failed; skip tile
 		VERTEX_FORMAT *vb;
-		
+
 		for (j=y0; j<y1; j++)
 		{
 			if (HALF_RES_MESH) {
@@ -738,8 +741,9 @@ Int HeightMapRenderObjClass::updateVBForLightOptimized(DX8VertexBufferClass	*pVB
 
 		DX8VertexBufferClass::WriteLockClass lockVtxBuffer(pVB);
 		VERTEX_FORMAT *vBase = (VERTEX_FORMAT*)lockVtxBuffer.Get_Vertex_Array();
+		if (!vBase) return -1;	// VB lock failed; skip tile
 		VERTEX_FORMAT *vb;
-		
+
 		//
 		// (gth) the optimization in this function is to take advantage of verts in the same
 		// x,y position who have already computed their lighting.  To do this, we need to set up
@@ -1344,7 +1348,8 @@ Int HeightMapRenderObjClass::initHeightData(Int x, Int y, WorldHeightMap *pMap, 
 		// Fill up the IB
 		DX8IndexBufferClass::WriteLockClass lockIdxBuffer(m_indexBuffer);
 		UnsignedShort *ib=lockIdxBuffer.Get_Index_Array();
-			
+		if (!ib) return 0;	// IB lock failed; skip fill but don't crash
+
 		for (j=0; j<(VERTEX_BUFFER_TILE_LENGTH*VERTEX_BUFFER_TILE_LENGTH*4); j+=VERTEX_BUFFER_TILE_LENGTH*4)
 		{
 			for (i=j; i<(j+VERTEX_BUFFER_TILE_LENGTH*4); i+=4)	//4 vertices per 2x2 block
@@ -1970,6 +1975,7 @@ void HeightMapRenderObjClass::Render(RenderInfoClass & rinfo)
 	DX8Wrapper::Set_Light_Environment(rinfo.light_environment);
 
 	// Force shaders to update.
+	if (!m_stageTwoTexture) return;	// textures not yet initialized; skip render
 	m_stageTwoTexture->restore();
 	DX8Wrapper::Set_Texture(0,NULL);
 	DX8Wrapper::Set_Texture(1,NULL);
