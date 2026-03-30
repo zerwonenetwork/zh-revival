@@ -49,6 +49,8 @@
 
 #include "W3DDevice/GameClient/TerrainTex.h"
 #include "W3DDevice/GameClient/WorldHeightMap.h"
+
+extern void AppendStartupTrace(const char *format, ...);
 #include "W3DDevice/GameClient/TileData.h"
 #include "Common/GlobalData.h"
 #include "WW3D2/dx8wrapper.h"
@@ -131,6 +133,11 @@ TerrainTextureClass::TerrainTextureClass(int height, int width) :
 int TerrainTextureClass::update(WorldHeightMap *htMap)
 {
 	// D3DTexture is our texture;
+	AppendStartupTrace("TerrainTextureClass::update enter d3dtex=%p", Peek_D3D_Texture());
+	if (!Peek_D3D_Texture()) {
+		AppendStartupTrace("TerrainTextureClass::update D3D texture is NULL; skipping fill");
+		return 0;	// D3D texture creation failed; skip fill but don't crash
+	}
 
 	IDirect3DSurface8 *surface_level;
 	D3DSURFACE_DESC surface_desc;

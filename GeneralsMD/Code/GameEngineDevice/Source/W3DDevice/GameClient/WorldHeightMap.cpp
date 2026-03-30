@@ -47,6 +47,7 @@
 #include "GameLogic/SidesList.h"
 
 #include "W3DDevice/GameClient/WorldHeightMap.h"
+extern void AppendStartupTrace(const char *format, ...);
 #include "W3DDevice/GameClient/TileData.h"
 #include "W3DDevice/GameClient/HeightMap.h"
 #include "W3DDevice/GameClient/TerrainTex.h"
@@ -2167,14 +2168,18 @@ TextureClass *WorldHeightMap::getTerrainTexture(void)
 {
 	if (m_terrainTex == NULL) {
 		Int edgeHeight;
+		AppendStartupTrace("WorldHeightMap::getTerrainTexture before updateTileTexturePositions numBitmapTiles=%d numTextureClasses=%d", m_numBitmapTiles, m_numTextureClasses);
 		Int height = updateTileTexturePositions(&edgeHeight);
 		Int pow2Height = 1;
 		while (pow2Height<height) {
 			pow2Height *=2;
 		}
+		AppendStartupTrace("WorldHeightMap::getTerrainTexture height=%d pow2Height=%d edgeHeight=%d TEXTURE_WIDTH=%d", height, pow2Height, edgeHeight, 2048);
 		REF_PTR_RELEASE(m_terrainTex);
 		m_terrainTex = MSGNEW("WorldHeightMap_getTerrainTexture") TerrainTextureClass(pow2Height);
+		AppendStartupTrace("WorldHeightMap::getTerrainTexture after TerrainTextureClass ctor m_terrainTex=%p d3dtex=%p", m_terrainTex, m_terrainTex ? m_terrainTex->Peek_D3D_Texture() : (void*)-1);
 		m_terrainTexHeight = m_terrainTex->update(this);
+		AppendStartupTrace("WorldHeightMap::getTerrainTexture after terrainTex update height=%d", m_terrainTexHeight);
 		char buf[64];
 		sprintf(buf, "Base tex height %d\n", pow2Height);
 		DEBUG_LOG((buf));
