@@ -1819,6 +1819,8 @@ AGAIN:
 
 	/// @todo: I'm assuming the first view is our main 3D view.
 	W3DView *primaryW3DView=(W3DView *)getFirstView();
+	if (!primaryW3DView)
+		return; // View not yet registered; nothing to draw.
 	if (!freezeTime && TheScriptEngine->isTimeFast())
 	{
 		primaryW3DView->updateCameraMovements();  // Update camera motion effects.
@@ -1912,6 +1914,7 @@ AGAIN:
 				AppendStartupTrace("W3DDisplay::draw first pass after updateViews");
 				AppendStartupTrace("W3DDisplay::draw first pass before TheParticleSystemManager->update");
 			}
+		if (TheParticleSystemManager)
      		TheParticleSystemManager->update();//LORENZEN AND WILCZYNSKI MOVED THIS FROM ITS NATIVE POSITION, ABOVE
                                            //FOR THE PURPOSE OF LETTING THE PARTICLE SYSTEM LOOK UP THE RENDER OBJECT"S
                                            //TRANSFORM MATRIX, WHILE IT IS STILL VALID (HAVING DONE ITS CLIENT TRANSFORMS
@@ -1974,7 +1977,7 @@ AGAIN:
 			{
 				AppendStartupTrace("W3DDisplay::draw first pass before WW3D::Begin_Render");
 			}
-			if ((TheGlobalData->m_breakTheMovie == FALSE) && (TheGlobalData->m_disableRender == false) && WW3D::Begin_Render( true, true, Vector3( 0.0f, 0.0f, 0.0f ), TheWaterTransparency->m_minWaterOpacity ) == WW3D_ERROR_OK)		
+			if ((TheGlobalData->m_breakTheMovie == FALSE) && (TheGlobalData->m_disableRender == false) && WW3D::Begin_Render( true, true, Vector3( 0.0f, 0.0f, 0.0f ), TheWaterTransparency ? TheWaterTransparency->m_minWaterOpacity : 1.0f ) == WW3D_ERROR_OK)		
 			{
 				if (s_traceFirstDraw)
 				{
