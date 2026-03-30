@@ -94,7 +94,9 @@
 #include "W3DDevice/GameClient/W3DCustomScene.h"
 
 #include "Common/PerfTimer.h"
-#include "Common/UnitTimings.h" //Contains the DO_UNIT_TIMINGS define jba.		 
+#include "Common/UnitTimings.h" //Contains the DO_UNIT_TIMINGS define jba.
+
+extern void AppendStartupTrace(const char *format, ...);
 
 #ifdef _INTERNAL
 // for occasional debugging...
@@ -1265,8 +1267,10 @@ Also allocates all rendering resources such as vertex buffers, index buffers,
 shaders, and materials.*/
 //=============================================================================
 Int HeightMapRenderObjClass::initHeightData(Int x, Int y, WorldHeightMap *pMap, RefRenderObjListIterator *pLightsIterator, Bool updateExtraPassTiles)
-{	
+{
+	AppendStartupTrace("HeightMapRenderObjClass::initHeightData start x=%d y=%d updateExtra=%d", x, y, updateExtraPassTiles ? 1 : 0);
 	BaseHeightMapRenderObjClass::initHeightData(x, y, pMap, pLightsIterator, updateExtraPassTiles);
+	AppendStartupTrace("HeightMapRenderObjClass::initHeightData after base class");
 	Int i,j;
 //	Int	vertsPerRow=x*2-2;
 //	Int	vertsPerColumn=y*2-2;
@@ -1316,6 +1320,7 @@ Int HeightMapRenderObjClass::initHeightData(Int x, Int y, WorldHeightMap *pMap, 
 		}
 	}
 
+	AppendStartupTrace("HeightMapRenderObjClass::initHeightData after extra-blend tiles data=%p needAlloc check", data);
 	m_originX = 0;
 	m_originY = 0;
 	m_needFullUpdate = true;
@@ -1326,11 +1331,15 @@ Int HeightMapRenderObjClass::initHeightData(Int x, Int y, WorldHeightMap *pMap, 
 	if (m_stageOneTexture == NULL) {
 		needToAllocate = true;
 	}
+	AppendStartupTrace("HeightMapRenderObjClass::initHeightData needToAllocate=%d data=%p stageOne=%p", needToAllocate ? 1 : 0, data, m_stageOneTexture);
 	if (data && needToAllocate)
 	{	//requested heightmap different from old one.
+		AppendStartupTrace("HeightMapRenderObjClass::initHeightData before freeIndexVertexBuffers");
 		freeIndexVertexBuffers();
+		AppendStartupTrace("HeightMapRenderObjClass::initHeightData before indexBuffer alloc");
 		//Create static index buffers.  These will index the vertex buffers holding the map.
 		m_indexBuffer=NEW_REF(DX8IndexBufferClass,(VERTEX_BUFFER_TILE_LENGTH*VERTEX_BUFFER_TILE_LENGTH*2*3));
+		AppendStartupTrace("HeightMapRenderObjClass::initHeightData after indexBuffer alloc ib=%p", m_indexBuffer);
 
 		// Fill up the IB
 		DX8IndexBufferClass::WriteLockClass lockIdxBuffer(m_indexBuffer);
@@ -1377,19 +1386,23 @@ Int HeightMapRenderObjClass::initHeightData(Int x, Int y, WorldHeightMap *pMap, 
 
 		Int numVertex = VERTEX_BUFFER_TILE_LENGTH*2*VERTEX_BUFFER_TILE_LENGTH*2;
 
+		AppendStartupTrace("HeightMapRenderObjClass::initHeightData before VB alloc loop numTiles=%d numVertex=%d", m_numVertexBufferTiles, numVertex);
 		for (i=0; i<m_numVertexBufferTiles; i++) {
-#ifdef USE_NORMALS	 
+#ifdef USE_NORMALS
 			m_vertexBufferTiles[i]=NEW_REF(DX8VertexBufferClass,(DX8_FVF_XYZNUV2,numVertex,DX8VertexBufferClass::USAGE_DEFAULT));
 #else
 			m_vertexBufferTiles[i]=NEW_REF(DX8VertexBufferClass,(DX8_VERTEX_FORMAT,numVertex,DX8VertexBufferClass::USAGE_DEFAULT));
 #endif
 			m_vertexBufferBackup[i] = NEW char[numVertex*sizeof(VERTEX_FORMAT)];
-		} 
+		}
+		AppendStartupTrace("HeightMapRenderObjClass::initHeightData after VB alloc loop");
 
 		//go with a preset material for now.
 	}
 
+	AppendStartupTrace("HeightMapRenderObjClass::initHeightData before updateBlock vbTiles=%p vbBackup=%p", m_vertexBufferTiles, m_vertexBufferBackup);
 	updateBlock(0,0,x-1,y-1,pMap,pLightsIterator);
+	AppendStartupTrace("HeightMapRenderObjClass::initHeightData after updateBlock");
 
 	return 0;
 }
