@@ -1806,13 +1806,20 @@ shaders, and materials.*/
 //=============================================================================
 Int BaseHeightMapRenderObjClass::initHeightData(Int x, Int y, WorldHeightMap *pMap, RefRenderObjListIterator *pLightsIteratork, Bool updateExtraPassTiles)
 {	
+	AppendStartupTrace("BaseHeightMapRenderObjClass::initHeightData start x=%d y=%d updateExtra=%d", x, y, updateExtraPassTiles ? 1 : 0);
 
 	REF_PTR_SET(m_map, pMap);	//update our heightmap pointer in case it changed since last call.
 
 	if (m_shroud)
+	{
+		AppendStartupTrace("BaseHeightMapRenderObjClass::initHeightData before m_shroud->init");
 		m_shroud->init(m_map,TheGlobalData->m_partitionCellSize,TheGlobalData->m_partitionCellSize);
+		AppendStartupTrace("BaseHeightMapRenderObjClass::initHeightData after m_shroud->init");
+	}
 #ifdef DO_ROADS
+	AppendStartupTrace("BaseHeightMapRenderObjClass::initHeightData before m_roadBuffer->setMap");
 	m_roadBuffer->setMap(m_map);
+	AppendStartupTrace("BaseHeightMapRenderObjClass::initHeightData after m_roadBuffer->setMap");
 #endif
 	HeightSampleType *data = NULL;
 	if (pMap) {
@@ -1830,6 +1837,7 @@ Int BaseHeightMapRenderObjClass::initHeightData(Int x, Int y, WorldHeightMap *pM
 
 	if (updateExtraPassTiles)
 	{
+		AppendStartupTrace("BaseHeightMapRenderObjClass::initHeightData before extra-pass preprocessing");
 		m_numShoreLineTiles = 0;
 		//Do some preprocessing on map to extract useful data
 		if (pMap)
@@ -1857,6 +1865,7 @@ Int BaseHeightMapRenderObjClass::initHeightData(Int x, Int y, WorldHeightMap *pM
 			if (TheWaterTransparency->m_minWaterOpacity != m_currentMinWaterOpacity)
 				initDestAlphaLUT();
 		}
+		AppendStartupTrace("BaseHeightMapRenderObjClass::initHeightData after extra-pass preprocessing");
 	}
 
 	Set_Force_Visible(TRUE);	//terrain is always visible.
@@ -1872,22 +1881,29 @@ Int BaseHeightMapRenderObjClass::initHeightData(Int x, Int y, WorldHeightMap *pM
 	}
 	if (data && needToAllocate)
 	{	//requested heightmap different from old one.
+		AppendStartupTrace("BaseHeightMapRenderObjClass::initHeightData before freeMapResources");
 		//allocate a new one.
 		freeMapResources();	//free old data and ib/vb
+		AppendStartupTrace("BaseHeightMapRenderObjClass::initHeightData after freeMapResources");
 		REF_PTR_SET(m_map,pMap);	//update our heightmap pointer in case it changed since last call.
 		m_stageTwoTexture=NEW CloudMapTerrainTextureClass;
 		m_stageThreeTexture=NEW LightMapTerrainTextureClass(m_macroTextureName);
 		m_destAlphaTexture=MSGNEW("TextureClass") TextureClass(256,1,WW3D_FORMAT_A8R8G8B8,MIP_LEVELS_1);
+		AppendStartupTrace("BaseHeightMapRenderObjClass::initHeightData after terrain textures alloc");
 		initDestAlphaLUT();
+		AppendStartupTrace("BaseHeightMapRenderObjClass::initHeightData after initDestAlphaLUT");
 #ifdef DO_SCORCH
 		allocateScorchBuffers();
+		AppendStartupTrace("BaseHeightMapRenderObjClass::initHeightData after allocateScorchBuffers");
 #endif
 
 		m_vertexMaterialClass=VertexMaterialClass::Get_Preset(VertexMaterialClass::PRELIT_DIFFUSE);
 
 		m_shaderClass = detailOpaqueShader;	//		ShaderClass::_PresetOpaqueShader;
+		AppendStartupTrace("BaseHeightMapRenderObjClass::initHeightData after shader/material setup");
 	}
 
+	AppendStartupTrace("BaseHeightMapRenderObjClass::initHeightData complete");
 	return 0;
 }
 
