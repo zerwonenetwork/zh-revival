@@ -54,6 +54,41 @@
 #include "WW3D2/dx8wrapper.h"
 #include "d3dx8tex.h"
 
+namespace
+{
+	void FillProceduralTerrainTexture(TextureClass *texture, UnsignedInt argb)
+	{
+		if (texture == NULL) {
+			return;
+		}
+
+		IDirect3DSurface8 *surface_level = texture->Get_D3D_Surface_Level(0);
+		if (surface_level == NULL) {
+			return;
+		}
+
+		D3DLOCKED_RECT locked_rect;
+		if (FAILED(surface_level->LockRect(&locked_rect, NULL, 0))) {
+			surface_level->Release();
+			return;
+		}
+
+		D3DSURFACE_DESC surface_desc;
+		::ZeroMemory(&surface_desc, sizeof(surface_desc));
+		surface_level->GetDesc(&surface_desc);
+
+		for (UnsignedInt y = 0; y < surface_desc.Height; ++y) {
+			UnsignedInt *row = reinterpret_cast<UnsignedInt *>(static_cast<UnsignedByte *>(locked_rect.pBits) + y * locked_rect.Pitch);
+			for (UnsignedInt x = 0; x < surface_desc.Width; ++x) {
+				row[x] = argb;
+			}
+		}
+
+		surface_level->UnlockRect();
+		surface_level->Release();
+	}
+}
+
 /******************************************************************************
 						TerrainTextureClass
 ******************************************************************************/
@@ -647,8 +682,9 @@ void AlphaTerrainTextureClass::Apply(unsigned int stage)
 /** Constructor. Calls parent constructor to load the .tga texture. */
 //=============================================================================
 LightMapTerrainTextureClass::LightMapTerrainTextureClass(AsciiString name, MipCountType mipLevelCount) :
-TextureClass(name.isEmpty()?"TSNoiseUrb.tga":name.str(),name.isEmpty()?"TSNoiseUrb.tga":name.str(), mipLevelCount )
+TextureClass(4, 4, WW3D_FORMAT_A8R8G8B8, MIP_LEVELS_1)
 { 
+	FillProceduralTerrainTexture(this, 0xFFFFFFFF);
 	Get_Filter().Set_Min_Filter(TextureFilterClass::FILTER_TYPE_BEST);
 	Get_Filter().Set_Mag_Filter(TextureFilterClass::FILTER_TYPE_BEST);
 	Get_Filter().Set_U_Addr_Mode(TextureFilterClass::TEXTURE_ADDRESS_REPEAT);
@@ -913,8 +949,9 @@ up the "sliding" parameters for the clouds to slide over the terrain. */
 //=============================================================================
 //@todo - Allow adjustment of the cloud slide rate, and lose the hard coded "cloudmap.tga"
 CloudMapTerrainTextureClass::CloudMapTerrainTextureClass(MipCountType mipLevelCount) :
-	TextureClass("TSCloudMed.tga","TSCloudMed.tga", mipLevelCount )
+	TextureClass(4, 4, WW3D_FORMAT_A8R8G8B8, MIP_LEVELS_1)
 { 
+	FillProceduralTerrainTexture(this, 0xFFFFFFFF);
 	Get_Filter().Set_Mip_Mapping( TextureFilterClass::FILTER_TYPE_FAST );
 	m_xSlidePerSecond = -0.02f;	 
 	m_ySlidePerSecond =  1.50f * m_xSlidePerSecond;
