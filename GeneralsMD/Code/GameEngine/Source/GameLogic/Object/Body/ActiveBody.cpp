@@ -472,7 +472,9 @@ void ActiveBody::attemptDamage( DamageInfo *damageInfo )
 								damager->scoreTheKill( thingToKill );
 							thingToKill->kill();
 							++numKilled;
-							thingToKill->getControllingPlayer()->getAcademyStats()->recordClearedGarrisonedBuilding();
+							Player *killedPlayer = thingToKill->getControllingPlayer();
+							if (killedPlayer)
+								killedPlayer->getAcademyStats()->recordClearedGarrisonedBuilding();
 						}
 					} // next contained item
 
@@ -639,8 +641,10 @@ void ActiveBody::attemptDamage( DamageInfo *damageInfo )
 			Object *srcObj = TheGameLogic->findObjectByID(m_lastDamageInfo.in.m_sourceID);
 			if (srcObj)
 			{
+				Player *targetPlayer = obj->getControllingPlayer();
 				Player *srcPlayer = srcObj->getControllingPlayer();
-				obj->getControllingPlayer()->setAttackedBy(srcPlayer->getPlayerIndex());
+				if (targetPlayer && srcPlayer)
+					targetPlayer->setAttackedBy(srcPlayer->getPlayerIndex());
 			}
 		}
 
@@ -694,8 +698,12 @@ void ActiveBody::attemptDamage( DamageInfo *damageInfo )
 			{
 				AudioEventRTS fearSound = *obj->getTemplate()->getVoiceFear();
 				fearSound.setPosition( obj->getPosition() );
-				fearSound.setPlayerIndex( obj->getControllingPlayer()->getPlayerIndex() );
-				TheAudio->addAudioEvent(&fearSound);
+				Player *ownerPlayer = obj->getControllingPlayer();
+				if (ownerPlayer)
+				{
+					fearSound.setPlayerIndex( ownerPlayer->getPlayerIndex() );
+					TheAudio->addAudioEvent(&fearSound);
+				}
 			}
 		}
 
@@ -784,7 +792,8 @@ Bool ActiveBody::shouldRetaliateAgainstAggressor(Object *obj, Object *damager)
 		return false;
 	}
 	// Only human players retaliate. [8/25/2003]
-	if (obj->getControllingPlayer()->getPlayerType() != PLAYER_HUMAN) {
+	Player *controllingPlayer = obj->getControllingPlayer();
+	if (!controllingPlayer || controllingPlayer->getPlayerType() != PLAYER_HUMAN) {
 		return false;
 	}
 	// Drones never retaliate. [8/25/2003]
