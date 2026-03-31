@@ -2929,15 +2929,14 @@ void AIGroup::groupDoCommandButtonAtObject( const CommandButton *commandButton, 
  */
 void AIGroup::setAttitude( AttitudeType tude )
 {
-	std::list<Object *>::iterator i;
-	for( i = m_memberList.begin(); i != m_memberList.end(); ++i )
+	forEachLiveGroupCommandMemberSnapshot(m_memberList, [tude](Object* member)
 	{
-		AIUpdateInterface *ai = (*i)->getAIUpdateInterface();
+		AIUpdateInterface *ai = member->getAIUpdateInterface();
 		if (ai)
 		{
 			ai->setAttitude( tude );
 		}
-	}
+	});
 }
 
 /**
@@ -2950,35 +2949,32 @@ AttitudeType AIGroup::getAttitude( void ) const
 
 void AIGroup::setMineClearingDetail( Bool set )
 {
-	std::list<Object *>::iterator i;
-	for( i = m_memberList.begin(); i != m_memberList.end(); ++i )
+	forEachLiveGroupCommandMemberSnapshot(m_memberList, [set](Object* member)
 	{
 		if (set)
-			(*i)->setWeaponSetFlag(WEAPONSET_MINE_CLEARING_DETAIL);
+			member->setWeaponSetFlag(WEAPONSET_MINE_CLEARING_DETAIL);
 		else
-			(*i)->clearWeaponSetFlag(WEAPONSET_MINE_CLEARING_DETAIL);
-	}
+			member->clearWeaponSetFlag(WEAPONSET_MINE_CLEARING_DETAIL);
+	});
 }
 
 Bool AIGroup::setWeaponLockForGroup( WeaponSlotType weaponSlot, WeaponLockType lockType )
 {
 	Bool any = false;
-	std::list<Object *>::iterator i;
-	for( i = m_memberList.begin(); i != m_memberList.end(); ++i )
+	forEachLiveGroupCommandMemberSnapshot(m_memberList, [weaponSlot, lockType, &any](Object* member)
 	{
-		if ((*i)->setWeaponLock( weaponSlot, lockType ))
+		if (member->setWeaponLock( weaponSlot, lockType ))
 			any = true;
-	}
+	});
 	return any;
 }
 
 void AIGroup::releaseWeaponLockForGroup(WeaponLockType lockType)
 {
-	std::list<Object *>::iterator i;
-	for( i = m_memberList.begin(); i != m_memberList.end(); ++i )
+	forEachLiveGroupCommandMemberSnapshot(m_memberList, [lockType](Object* member)
 	{
-		(*i)->releaseWeaponLock(lockType);
-	}
+		member->releaseWeaponLock(lockType);
+	});
 }
 
 //This function loops through the AIGroup setting the weaponset only for those units that
@@ -2986,10 +2982,8 @@ void AIGroup::releaseWeaponLockForGroup(WeaponLockType lockType)
 //that unit.
 void AIGroup::setWeaponSetFlag( WeaponSetType wst )
 {
-	std::list<Object *>::iterator i;
-	for( i = m_memberList.begin(); i != m_memberList.end(); ++i )
+	forEachLiveGroupCommandMemberSnapshot(m_memberList, [wst](Object* obj)
 	{
-		Object *obj = (*i);
 		//First check to see if our object even has the specified weaponset. It's very
 		//likely that a selected group won't all have the same weaponset options, so
 		//only set it for those members that have it.
@@ -3000,7 +2994,7 @@ void AIGroup::setWeaponSetFlag( WeaponSetType wst )
 		{
 			obj->setWeaponSetFlag( wst );
 		}
-	}
+	});
 }
 
 void AIGroup::queueUpgrade( const UpgradeTemplate *upgrade )
@@ -3008,67 +3002,58 @@ void AIGroup::queueUpgrade( const UpgradeTemplate *upgrade )
 	if (!upgrade)
 		return;
 
-	std::list<Object *>::iterator i;
-	for( i = m_memberList.begin(); i != m_memberList.end(); ++i )
+	forEachLiveGroupCommandMemberSnapshot(m_memberList, [upgrade](Object* thisMember)
 	{
-		Object *thisMember = (*i);
 		// make sure that the this object can actually build the upgrade
 		// There is an extra check for Object type only.  These are the same checks as in
 		// ControlCommandProcessing when the message was going out.  We are just revalidating on the
 		// way in to stop cheaters.
 		if( ! TheUpgradeCenter->canAffordUpgrade( thisMember->getControllingPlayer(), upgrade, FALSE ) )
 		{
-			continue;
+			return;
 		}
 		if( upgrade->getUpgradeType() == UPGRADE_TYPE_OBJECT )
 		{
 			if( thisMember->hasUpgrade( upgrade )  || !thisMember->affectedByUpgrade( upgrade ) )
-				continue;
+				return;
 		}
 		
 		// Ever think to check if this thing can actually build the upgrade to "stop cheaters"?
 		if( !thisMember->canProduceUpgrade(upgrade) )
-			continue;// They have faked their button; go out of sync. (Cheater will execute it, non cheater will not execute it.)
+			return;// They have faked their button; go out of sync. (Cheater will execute it, non cheater will not execute it.)
 
 		// producer must have a production update
 		ProductionUpdateInterface *pu = thisMember->getProductionUpdateInterface();
 		if( pu == NULL )
-			continue;
+			return;
 
 		if ( pu->canQueueUpgrade( upgrade ) == CANMAKE_QUEUE_FULL )
-			continue;//So we don't charge them for something that we can't build... happy happy
+			return;//So we don't charge them for something that we can't build... happy happy
 
 		
 		// queue the upgrade "research"
 		pu->queueUpgrade( upgrade );
-	}
+	});
 }
 
 //------------------------------------------------------------------------------------------------------------
 Bool AIGroup::isIdle( void ) const
 {
 	Bool isIdle = true;
-	std::list<Object *>::const_iterator i;
-	for( i = m_memberList.begin(); i != m_memberList.end(); ++i )
+	forEachLiveGroupCommandMemberSnapshot(m_memberList, [&isIdle](Object* obj)
 	{
-		Object *obj = *i;
-		if (!obj) {
-			continue;
-		}
-
 		const AIUpdateInterface *ai = obj->getAIUpdateInterface();
 		if (!ai) {
-			continue;
+			return;
 		}
 
 		//Kris: Optimization
 		isIdle = ai->isIdle() || obj->isEffectivelyDead();
 		if( !isIdle )
 		{
-			//Don't bother continuing if even one of our members is not idle.
-			return false;
+			return;
 		}
-	}
+	});
 
 	return isIdle;
 }
@@ -3079,19 +3064,12 @@ Bool AIGroup::isIdle( void ) const
 Bool AIGroup::isBusy( void ) const
 {
 	Bool isBusy = true;
-	std::list<Object *>::const_iterator i;
-	for( i = m_memberList.begin(); i != m_memberList.end(); ++i )
+	forEachLiveGroupCommandMemberSnapshot(m_memberList, [&isBusy](Object* obj)
 	{
-		Object *obj = *i;
-		if( !obj ) 
-		{
-			continue;
-		}
-
 		const AIUpdateInterface *ai = obj->getAIUpdateInterface();
 		if( !ai ) 
 		{
-			continue;
+			return;
 		}
 
 
@@ -3099,10 +3077,9 @@ Bool AIGroup::isBusy( void ) const
 		isBusy = ai->isBusy() && !obj->isEffectivelyDead();
 		if( !isBusy )
 		{
-			//Don't bother continuing if even one of our members is not busy.
-			return false;
+			return;
 		}
-	}
+	});
 
 	return isBusy;
 }
@@ -3113,16 +3090,10 @@ Bool AIGroup::isBusy( void ) const
 Bool AIGroup::isGroupAiDead( void ) const
 {
 	Bool isDead = true;
-	std::list<Object *>::const_iterator i;
-	for( i = m_memberList.begin(); i != m_memberList.end(); ++i )
+	forEachLiveGroupCommandMemberSnapshot(m_memberList, [&isDead](Object* obj)
 	{
-		Object *obj = *i;
-		if (!obj) {
-			continue;
-		}
-
 		isDead = (isDead && obj->isEffectivelyDead());
-	}
+	});
 
 	return isDead;
 }
@@ -3131,13 +3102,18 @@ Bool AIGroup::isGroupAiDead( void ) const
 //------------------------------------------------------------------------------------------------------------
 Object *AIGroup::getSpecialPowerSourceObject( UnsignedInt specialPowerID )
 {
-	std::list<Object *>::iterator i;
 	const SpecialPowerTemplate *spTemplate = TheSpecialPowerStore->findSpecialPowerTemplateByID( specialPowerID );
 	if( spTemplate )
 	{
-		for( i = m_memberList.begin(); i != m_memberList.end(); ++i )
+		std::vector<ObjectID> ids;
+		appendLiveGroupCommandMemberIDs(m_memberList, ids);
+		for (std::vector<ObjectID>::const_iterator it = ids.begin(); it != ids.end(); ++it)
 		{
-			Object *object = (*i);
+			Object *object = TheGameLogic->findObjectByID(*it);
+			if (object == NULL || object->isEffectivelyDead())
+			{
+				continue;
+			}
 			SpecialPowerModuleInterface *mod = object->getSpecialPowerModule( spTemplate );
 			if( mod )
 				return object;
@@ -3150,12 +3126,13 @@ Object *AIGroup::getSpecialPowerSourceObject( UnsignedInt specialPowerID )
 //------------------------------------------------------------------------------------------------------------
 Object *AIGroup::getCommandButtonSourceObject( GUICommandType type )
 {
-	std::list<Object *>::iterator it;
+	std::vector<ObjectID> ids;
+	appendLiveGroupCommandMemberIDs(m_memberList, ids);
 	
-	for( it = m_memberList.begin(); it != m_memberList.end(); ++it )
+	for (std::vector<ObjectID>::const_iterator it = ids.begin(); it != ids.end(); ++it)
 	{
-		Object *object = (*it);
-		if (!object) {
+		Object *object = TheGameLogic->findObjectByID(*it);
+		if (object == NULL || object->isEffectivelyDead()) {
 			continue;
 		}
 
