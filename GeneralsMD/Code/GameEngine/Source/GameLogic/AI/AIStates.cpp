@@ -5079,7 +5079,7 @@ StateReturnType AIAttackAimAtTargetState::onEnter()
 			}
 			else
 			{
-				sourceAI->setTurretTargetPosition( (WhichTurretType)i, getMachineGoalPosition() );
+				sourceAI->setTurretTargetPosition( (WhichTurretType)i, targetPos );
 			}
 		}
 	}
@@ -5095,7 +5095,7 @@ StateReturnType AIAttackAimAtTargetState::onEnter()
 			}
 			else
 			{
-				sourceAI->setTurretTargetPosition(tur, getMachineGoalPosition());
+				sourceAI->setTurretTargetPosition(tur, targetPos);
 			}
 		}
 		else
@@ -5831,7 +5831,17 @@ StateReturnType AIAttackState::update()
 	 * Note the use of CONVERT_SLEEP_TO_CONTINUE; even if the sub-machine
 	 * sleeps, we still need to be called every frame.
 	 */
-	return CONVERT_SLEEP_TO_CONTINUE(m_attackMachine->updateStateMachine());
+	StateMachine* ownerMachine = getMachine();
+	Bool shouldUnlockOwnerMachine = ownerMachine != NULL && !ownerMachine->isLocked();
+	if (shouldUnlockOwnerMachine)
+		ownerMachine->lock("AIAttackState::update");
+
+	StateReturnType attackStatus = m_attackMachine->updateStateMachine();
+
+	if (shouldUnlockOwnerMachine)
+		ownerMachine->unlock();
+
+	return CONVERT_SLEEP_TO_CONTINUE(attackStatus);
 }
 
 //----------------------------------------------------------------------------------------------------------
@@ -6035,7 +6045,15 @@ StateReturnType AIAttackSquadState::update( void )
 		Note the use of CONVERT_SLEEP_TO_CONTINUE; even if the sub-machine
 		sleeps, we still need to be called every frame.
 	*/
+	StateMachine* ownerMachine = getMachine();
+	Bool shouldUnlockOwnerMachine = ownerMachine != NULL && !ownerMachine->isLocked();
+	if (shouldUnlockOwnerMachine)
+		ownerMachine->lock("AIAttackSquadState::update");
+
 	StateReturnType attackStatus = CONVERT_SLEEP_TO_CONTINUE(m_attackSquadMachine->updateStateMachine());
+
+	if (shouldUnlockOwnerMachine)
+		ownerMachine->unlock();
 
 	// if we're in attack state, 
 	if (m_attackSquadMachine->getCurrentStateID() != AI_IDLE) 
