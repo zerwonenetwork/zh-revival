@@ -610,7 +610,7 @@ Real WeaponTemplate::estimateWeaponTemplateDamage(
 
   
   // hmm.. must be shooting a firebase or such, if there is noone home to take the bullet, return 0!
-  if ( victimObj->isKindOf( KINDOF_STRUCTURE) && damageType == DAMAGE_SNIPER )
+  if ( victimObj && victimObj->isKindOf( KINDOF_STRUCTURE) && damageType == DAMAGE_SNIPER )
   {
     if ( victimObj->getContain() )
     {
@@ -622,7 +622,7 @@ Real WeaponTemplate::estimateWeaponTemplateDamage(
 
 
 
-	if (damageType == DAMAGE_SURRENDER || m_allowAttackGarrisonedBldgs)
+	if (victimObj && (damageType == DAMAGE_SURRENDER || m_allowAttackGarrisonedBldgs))
 	{
 		ContainModuleInterface* contain = victimObj->getContain();
 		if( contain && contain->getContainCount() > 0 && contain->isGarrisonable() && !contain->isImmuneToClearBuildingAttacks() )
@@ -1839,21 +1839,25 @@ Weapon::~Weapon()
 void Weapon::computeBonus(const Object *source, WeaponBonusConditionFlags extraBonusFlags, WeaponBonus& bonus) const
 {
 	bonus.clear();
-	WeaponBonusConditionFlags flags = source->getWeaponBonusCondition();
+	WeaponBonusConditionFlags flags = extraBonusFlags;
 	//CRCDEBUG_LOG(("Weapon::computeBonus() - flags are %X for %s\n", flags, DescribeObject(source).str()));
-	flags |= extraBonusFlags;
-	
-	if( source->getContainedBy() )
+
+	if( source )
 	{
-		// We may be able to add in our container's flags
-		const ContainModuleInterface *theirContain = source->getContainedBy()->getContain();
-		if( theirContain && theirContain->isWeaponBonusPassedToPassengers() )
-			flags |= theirContain->getWeaponBonusPassedToPassengers();
+		flags |= source->getWeaponBonusCondition();
+		
+		if( source->getContainedBy() )
+		{
+			// We may be able to add in our container's flags
+			const ContainModuleInterface *theirContain = source->getContainedBy()->getContain();
+			if( theirContain && theirContain->isWeaponBonusPassedToPassengers() )
+				flags |= theirContain->getWeaponBonusPassedToPassengers();
+		}
 	}
 
 	if (TheGlobalData->m_weaponBonusSet)
 		TheGlobalData->m_weaponBonusSet->appendBonuses(flags, bonus);
-	const WeaponBonusSet* extra = m_template->getExtraBonus();
+	const WeaponBonusSet* extra = m_template ? m_template->getExtraBonus() : NULL;
 	if (extra)
 		extra->appendBonuses(flags, bonus);
 }
@@ -2412,7 +2416,7 @@ Real Weapon::getAttackDistance(const Object *source, const Object *victimObj, co
 //-------------------------------------------------------------------------------------------------
 Real Weapon::estimateWeaponDamage(const Object *sourceObj, const Object *victimObj, const Coord3D* victimPos)
 {
-	if (!m_template)
+	if (!m_template || !sourceObj || (!victimObj && !victimPos))
 		return 0.0f;
 
 	// if the weapon is just reloading, it's ok. if it's out of ammo
@@ -2882,7 +2886,7 @@ Int Weapon::getPreAttackDelay( const Object *source, const Object *victim ) cons
 	}
 	else if( type == PREFIRE_PER_ATTACK )
 	{
-		if( source->getNumConsecutiveShotsFiredAtTarget( victim ) > 0 )
+		if( source && victim && source->getNumConsecutiveShotsFiredAtTarget( victim ) > 0 )
 			return 0;// I only delay once an attack, and I have already shot this guy
 	}
 	//else it is per shot, so it always applies
