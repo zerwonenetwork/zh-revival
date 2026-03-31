@@ -1773,6 +1773,15 @@ void HeightMapRenderObjClass::updateCenter(CameraClass *camera , RefRenderObjLis
 	if (m_updating) {
 		return;
 	}
+	static Bool s_loggedShellTerrainCenterSkip = FALSE;
+	if (UseShellTerrainCompatibilityPath()) {
+		if (!s_loggedShellTerrainCenterSkip) {
+			AppendStartupTrace("HeightMapRenderObjClass::updateCenter shell terrain compatibility skip");
+			s_loggedShellTerrainCenterSkip = TRUE;
+		}
+		m_needFullUpdate = false;
+		return;
+	}
 	if (m_vertexBufferTiles ==NULL)
 		return;		//did not initialize resources yet.
 

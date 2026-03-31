@@ -66,6 +66,7 @@ extern void AppendStartupTrace(const char *format, ...);
 #include "GameClient/View.h"
 #include "GameClient/Water.h"
 
+#include "GameLogic/GameLogic.h"
 #include "GameLogic/AIPathfind.h"
 #include "GameLogic/TerrainLogic.h"
 #include "W3DDevice/GameClient/TerrainTex.h"
@@ -78,6 +79,11 @@ extern void AppendStartupTrace(const char *format, ...);
 #include "W3DDevice/GameClient/W3DRoadBuffer.h"
 #include "W3DDevice/GameClient/W3DBridgeBuffer.h"
 #include "W3DDevice/GameClient/W3DWaypointBuffer.h"
+
+static Bool UseShellTerrainStaticCompatibilityPath()
+{
+	return TheGameLogic && TheGameLogic->isInShellGame();
+}
 #include "W3DDevice/GameClient/W3DCustomEdging.h"
 #include "W3DDevice/GameClient/WorldHeightMap.h"
 #include "W3DDevice/GameClient/W3DShaderManager.h"
@@ -2410,7 +2416,13 @@ void BaseHeightMapRenderObjClass::staticLightingChanged( void )
 	m_scorchesInBuffer = 0; // If we just allocated the buffers, we got no scorches in the buffer.
 	m_curNumScorchVertices=0;
 	m_curNumScorchIndices=0;
-	m_roadBuffer->updateLighting();
+	if (UseShellTerrainStaticCompatibilityPath()) {
+		m_needFullUpdate = false;
+		return;
+	}
+	if (m_roadBuffer) {
+		m_roadBuffer->updateLighting();
+	}
 
 }
 
@@ -2467,12 +2479,16 @@ void BaseHeightMapRenderObjClass::updateCenter(CameraClass *camera , RefRenderOb
 	}
 #endif
 	if (m_needFullUpdate) {
-		m_bridgeBuffer->doFullUpdate();
-		m_bridgeBuffer->updateCenter(camera, pLightsIterator);
+		if (m_bridgeBuffer) {
+			m_bridgeBuffer->doFullUpdate();
+			m_bridgeBuffer->updateCenter(camera, pLightsIterator);
+		}
 		m_updating = false;
 		return;
 	}
-	m_bridgeBuffer->updateCenter(camera, pLightsIterator);
+	if (m_bridgeBuffer) {
+		m_bridgeBuffer->updateCenter(camera, pLightsIterator);
+	}
 	m_updating = false;
 }
 
