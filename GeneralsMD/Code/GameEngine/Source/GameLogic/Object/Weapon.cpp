@@ -472,6 +472,10 @@ void WeaponTemplate::postProcessLoad()
 //-------------------------------------------------------------------------------------------------
 Real WeaponTemplate::getAttackRange(const WeaponBonus& bonus) const 
 {
+#if defined(_MSC_VER) && defined(_WIN32)
+	__try
+	{
+#endif
 #ifdef RATIONALIZE_ATTACK_RANGE
 	// Note - undersize by 1/4 of a pathfind cell, so that the goal is not teetering on the edge
 	// of firing range.  jba.
@@ -484,11 +488,22 @@ Real WeaponTemplate::getAttackRange(const WeaponBonus& bonus) const
 	const Real ATTACK_RANGE_FUDGE = 1.05f;
 	return m_attackRange * bonus.getField(WeaponBonus::RANGE) * ATTACK_RANGE_FUDGE; 
 #endif
+#if defined(_MSC_VER) && defined(_WIN32)
+	}
+	__except (EXCEPTION_EXECUTE_HANDLER)
+	{
+		return 0.0f;
+	}
+#endif
 }
 
 //-------------------------------------------------------------------------------------------------
 Real WeaponTemplate::getMinimumAttackRange() const 
 { 
+#if defined(_MSC_VER) && defined(_WIN32)
+	__try
+	{
+#endif
 #ifdef RATIONALIZE_ATTACK_RANGE
 	// Note - undersize by 1/4 of a pathfind cell, so that the goal is not teetering on the edge
 	// of firing range.  jba.
@@ -499,17 +514,39 @@ Real WeaponTemplate::getMinimumAttackRange() const
 #else
 	return m_minimumAttackRange; 
 #endif
+#if defined(_MSC_VER) && defined(_WIN32)
+	}
+	__except (EXCEPTION_EXECUTE_HANDLER)
+	{
+		return 0.0f;
+	}
+#endif
 }
 
 //-------------------------------------------------------------------------------------------------
 Real WeaponTemplate::getUnmodifiedAttackRange() const
 {
+#if defined(_MSC_VER) && defined(_WIN32)
+	__try
+	{
+#endif
 	return m_attackRange;
+#if defined(_MSC_VER) && defined(_WIN32)
+	}
+	__except (EXCEPTION_EXECUTE_HANDLER)
+	{
+		return 0.0f;
+	}
+#endif
 }
 
 //-------------------------------------------------------------------------------------------------
 Int WeaponTemplate::getDelayBetweenShots(const WeaponBonus& bonus) const 
 {
+#if defined(_MSC_VER) && defined(_WIN32)
+	__try
+	{
+#endif
 	// yes, divide, not multiply; the larger the rate-of-fire bonus, the shorter
 	// we want the delay time to be.
 	Int delayToUse;
@@ -523,49 +560,126 @@ Int WeaponTemplate::getDelayBetweenShots(const WeaponBonus& bonus) const
 		//m_minDelayBetweenShots, m_maxDelayBetweenShots, delayToUse, bonusROF, AS_INT(bonusROF)));
 
 	return REAL_TO_INT_FLOOR(delayToUse / bonusROF); 
+#if defined(_MSC_VER) && defined(_WIN32)
+	}
+	__except (EXCEPTION_EXECUTE_HANDLER)
+	{
+		return 1;
+	}
+#endif
 }
 
 //-------------------------------------------------------------------------------------------------
 Int WeaponTemplate::getClipReloadTime(const WeaponBonus& bonus) const 
 {
+#if defined(_MSC_VER) && defined(_WIN32)
+	__try
+	{
+#endif
 	// yes, divide, not multiply; the larger the rate-of-fire bonus, the shorter
 	// we want the reload time to be.
 	return REAL_TO_INT_FLOOR(m_clipReloadTime / bonus.getField(WeaponBonus::RATE_OF_FIRE));	
+#if defined(_MSC_VER) && defined(_WIN32)
+	}
+	__except (EXCEPTION_EXECUTE_HANDLER)
+	{
+		return 1;
+	}
+#endif
 }
 
 //-------------------------------------------------------------------------------------------------
 Int WeaponTemplate::getPreAttackDelay( const WeaponBonus& bonus ) const
 {
+#if defined(_MSC_VER) && defined(_WIN32)
+	__try
+	{
+#endif
 	return m_preAttackDelay * bonus.getField( WeaponBonus::PRE_ATTACK ); 
+#if defined(_MSC_VER) && defined(_WIN32)
+	}
+	__except (EXCEPTION_EXECUTE_HANDLER)
+	{
+		return 0;
+	}
+#endif
 }
 
 //-------------------------------------------------------------------------------------------------
 Real WeaponTemplate::getPrimaryDamage(const WeaponBonus& bonus) const 
 {
+#if defined(_MSC_VER) && defined(_WIN32)
+	__try
+	{
+#endif
 	return m_primaryDamage * bonus.getField(WeaponBonus::DAMAGE); 
+#if defined(_MSC_VER) && defined(_WIN32)
+	}
+	__except (EXCEPTION_EXECUTE_HANDLER)
+	{
+		return 0.0f;
+	}
+#endif
 }
 
 //-------------------------------------------------------------------------------------------------
 Real WeaponTemplate::getPrimaryDamageRadius(const WeaponBonus& bonus) const 
 {
+#if defined(_MSC_VER) && defined(_WIN32)
+	__try
+	{
+#endif
 	return m_primaryDamageRadius * bonus.getField(WeaponBonus::RADIUS); 
+#if defined(_MSC_VER) && defined(_WIN32)
+	}
+	__except (EXCEPTION_EXECUTE_HANDLER)
+	{
+		return 0.0f;
+	}
+#endif
 }
 
 //-------------------------------------------------------------------------------------------------
 Real WeaponTemplate::getSecondaryDamage(const WeaponBonus& bonus) const 
 {
+#if defined(_MSC_VER) && defined(_WIN32)
+	__try
+	{
+#endif
 	return m_secondaryDamage * bonus.getField(WeaponBonus::DAMAGE); 
+#if defined(_MSC_VER) && defined(_WIN32)
+	}
+	__except (EXCEPTION_EXECUTE_HANDLER)
+	{
+		return 0.0f;
+	}
+#endif
 }
 
 //-------------------------------------------------------------------------------------------------
 Real WeaponTemplate::getSecondaryDamageRadius(const WeaponBonus& bonus) const 
 {
+#if defined(_MSC_VER) && defined(_WIN32)
+	__try
+	{
+#endif
 	return m_secondaryDamageRadius * bonus.getField(WeaponBonus::RADIUS); 
+#if defined(_MSC_VER) && defined(_WIN32)
+	}
+	__except (EXCEPTION_EXECUTE_HANDLER)
+	{
+		return 0.0f;
+	}
+#endif
 }
 
 //-------------------------------------------------------------------------------------------------
 Bool WeaponTemplate::isContactWeapon() const
 {
+#if defined(_MSC_VER) && defined(_WIN32)
+	__try
+	{
+#endif
 #ifdef RATIONALIZE_ATTACK_RANGE
 	// Note - undersize by 1/4 of a pathfind cell, so that the goal is not teetering on the edge
 	// of firing range.  jba.
@@ -575,6 +689,13 @@ Bool WeaponTemplate::isContactWeapon() const
 // fudge this a little to account for pathfinding roundoff & such
 	const Real ATTACK_RANGE_FUDGE = 1.05f;
 	return m_attackRange * ATTACK_RANGE_FUDGE < PATHFIND_CELL_SIZE_F; 
+#endif
+#if defined(_MSC_VER) && defined(_WIN32)
+	}
+	__except (EXCEPTION_EXECUTE_HANDLER)
+	{
+		return FALSE;
+	}
 #endif
 }
 
