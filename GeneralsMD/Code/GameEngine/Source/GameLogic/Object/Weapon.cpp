@@ -45,6 +45,7 @@
 #include "Common/INI.h"
 #include "Common/PerfTimer.h"
 #include "Common/Player.h"
+#include "Common/PlayerList.h"
 #include "Common/ThingFactory.h"
 #include "Common/ThingTemplate.h"
 #include "Common/Xfer.h"
@@ -153,6 +154,17 @@ static void parseAllVetLevelsPSys( INI* ini, void* /*instance*/, void * store, c
 	INI::parseParticleSystemTemplate(ini, NULL, &pst, NULL);
 	for (Int i = LEVEL_FIRST; i <= LEVEL_LAST; ++i)
 		s[i] = pst;
+}
+
+//-------------------------------------------------------------------------------------------------
+static Team *GetWeaponOwnerTeamOrNeutral(const Object *sourceObj)
+{
+	Player *owningPlayer = sourceObj ? sourceObj->getControllingPlayer() : NULL;
+	if (owningPlayer)
+		return owningPlayer->getDefaultTeam();
+
+	Player *neutralPlayer = ThePlayerList ? ThePlayerList->getNeutralPlayer() : NULL;
+	return neutralPlayer ? neutralPlayer->getDefaultTeam() : NULL;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1100,14 +1112,20 @@ UnsignedInt WeaponTemplate::fireWeaponTemplate
 	}
 	else	// must be a projectile
 	{
-		Player *owningPlayer = sourceObj->getControllingPlayer(); //Need to know so missiles don't collide with firer
-		Object *projectile = TheThingFactory->newObject( getProjectileTemplate(), owningPlayer->getDefaultTeam() );
+		Player *owningPlayer = sourceObj ? sourceObj->getControllingPlayer() : NULL; //Need to know so missiles don't collide with firer
+		Team *ownerTeam = GetWeaponOwnerTeamOrNeutral(sourceObj);
+		if (!ownerTeam)
+			return 0;
+
+		Object *projectile = TheThingFactory->newObject( getProjectileTemplate(), ownerTeam );
+		if (!projectile)
+			return 0;
 		projectile->setProducer(sourceObj);
 		
 		//If the player has battle plans (America Strategy Center), then apply those bonuses
 		//to this object if applicable. Internally it validates certain kinds of objects.
 		//When projectiles are created, weapon bonuses such as damage may get applied.
-		if( owningPlayer->getNumBattlePlansActive() > 0 )
+		if( owningPlayer && owningPlayer->getNumBattlePlansActive() > 0 )
 		{
 			owningPlayer->applyBattlePlanBonusesForObject( projectile );
 		}
@@ -2420,7 +2438,10 @@ void Weapon::newProjectileFired(const Object *sourceObj, const Object *projectil
 	{
 		m_projectileStreamID = INVALID_ID;	// reset, since it might have been "valid" but deleted out from under us
 		const ThingTemplate* pst = TheThingFactory->findTemplate(m_template->getProjectileStreamName());
-		projectileStream = TheThingFactory->newObject( pst, sourceObj->getControllingPlayer()->getDefaultTeam() );
+		Team *ownerTeam = GetWeaponOwnerTeamOrNeutral(sourceObj);
+		if( !pst || !ownerTeam )
+			return;
+		projectileStream = TheThingFactory->newObject( pst, ownerTeam );
 		if( projectileStream == NULL )
 			return;
 		m_projectileStreamID = projectileStream->getID();
@@ -2448,7 +2469,11 @@ void Weapon::createLaser( const Object *sourceObj, const Object *victimObj, cons
 			sourceObj->getTemplate()->getName().str(), m_template->getLaserName().str() ) );
 		return;
 	}
-	Object* laser = TheThingFactory->newObject( pst, sourceObj->getControllingPlayer()->getDefaultTeam() );
+	Team *ownerTeam = GetWeaponOwnerTeamOrNeutral(sourceObj);
+	if( !ownerTeam )
+		return;
+
+	Object* laser = TheThingFactory->newObject( pst, ownerTeam );
 	if( laser == NULL )
 		return;
 
@@ -2494,7 +2519,7 @@ Bool Weapon::privateFireWeapon(
 	if (projectileID)
 		*projectileID = INVALID_ID;
 
-	if (!m_template)
+	if (!m_template || !sourceObj || (!victimObj && !victimPos))
 		return false;
 
 	// If we are a networked weapon, tell everyone nearby they might want to get in on this shot
@@ -2559,7 +2584,9 @@ Bool Weapon::privateFireWeapon(
 
 				if( found )
 				{
-					sourceObj->getControllingPlayer()->getAcademyStats()->recordMineCleared();
+					Player *sourcePlayer = sourceObj->getControllingPlayer();
+					if (sourcePlayer)
+						sourcePlayer->getAcademyStats()->recordMineCleared();
 				}
 			}
 
@@ -2598,7 +2625,10 @@ Bool Weapon::privateFireWeapon(
 	Bool reloaded = false;
 	if (m_ammoInClip > 0)
 	{
-		Int barrelCount = sourceObj->getDrawable()->getBarrelCount(m_wslot);
+		Int barrelCount = 1;
+		const Drawable *sourceDrawable = sourceObj->getDrawable();
+		if (sourceDrawable)
+			barrelCount = max(1, sourceDrawable->getBarrelCount(m_wslot));
 		if (m_curBarrel >= barrelCount)
 		{
 			m_curBarrel = 0;
@@ -3039,7 +3069,9 @@ void Weapon::processRequestAssistance( const Object *requestingObject, Object *v
 
 	Weapon::calcProjectileLaunchPosition(launcher, wslot, specificBarrelToUse, worldTransform, worldPos);
 
-	projectile->getDrawable()->setDrawableHidden(false);
+	Drawable *projectileDraw = projectile->getDrawable();
+	if (projectileDraw)
+		projectileDraw->setDrawableHidden(false);
 	projectile->setTransformMatrix(&worldTransform);
 	projectile->setPosition(&worldPos);
 	projectile->getExperienceTracker()->setExperienceSink( launcher->getID() );
@@ -3528,4 +3560,3 @@ void WeaponBonusSet::appendBonuses(WeaponBonusConditionFlags flags, WeaponBonus&
 		this->m_bonus[i].appendBonuses(bonus);
 	}
 }
-
