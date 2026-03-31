@@ -113,6 +113,35 @@ static AIUpdateInterface* getLiveMachineAI(State* state, Object** ownerOut = NUL
 	return owner->getAI();
 }
 
+template <typename T, typename Factory>
+static void xferOptionalSubStateMachine(Xfer* xfer, State* state, T*& machine, Factory createMachine, Bool haltFirst = true)
+{
+	Bool hasMachine = (machine != NULL);
+	xfer->xferBool(&hasMachine);
+
+	if (xfer->getXferMode() == XFER_LOAD)
+	{
+		if (!hasMachine)
+		{
+			destroySubStateMachine(machine, haltFirst);
+			return;
+		}
+
+		Object* owner = getLiveMachineOwner(state);
+		if (owner == NULL)
+		{
+			destroySubStateMachine(machine, haltFirst);
+			return;
+		}
+
+		if (machine == NULL)
+			machine = createMachine(owner);
+	}
+
+	if (hasMachine && machine != NULL)
+		xfer->xferSnapshot(machine);
+}
+
 extern void AppendStartupTrace( const char *format, ... );
 
 static void resetDamageInfoForCommand(DamageInfo& damage)
@@ -858,6 +887,9 @@ void AIStateMachine::xfer( Xfer *xfer )
  // extend base class
 	StateMachine::xfer(xfer);
 
+	if (xfer->getXferMode() == XFER_LOAD)
+		m_goalPath.clear();
+
 	Int i;
 	Int count = m_goalPath.size();
 	xfer->xferInt(&count);
@@ -881,6 +913,8 @@ void AIStateMachine::xfer( Xfer *xfer )
 	{
 		if (waypointName.isNotEmpty()) {
 			m_goalWaypoint = TheTerrainLogic->getWaypointByName(waypointName);
+		} else {
+			m_goalWaypoint = NULL;
 		}
 	} 
 	Bool hasSquad = (m_goalSquad!=NULL);
@@ -889,6 +923,8 @@ void AIStateMachine::xfer( Xfer *xfer )
 	{
 		if (hasSquad && m_goalSquad==NULL) {
 			m_goalSquad = newInstance( Squad );
+		} else if (!hasSquad) {
+			m_goalSquad = NULL;
 		}
 	} 
 	if (hasSquad) {
@@ -901,8 +937,11 @@ void AIStateMachine::xfer( Xfer *xfer )
 		DEBUG_ASSERTCRASH(id!=INVALID_STATE_ID, ("State has invalid state id, no really. jba."));
 	}
 	xfer->xferUnsignedInt(&id);
-	if (xfer->getXferMode() == XFER_LOAD && id != INVALID_STATE_ID) {
-		m_temporaryState = internalGetState( id );
+	if (xfer->getXferMode() == XFER_LOAD) {
+		if (id != INVALID_STATE_ID)
+			m_temporaryState = internalGetState( id );
+		else
+			m_temporaryState = NULL;
 	}
 	if (m_temporaryState!=NULL) {
 		xfer->xferSnapshot(m_temporaryState);
@@ -5597,18 +5636,16 @@ void AIAttackState::xfer( Xfer *xfer )
   XferVersion version = currentVersion;
   xfer->xferVersion( &version, currentVersion );
 
-	Bool hasMachine = m_attackMachine!=NULL;
-	
-	xfer->xferBool(&hasMachine);
 	xfer->xferCoord3D(&m_originalVictimPos);
 
-	if (hasMachine && m_attackMachine==NULL)	{
-		// create new state machine for attack behavior
-		m_attackMachine = newInstance(AttackStateMachine)(getMachineOwner(), this, "AIAttackMachine", m_follow, m_isAttackingObject, m_isForceAttacking  );
-	}
-	if (hasMachine) {
-		xfer->xferSnapshot(m_attackMachine);						///< state sub-machine for attack behavior
-	}
+	xferOptionalSubStateMachine(
+		xfer,
+		this,
+		m_attackMachine,
+		[this](Object* owner)
+		{
+			return newInstance(AttackStateMachine)(owner, this, "AIAttackMachine", m_follow, m_isAttackingObject, m_isForceAttacking);
+		});
 	/* Not saved or loaded - passed in on creation.
 	Bool										m_follow;
 	Bool										m_isAttackingObject;								// if false, attacking position
@@ -6025,19 +6062,15 @@ void AIAttackSquadState::xfer( Xfer *xfer )
   XferVersion currentVersion = 1;
   XferVersion version = currentVersion;
   xfer->xferVersion( &version, currentVersion );
-	
-	Bool hasMachine = m_attackSquadMachine!=NULL;
-	
-	xfer->xferBool(&hasMachine);
 
-	if (hasMachine && m_attackSquadMachine==NULL)	{
-		// create new state machine for attack behavior
-		m_attackSquadMachine = newInstance(AIAttackThenIdleStateMachine)( getMachineOwner(), "AIAttackMachine"  );
-	}
-
-	if (hasMachine) {
-		xfer->xferSnapshot(m_attackSquadMachine);
-	}
+	xferOptionalSubStateMachine(
+		xfer,
+		this,
+		m_attackSquadMachine,
+		[](Object* owner)
+		{
+			return newInstance(AIAttackThenIdleStateMachine)( owner, "AIAttackMachine" );
+		});
 }  // end xfer
 
 // ------------------------------------------------------------------------------------------------
@@ -6275,17 +6308,14 @@ void AIDockState::xfer( Xfer *xfer )
   XferVersion version = currentVersion;
   xfer->xferVersion( &version, currentVersion );
 
-	Bool hasMachine = m_dockMachine!=NULL;
-	
-	xfer->xferBool(&hasMachine);
-
-	if (hasMachine && m_dockMachine==NULL)	{
-		// create new state machine for attack behavior
-		m_dockMachine = newInstance(AIDockMachine)( getMachineOwner());
-	}
-	if (hasMachine) {
-		xfer->xferSnapshot(m_dockMachine);
-	}
+	xferOptionalSubStateMachine(
+		xfer,
+		this,
+		m_dockMachine,
+		[](Object* owner)
+		{
+			return newInstance(AIDockMachine)( owner );
+		});
 	xfer->xferBool(&m_usingPrecisionMovement);
 }  // end xfer
 
@@ -6334,14 +6364,14 @@ StateReturnType AIDockState::onEnter()
 	}
 
 	// tell the pathfinder to ignore the object we are docking with, so it doesn't block us
-	AIUpdateInterface *ai = getMachineOwner()->getAI();
-	if( ai ) 
-	{
-		ai->ignoreObstacle( dockWithMe );
-	}
+	Object* owner = NULL;
+	AIUpdateInterface *ai = getLiveMachineAI(this, &owner);
+	if (owner == NULL || ai == NULL)
+		return STATE_FAILURE;
+	ai->ignoreObstacle( dockWithMe );
 
 	// create new state machine for attack behavior
-	m_dockMachine = newInstance(AIDockMachine)( getMachineOwner());
+	m_dockMachine = newInstance(AIDockMachine)( owner );
 
 	// tell the docking machine what it is docking with
 	m_dockMachine->setGoalObject( dockWithMe );
@@ -6363,7 +6393,7 @@ void AIDockState::onExit( StateExitType status )
 	}
 
 	// stop ignoring our goal object
-	AIUpdateInterface *ai = getMachineOwner()->getAI();
+	AIUpdateInterface *ai = getLiveMachineAI(this);
 	if (ai)
 	{
 		ai->setCanPathThroughUnits(false);
@@ -6378,6 +6408,8 @@ void AIDockState::onExit( StateExitType status )
 
 StateReturnType AIDockState::update()
 {
+	if (m_dockMachine == NULL)
+		return STATE_FAILURE;
 
 	/**
 	 * Run the docking state sub-machine.
@@ -6385,22 +6417,24 @@ StateReturnType AIDockState::update()
 	 * it has finished. propagating the return code will cause
 	 * the containing state machine to do the right thing.
 	 */
-	AIUpdateInterface *ai = getMachineOwner()->getAI();
-	if (ai)
-	{
-		ai->setCanPathThroughUnits(true);
-		//if (ai->isBlockedAndStuck()) {
-			//DEBUG_LOG(("Blocked and stuck.\n"));
-		//}
-		//if (ai->getNumFramesBlocked()>5) {
-			//DEBUG_LOG(("Blocked %d frames\n", ai->getNumFramesBlocked()));
-		//}
-	}
+	Object* owner = NULL;
+	AIUpdateInterface *ai = getLiveMachineAI(this, &owner);
+	if (owner == NULL || ai == NULL)
+		return STATE_FAILURE;
+	ai->setCanPathThroughUnits(true);
+
+	StateMachine* ownerMachine = getMachine();
+	Bool shouldUnlockOwnerMachine = ownerMachine != NULL && !ownerMachine->isLocked();
+	if (shouldUnlockOwnerMachine)
+		ownerMachine->lock("AIDockState::update");
 	/* 
 		Note the use of CONVERT_SLEEP_TO_CONTINUE; even if the sub-machine
 		sleeps, we still need to be called every frame.
 	*/
-	return CONVERT_SLEEP_TO_CONTINUE(m_dockMachine->updateStateMachine());
+	StateReturnType ret = CONVERT_SLEEP_TO_CONTINUE(m_dockMachine->updateStateMachine());
+	if (shouldUnlockOwnerMachine)
+		ownerMachine->unlock();
+	return ret;
 }
 
 //----------------------------------------------------------------------------------------------------------
@@ -6862,17 +6896,14 @@ void AIGuardState::xfer( Xfer *xfer )
   XferVersion version = currentVersion;
   xfer->xferVersion( &version, currentVersion );
 
-	Bool hasMachine = m_guardMachine!=NULL;
-	
-	xfer->xferBool(&hasMachine);
-
-	if (hasMachine && m_guardMachine==NULL)	{
-		// create new state machine for guard behavior
-		m_guardMachine = newInstance(AIGuardMachine)( getMachineOwner());
-	}
-	if (hasMachine) {
-		xfer->xferSnapshot(m_guardMachine);	
-	}
+	xferOptionalSubStateMachine(
+		xfer,
+		this,
+		m_guardMachine,
+		[](Object* owner)
+		{
+			return newInstance(AIGuardMachine)( owner );
+		});
 
 }  // end xfer
 
@@ -6913,11 +6944,12 @@ Bool AIGuardState::isGuardIdle() const
 
 StateReturnType AIGuardState::onEnter()
 {
+	Object *obj = NULL;
+	AIUpdateInterface *ai = getLiveMachineAI(this, &obj);
+	if (obj == NULL || ai == NULL)
+		return STATE_FAILURE;
 
-	Object *obj = getMachineOwner();
-	AIUpdateInterface *ai = obj->getAI();
-
-	m_guardMachine = newInstance(AIGuardMachine)( getMachineOwner());
+	m_guardMachine = newInstance(AIGuardMachine)( obj );
 
 	// tell the guarding machine what it is guarding with
 	switch(ai->getGuardTargetType())
@@ -6941,8 +6973,9 @@ void AIGuardState::onExit( StateExitType status )
 {
 	destroySubStateMachine(m_guardMachine);
 
-	Object *obj = getMachineOwner();
-	obj->getAI()->clearGuardTargetType();
+	AIUpdateInterface *ai = getLiveMachineAI(this);
+	if (ai)
+		ai->clearGuardTargetType();
 }
 
 //----------------------------------------------------------------------------------------------------------
@@ -6957,16 +6990,23 @@ StateReturnType AIGuardState::update()
 
 	// if all of our weapons are out of ammo, can't attack.
 	// (this can happen for units which never auto-reload, like the Raptor)
-	Object* owner = getMachineOwner();	
-	if( owner->getAI()->getJetAIUpdate() && owner->isOutOfAmmo() && !owner->isKindOf(KINDOF_PROJECTILE) && !owner->getTemplate()->isEnterGuard())
+	Object* owner = NULL;
+	AIUpdateInterface* ai = getLiveMachineAI(this, &owner);
+	if (owner == NULL || ai == NULL)
+		return STATE_FAILURE;
+	if( ai->getJetAIUpdate() && owner->isOutOfAmmo() && !owner->isKindOf(KINDOF_PROJECTILE) && !owner->getTemplate()->isEnterGuard())
 	{
 		DEBUG_CRASH(("Hmm, this should probably never happen, since this case should be intercepted by JetAIUpdate\n"));
 		return STATE_FAILURE;
 	}
 
-	getMachine()->lock("AIGuardState::update");	// We don't want to switch out of guard during the update.
+	StateMachine* ownerMachine = getMachine();
+	Bool shouldUnlockOwnerMachine = ownerMachine != NULL && !ownerMachine->isLocked();
+	if (shouldUnlockOwnerMachine)
+		ownerMachine->lock("AIGuardState::update");	// We don't want to switch out of guard during the update.
 	StateReturnType ret = m_guardMachine->updateStateMachine();
-	getMachine()->unlock();
+	if (shouldUnlockOwnerMachine)
+		ownerMachine->unlock();
 	return ret;
 }
 
@@ -7015,19 +7055,14 @@ void AIGuardRetaliateState::xfer( Xfer *xfer )
   XferVersion version = currentVersion;
   xfer->xferVersion( &version, currentVersion );
 
-	Bool hasMachine = m_guardRetaliateMachine!=NULL;
-	
-	xfer->xferBool(&hasMachine);
-
-	if (hasMachine && m_guardRetaliateMachine==NULL)	
-	{
-		// create new state machine for guard behavior
-		m_guardRetaliateMachine = newInstance(AIGuardRetaliateMachine)( getMachineOwner());
-	}
-	if (hasMachine) 
-	{
-		xfer->xferSnapshot(m_guardRetaliateMachine);	
-	}
+	xferOptionalSubStateMachine(
+		xfer,
+		this,
+		m_guardRetaliateMachine,
+		[](Object* owner)
+		{
+			return newInstance(AIGuardRetaliateMachine)( owner );
+		});
 
 }  // end xfer
 
@@ -7058,11 +7093,12 @@ Bool AIGuardRetaliateState::isAttack() const
 
 StateReturnType AIGuardRetaliateState::onEnter()
 {
+	Object *obj = NULL;
+	AIUpdateInterface *ai = getLiveMachineAI(this, &obj);
+	if (obj == NULL || ai == NULL)
+		return STATE_FAILURE;
 
-	Object *obj = getMachineOwner();
-	AIUpdateInterface *ai = obj->getAI();
-
-	m_guardRetaliateMachine = newInstance(AIGuardRetaliateMachine)( getMachineOwner());
+	m_guardRetaliateMachine = newInstance(AIGuardRetaliateMachine)( obj );
 #ifdef STATE_MACHINE_DEBUG
 	m_guardRetaliateMachine->setDebugOutput(getMachine()->getWantsDebugOutput());
 #endif
@@ -7084,8 +7120,9 @@ void AIGuardRetaliateState::onExit( StateExitType status )
 {
 	destroySubStateMachine(m_guardRetaliateMachine);
 
-	Object *obj = getMachineOwner();
-	obj->getAI()->clearGuardTargetType();
+	AIUpdateInterface *ai = getLiveMachineAI(this);
+	if (ai)
+		ai->clearGuardTargetType();
 }
 
 //----------------------------------------------------------------------------------------------------------
@@ -7100,14 +7137,23 @@ StateReturnType AIGuardRetaliateState::update()
 
 	// if all of our weapons are out of ammo, can't attack.
 	// (this can happen for units which never auto-reload, like the Raptor)
-	Object* owner = getMachineOwner();	
-	if( owner->getAI()->getJetAIUpdate() && owner->isOutOfAmmo() && !owner->isKindOf(KINDOF_PROJECTILE) && !owner->getTemplate()->isEnterGuard())
+	Object* owner = NULL;
+	AIUpdateInterface* ai = getLiveMachineAI(this, &owner);
+	if (owner == NULL || ai == NULL)
+		return STATE_FAILURE;
+	if( ai->getJetAIUpdate() && owner->isOutOfAmmo() && !owner->isKindOf(KINDOF_PROJECTILE) && !owner->getTemplate()->isEnterGuard())
 	{
 		DEBUG_CRASH(("Hmm, this should probably never happen, since this case should be intercepted by JetAIUpdate\n"));
 		return STATE_FAILURE;
 	}
 
+	StateMachine* ownerMachine = getMachine();
+	Bool shouldUnlockOwnerMachine = ownerMachine != NULL && !ownerMachine->isLocked();
+	if (shouldUnlockOwnerMachine)
+		ownerMachine->lock("AIGuardRetaliateState::update");
 	StateReturnType ret = m_guardRetaliateMachine->updateStateMachine();
+	if (shouldUnlockOwnerMachine)
+		ownerMachine->unlock();
 	return ret;
 }
 
@@ -7150,17 +7196,14 @@ void AITunnelNetworkGuardState::xfer( Xfer *xfer )
   XferVersion version = currentVersion;
   xfer->xferVersion( &version, currentVersion );
 
-	Bool hasMachine = m_guardMachine!=NULL;
-	
-	xfer->xferBool(&hasMachine);
-
-	if (hasMachine && m_guardMachine==NULL)	{
-		// create new state machine for guard behavior
-		m_guardMachine = newInstance(AITNGuardMachine)( getMachineOwner());
-	}
-	if (hasMachine) {
-		xfer->xferSnapshot(m_guardMachine);	
-	}
+	xferOptionalSubStateMachine(
+		xfer,
+		this,
+		m_guardMachine,
+		[](Object* owner)
+		{
+			return newInstance(AITNGuardMachine)( owner );
+		});
 
 }  // end xfer
 
@@ -7190,11 +7233,12 @@ Bool AITunnelNetworkGuardState::isAttack() const
 
 StateReturnType AITunnelNetworkGuardState::onEnter()
 {
+	Object *obj = NULL;
+	AIUpdateInterface *ai = getLiveMachineAI(this, &obj);
+	if (obj == NULL || ai == NULL)
+		return STATE_FAILURE;
 
-	Object *obj = getMachineOwner();
-	AIUpdateInterface *ai = obj->getAI();
-
-	m_guardMachine = newInstance(AITNGuardMachine)( getMachineOwner());
+	m_guardMachine = newInstance(AITNGuardMachine)( obj );
 
 	// tell the guarding machine what it is guarding with
 	m_guardMachine->setTargetPositionToGuard( ai->getGuardLocation() ); 
@@ -7211,8 +7255,9 @@ void AITunnelNetworkGuardState::onExit( StateExitType status )
 {
 	destroySubStateMachine(m_guardMachine);
 
-	Object *obj = getMachineOwner();
-	obj->getAI()->clearGuardTargetType();
+	AIUpdateInterface *ai = getLiveMachineAI(this);
+	if (ai)
+		ai->clearGuardTargetType();
 }
 
 //----------------------------------------------------------------------------------------------------------
@@ -7227,16 +7272,23 @@ StateReturnType AITunnelNetworkGuardState::update()
 
 	// if all of our weapons are out of ammo, can't attack.
 	// (this can happen for units which never auto-reload, like the Raptor)
-	Object* owner = getMachineOwner();
+	Object* owner = NULL;
+	AIUpdateInterface* ai = getLiveMachineAI(this, &owner);
+	if (owner == NULL || ai == NULL)
+		return STATE_FAILURE;
 	if (owner->isOutOfAmmo() && !owner->isKindOf(KINDOF_PROJECTILE))
 	{
 		DEBUG_CRASH(("Hmm, this should probably never happen, since this case should be intercepted by JetAIUpdate\n"));
 		return STATE_FAILURE;
 	}
 
-	getMachine()->lock("AITunnelNetworkGuardState::update");	// We don't want to switch out of guard during the update.
+	StateMachine* ownerMachine = getMachine();
+	Bool shouldUnlockOwnerMachine = ownerMachine != NULL && !ownerMachine->isLocked();
+	if (shouldUnlockOwnerMachine)
+		ownerMachine->lock("AITunnelNetworkGuardState::update");	// We don't want to switch out of guard during the update.
 	StateReturnType ret = m_guardMachine->updateStateMachine();
-	getMachine()->unlock();
+	if (shouldUnlockOwnerMachine)
+		ownerMachine->unlock();
 	return ret;
 }
 
@@ -7271,17 +7323,14 @@ void AIHuntState::xfer( Xfer *xfer )
   XferVersion version = currentVersion;
   xfer->xferVersion( &version, currentVersion );
 
-	Bool hasMachine = m_huntMachine!=NULL;
-	
-	xfer->xferBool(&hasMachine);
-
-	if (hasMachine && m_huntMachine==NULL)	{
-		// create new state machine for hunt behavior
-		m_huntMachine = newInstance(AIAttackThenIdleStateMachine)( getMachineOwner(), "AIAttackThenIdleStateMachine");
-	}
-	if (hasMachine) {
-		xfer->xferSnapshot(m_huntMachine);
-	}
+	xferOptionalSubStateMachine(
+		xfer,
+		this,
+		m_huntMachine,
+		[](Object* owner)
+		{
+			return newInstance(AIAttackThenIdleStateMachine)( owner, "AIAttackThenIdleStateMachine" );
+		});
 	xfer->xferUnsignedInt(&m_nextEnemyScanTime);
 
 }  // end xfer
@@ -7311,8 +7360,12 @@ Bool AIHuntState::isAttack() const
 
 StateReturnType AIHuntState::onEnter()
 {
+	Object* owner = getLiveMachineOwner(this);
+	if (owner == NULL)
+		return STATE_FAILURE;
+
 	// create new state machine for hunt behavior
-	m_huntMachine = newInstance(AIAttackThenIdleStateMachine)( getMachineOwner(), "AIAttackThenIdleStateMachine");
+	m_huntMachine = newInstance(AIAttackThenIdleStateMachine)( owner, "AIAttackThenIdleStateMachine");
 
 	// first time thru, use a random amount so that everyone doesn't scan on the same frame,
 	// to avoid "spikes". 
@@ -7329,7 +7382,7 @@ void AIHuntState::onExit( StateExitType status )
 {
 	destroySubStateMachine(m_huntMachine);
 
-	Object *obj = getMachineOwner();
+	Object *obj = getLiveMachineOwner(this);
 	if (obj) 
 	{
 		obj->releaseWeaponLock(LOCKED_TEMPORARILY);	// release any temporary locks.
@@ -7351,20 +7404,23 @@ AsciiString AIHuntState::getName(  ) const
 //----------------------------------------------------------------------------------------------------------
 StateReturnType AIHuntState::update()
 {
+	if (m_huntMachine == NULL)
+		return STATE_FAILURE;
 
 	// look around for better victims every so often
 	UnsignedInt now = TheGameLogic->getFrame();
+	Object* owner = NULL;
+	AIUpdateInterface *ai = getLiveMachineAI(this, &owner);
+	if (owner == NULL || ai == NULL)
+		return STATE_FAILURE;
 	if (now >= m_nextEnemyScanTime)
 	{
-		Object* owner = getMachineOwner();
-
 		// if all of our weapons are out of ammo, can't hunt.
 		// (this can happen for units which never auto-reload, like the Raptor)
 		if (owner->isOutOfAmmo() && !owner->isKindOf(KINDOF_PROJECTILE))
 			return STATE_FAILURE;
 
 		// Check to see if we have created a crate we need to pick up.
-		AIUpdateInterface *ai = owner->getAI();
 		Object* crate = ai->checkForCrateToPickup();
 		if (crate)
 		{
@@ -7433,7 +7489,10 @@ StateReturnType AIHuntState::update()
 		}
 	}
 
-	getMachine()->lock("AIHuntState::update");	// The idle state in the sub machine can sometimes acquire targets. 
+	StateMachine* ownerMachine = getMachine();
+	Bool shouldUnlockOwnerMachine = ownerMachine != NULL && !ownerMachine->isLocked();
+	if (shouldUnlockOwnerMachine)
+		ownerMachine->lock("AIHuntState::update");	// The idle state in the sub machine can sometimes acquire targets. 
 												// It is important to not switch out of this state via a sub machine call. jba.
 	/* 
 		Note the use of CONVERT_SLEEP_TO_CONTINUE; even if the sub-machine
@@ -7441,7 +7500,8 @@ StateReturnType AIHuntState::update()
 	*/
 			/// @todo srj -- find a way to sleep for a number of frames here, if possible
 	StateReturnType ret = CONVERT_SLEEP_TO_CONTINUE(m_huntMachine->updateStateMachine());
-	getMachine()->unlock();
+	if (shouldUnlockOwnerMachine)
+		ownerMachine->unlock();
 	return ret;
 }
 
@@ -7473,17 +7533,14 @@ void AIAttackAreaState::xfer( Xfer *xfer )
   XferVersion version = currentVersion;
   xfer->xferVersion( &version, currentVersion );
 
-	Bool hasMachine = m_attackMachine!=NULL;
-	
-	xfer->xferBool(&hasMachine);
-
-	if (hasMachine && m_attackMachine==NULL)	{
-		// create new state machine for hunt behavior
-		m_attackMachine = newInstance(AIAttackThenIdleStateMachine)( getMachineOwner(), "AIAttackThenIdleStateMachine");
-	}
-	if (hasMachine) {
-		xfer->xferSnapshot(m_attackMachine);
-	}
+	xferOptionalSubStateMachine(
+		xfer,
+		this,
+		m_attackMachine,
+		[](Object* owner)
+		{
+			return newInstance(AIAttackThenIdleStateMachine)( owner, "AIAttackThenIdleStateMachine" );
+		});
 	xfer->xferUnsignedInt(&m_nextEnemyScanTime);
 
 }  // end xfer
@@ -7510,9 +7567,12 @@ AsciiString AIAttackAreaState::getName(  ) const
 //----------------------------------------------------------------------------------------------------------
 StateReturnType AIAttackAreaState::onEnter()
 {
+	Object* owner = getLiveMachineOwner(this);
+	if (owner == NULL)
+		return STATE_FAILURE;
 
 	// create new state machine for hunt behavior
-	m_attackMachine = newInstance(AIAttackThenIdleStateMachine)( getMachineOwner(), "AIAttackThenIdleStateMachine");
+	m_attackMachine = newInstance(AIAttackThenIdleStateMachine)( owner, "AIAttackThenIdleStateMachine");
 
 	// first time thru, use a random amount so that everyone doesn't scan on the same frame,
 	// to avoid "spikes". 
@@ -7532,12 +7592,17 @@ void AIAttackAreaState::onExit( StateExitType status )
 //----------------------------------------------------------------------------------------------------------
 StateReturnType AIAttackAreaState::update()
 {
+	if (m_attackMachine == NULL)
+		return STATE_FAILURE;
+
 	// look around for better victims every so often
 	UnsignedInt now = TheGameLogic->getFrame();
+	Object* owner = NULL;
+	AIUpdateInterface *ai = getLiveMachineAI(this, &owner);
+	if (owner == NULL || ai == NULL)
+		return STATE_FAILURE;
 	if (now >= m_nextEnemyScanTime)
 	{
-		Object* owner = getMachineOwner();
-
 		// if all of our weapons are out of ammo, can't hunt.
 		// (this can happen for units which never auto-reload, like the Raptor)
 		if (owner->isOutOfAmmo() && !owner->isKindOf(KINDOF_PROJECTILE))
@@ -7549,7 +7614,6 @@ StateReturnType AIAttackAreaState::update()
 		// then settle into a regular schedule.
 		m_nextEnemyScanTime = now + ENEMY_SCAN_RATE;
 
-		AIUpdateInterface *ai = owner->getAI();
 		if (ai->getAreaToGuard() == NULL) 
 			return STATE_FAILURE;
 
@@ -7570,7 +7634,10 @@ StateReturnType AIAttackAreaState::update()
 		}
 	}
 
-	getMachine()->lock("AIAttackAreaState::update");	// The idle state in the sub machine can sometimes acquire targets. 
+	StateMachine* ownerMachine = getMachine();
+	Bool shouldUnlockOwnerMachine = ownerMachine != NULL && !ownerMachine->isLocked();
+	if (shouldUnlockOwnerMachine)
+		ownerMachine->lock("AIAttackAreaState::update");	// The idle state in the sub machine can sometimes acquire targets. 
 												// It is important to not switch out of this state via a sub machine call. jba.
 	/* 
 		Note the use of CONVERT_SLEEP_TO_CONTINUE; even if the sub-machine
@@ -7578,7 +7645,8 @@ StateReturnType AIAttackAreaState::update()
 	*/
 			/// @todo srj -- find a way to sleep for a number of frames here, if possible
 	StateReturnType ret = CONVERT_SLEEP_TO_CONTINUE(m_attackMachine->updateStateMachine());
-	getMachine()->unlock();
+	if (shouldUnlockOwnerMachine)
+		ownerMachine->unlock();
 	return ret;
 }
 
