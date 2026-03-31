@@ -1375,8 +1375,10 @@ void AIIdleState::doInitIdleState()
 
 	m_inited = false;
 
-	Object *obj = getMachineOwner();
-	AIUpdateInterface *ai = obj->getAI();
+	Object *obj = NULL;
+	AIUpdateInterface *ai = getLiveMachineAI(this, &obj);
+	if (obj == NULL || ai == NULL)
+		return;
 	const Locomotor* loco = ai->getCurLocomotor();
 	Bool ultraAccurate = (loco != NULL && loco->isUltraAccurate());
 #define NO_STOP_AND_SLIDE
@@ -1439,8 +1441,10 @@ StateReturnType AIIdleState::update()
 	if ( m_shouldLookForTargets && !getMachine()->isLocked() )
 	{
 		// if we are here, it's time to check again
-		Object *obj = getMachineOwner();
-		AIUpdateInterface *ai = obj->getAI();
+		Object *obj = NULL;
+		AIUpdateInterface *ai = getLiveMachineAI(this, &obj);
+		if (obj == NULL || ai == NULL)
+			return STATE_FAILURE;
 
 		// do repulsor logic
 		if (obj->isKindOf(KINDOF_CAN_BE_REPULSED) && ai->isIdle()) 
@@ -1618,6 +1622,8 @@ void AIInternalMoveToState::loadPostProcess( void )
 Bool AIInternalMoveToState::getAdjustsDestination() const 
 { 
 	const Object *obj = getMachineOwner();
+	if (obj == NULL)
+		return false;
 	if (obj->testStatus(OBJECT_STATUS_PARACHUTING))
 		return false;
 
@@ -1634,8 +1640,10 @@ Bool AIInternalMoveToState::getAdjustsDestination() const
  */
 Bool AIInternalMoveToState::computePath()
 {
-	Object *obj = getMachineOwner();
-	AIUpdateInterface *ai = obj->getAI();
+	Object *obj = NULL;
+	AIUpdateInterface *ai = getLiveMachineAI(this, &obj);
+	if (obj == NULL || ai == NULL)
+		return false;
 
 	m_waitingForPath = true;
 	ai->requestPath(&m_goalPosition, getAdjustsDestination());
@@ -1650,8 +1658,10 @@ Bool AIInternalMoveToState::computePath()
 StateReturnType AIInternalMoveToState::onEnter()
 {
 	m_ambientPlayingHandle = AHSV_Error;
-	Object *obj = getMachineOwner();
-	AIUpdateInterface *ai = obj->getAI();
+	Object *obj = NULL;
+	AIUpdateInterface *ai = getLiveMachineAI(this, &obj);
+	if (obj == NULL || ai == NULL)
+		return STATE_FAILURE;
 	m_waitingForPath = ai->isWaitingForPath();
 
 	if( obj->testStatus( OBJECT_STATUS_IMMOBILE ) )
@@ -1723,7 +1733,9 @@ StateReturnType AIInternalMoveToState::onEnter()
  */
 void AIInternalMoveToState::startMoveSound(void)
 {
-	Object *obj = getMachineOwner();
+	Object *obj = getLiveMachineOwner(this);
+	if (obj == NULL || obj->getTemplate() == NULL)
+		return;
 	const BodyModuleInterface *objBody = obj->getBodyModule();
 	if (objBody && IS_CONDITION_WORSE(objBody->getDamageState(), BODY_DAMAGED))
 	{
@@ -1770,11 +1782,13 @@ void AIInternalMoveToState::startMoveSound(void)
  */
 void AIInternalMoveToState::onExit( StateExitType status )
 {
-	Object *obj = getMachineOwner();
-	AIUpdateInterface *ai = obj->getAI();
-
 	// stop ambient sound associated with movement
 	TheAudio->removeAudioEvent( m_ambientPlayingHandle );
+
+	Object *obj = NULL;
+	AIUpdateInterface *ai = getLiveMachineAI(this, &obj);
+	if (obj == NULL)
+		return;
 
  	// If this onExit is the result of the state machine being deleted, then there is no AI.
 	// (This is why destructors should not do game logic)
@@ -1800,13 +1814,14 @@ void AIInternalMoveToState::onExit( StateExitType status )
 
 StateReturnType AIInternalMoveToState::update()
 {
-
-	Object *obj = getMachineOwner();
-	AIUpdateInterface *ai = obj->getAI();
+	Object *obj = NULL;
+	AIUpdateInterface *ai = getLiveMachineAI(this, &obj);
+	if (obj == NULL || ai == NULL)
+		return STATE_FAILURE;
 
 	//Kris: 7/01/03 (Temporary debug hook for units not being able to leave maps)
 	Bool blah = FALSE;
-	if( getMachineOwner()->testStatus( OBJECT_STATUS_RIDER8 ) )
+	if( obj->testStatus( OBJECT_STATUS_RIDER8 ) )
 	{
 		blah = TRUE;
 	}
@@ -5232,8 +5247,10 @@ StateReturnType AIAttackFireWeaponState::onEnter()
 	// contained by AIAttackState, so no separate timer
 	DEBUG_ASSERTCRASH(m_att != NULL, ("m_att may not be null"));
 
-	Object *obj = getMachineOwner();
-	AIUpdateInterface *ai = obj->getAI();
+	Object *obj = NULL;
+	AIUpdateInterface *ai = getLiveMachineAI(this, &obj);
+	if (obj == NULL || ai == NULL)
+		return STATE_FAILURE;
 
 	// Passive stuff will approach but not attack, so we check here (after approach is complete)
 	UnsignedInt adjust = ai->getMoodMatrixActionAdjustment(MM_Action_Attack);
@@ -5263,7 +5280,10 @@ StateReturnType AIAttackFireWeaponState::update()
 {
 	// contained by AIAttackState, so no separate timer
 
-	Object *obj = getMachineOwner();
+	Object *obj = NULL;
+	AIUpdateInterface *ai = getLiveMachineAI(this, &obj);
+	if (obj == NULL || ai == NULL)
+		return STATE_FAILURE;
 	Object* victim = getMachineGoalObject();
 
 	if (m_att->isAttackingObject())
@@ -5319,9 +5339,9 @@ StateReturnType AIAttackFireWeaponState::update()
 		//to transfer attackers (AIUpdateInterface::transferAttack), it is unable to modify our current victim in our attack state
 		//machine. When we move immediately to the aim state in the same frame as the transfer (after this call in fact), the victim
 		//was still pointing to the building and not the hole we transferred to. This code fixes that.
-		if( victim != obj->getAI()->getCurrentVictim() )
+		if( victim != ai->getCurrentVictim() )
 		{
-			getMachine()->setGoalObject( obj->getAI()->getCurrentVictim() );
+			getMachine()->setGoalObject( ai->getCurrentVictim() );
 		}
 
 		// clear this, just in case.
@@ -5339,8 +5359,7 @@ StateReturnType AIAttackFireWeaponState::update()
 				// note that it is important to use getLastCommandSource here; this allows
 				// dozers that were ordered to clear mines by the human to continue to autoacquire,
 				// but not if they were ordered by ai.
-				AIUpdateInterface* ai = obj->getAI();
-				CommandSourceType lastCmdSource = ai ? ai->getLastCommandSource() : CMD_FROM_AI;
+				CommandSourceType lastCmdSource = ai->getLastCommandSource();
 				PartitionFilterSamePlayer filterPlayer( victim->getControllingPlayer() );
 				PartitionFilterSameMapStatus filterMapStatus(obj);
 				PartitionFilterPossibleToAttack filterAttack(ATTACK_NEW_TARGET, obj, lastCmdSource);
@@ -5358,7 +5377,7 @@ StateReturnType AIAttackFireWeaponState::update()
 	else
 	{
     
-    if( getMachineOwner()->getAI()->areTurretsLinked() ) //LINKED TURRETS
+    if( ai->areTurretsLinked() ) //LINKED TURRETS
     {// it doesn;t matter which weapon slot is locked, current or whatever
       for ( Int slot = PRIMARY_WEAPON; slot < WEAPONSLOT_COUNT ; slot++ )
       {// were firing with all barrels
@@ -5390,7 +5409,9 @@ StateReturnType AIAttackFireWeaponState::update()
 void AIAttackFireWeaponState::onExit( StateExitType status )
 {
 	// contained by AIAttackState, so no separate timer
-	Object *obj = getMachineOwner();
+	Object *obj = getLiveMachineOwner(this);
+	if (obj == NULL)
+		return;
 	obj->clearStatus( MAKE_OBJECT_STATUS_MASK2( OBJECT_STATUS_IS_FIRING_WEAPON, OBJECT_STATUS_IGNORING_STEALTH ) );
 
 	// this can occur if we start a preattack (eg, bayonet)
@@ -5771,7 +5792,9 @@ void AIAttackState::onExit( StateExitType status )
 		destroySubStateMachine(m_attackMachine);
 	}
 
-	Object *obj = getMachineOwner();
+	Object *obj = getLiveMachineOwner(this);
+	if (obj == NULL)
+		return;
 	obj->clearStatus( MAKE_OBJECT_STATUS_MASK4( OBJECT_STATUS_IS_FIRING_WEAPON, 
 																							OBJECT_STATUS_IS_AIMING_WEAPON, 
 																							OBJECT_STATUS_IS_ATTACKING, 
