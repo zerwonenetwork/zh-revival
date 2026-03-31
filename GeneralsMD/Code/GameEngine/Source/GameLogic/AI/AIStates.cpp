@@ -142,6 +142,28 @@ static void xferOptionalSubStateMachine(Xfer* xfer, State* state, T*& machine, F
 		xfer->xferSnapshot(machine);
 }
 
+template <typename T, typename Factory>
+static Bool ensureOptionalSubStateMachine(State* state, T*& machine, Factory createMachine)
+{
+	Object* owner = getLiveMachineOwner(state);
+	if (owner == NULL)
+	{
+		destroySubStateMachine(machine);
+		return false;
+	}
+
+	if (machine == NULL)
+	{
+		machine = createMachine(owner);
+		if (machine == NULL)
+			return false;
+
+		machine->initDefaultState();
+	}
+
+	return true;
+}
+
 extern void AppendStartupTrace( const char *format, ... );
 
 static void resetDamageInfoForCommand(DamageInfo& damage)
@@ -3722,7 +3744,14 @@ void AIAttackMoveToState::xfer( Xfer *xfer )
 		xfer->xferUnsignedInt(&m_frameToSleepUntil);
 		xfer->xferInt(&m_retryCount);
 	}
-	xfer->xferSnapshot(m_attackMoveMachine);
+	xferOptionalSubStateMachine(
+		xfer,
+		this,
+		m_attackMoveMachine,
+		[](Object* owner) -> AIAttackMoveStateMachine*
+		{
+			return newInstance(AIAttackMoveStateMachine)(owner, "AIAttackMoveMachine");
+		});
 }  // end xfer
 
 // ------------------------------------------------------------------------------------------------
@@ -3747,8 +3776,22 @@ AsciiString AIAttackMoveToState::getName(  ) const
 //----------------------------------------------------------------------------------------------------------
 StateReturnType AIAttackMoveToState::onEnter()
 {
-	Object *owner = getMachineOwner();
-	AIUpdateInterface *ai = owner->getAI();
+	Object *owner = NULL;
+	AIUpdateInterface *ai = getLiveMachineAI(this, &owner);
+	if (owner == NULL || ai == NULL)
+		return STATE_FAILURE;
+
+	if (!ensureOptionalSubStateMachine(
+			this,
+			m_attackMoveMachine,
+			[](Object* liveOwner) -> AIAttackMoveStateMachine*
+			{
+				return newInstance(AIAttackMoveStateMachine)(liveOwner, "AIAttackMoveMachine");
+			}))
+	{
+		return STATE_FAILURE;
+	}
+
 	m_attackMoveMachine->clear();
 	m_attackMoveMachine->setState( AI_IDLE );	
 	m_commandSrc = ai->getLastCommandSource();
@@ -3761,16 +3804,18 @@ StateReturnType AIAttackMoveToState::onEnter()
 //----------------------------------------------------------------------------------------------------------
 void AIAttackMoveToState::onExit( StateExitType status )
 {
-	m_attackMoveMachine->setState(AI_IDLE);
+	if (m_attackMoveMachine)
+		m_attackMoveMachine->setState(AI_IDLE);
 	AIMoveToState::onExit(status);
 }
 
 //----------------------------------------------------------------------------------------------------------
 StateReturnType AIAttackMoveToState::update()
 {
-
-	Object *owner = getMachineOwner();
-	AIUpdateInterface *ai = owner->getAI();
+	Object *owner = NULL;
+	AIUpdateInterface *ai = getLiveMachineAI(this, &owner);
+	if (owner == NULL || ai == NULL || m_attackMoveMachine == NULL)
+		return STATE_FAILURE;
 
 	Bool forceRetargetThisFrame = false;
 	Bool shouldRepathThisFrame = false;
@@ -3786,7 +3831,13 @@ StateReturnType AIAttackMoveToState::update()
 	{
 		ai->setLocomotorGoalNone();
 		owner->clearModelConditionState(MODELCONDITION_MOVING);
+		StateMachine *ownerMachine = getMachine();
+		Bool shouldUnlockOwnerMachine = ownerMachine != NULL && !ownerMachine->isLocked();
+		if (shouldUnlockOwnerMachine)
+			ownerMachine->lock("AIAttackMoveToState::update");
 		m_attackMoveMachine->updateStateMachine();
+		if (shouldUnlockOwnerMachine)
+			ownerMachine->unlock();
 		
 		// if the machine is now idling, then we need to attempt to get a new target
 		if (m_attackMoveMachine->isInIdleState()) {
@@ -4382,12 +4433,14 @@ StateReturnType AIFollowWaypointPathState::update()
 		m_currentWaypoint = getNextWaypoint();
 
 		//LORENZEN ADDED LORENZEN ADDED LORENZEN ADDED 
-		Object *obj = getMachineOwner();
-		AIUpdateInterface *ai = obj->getAI();
+		Object *waypointObj = getLiveMachineOwner(this);
+		AIUpdateInterface *waypointAI = waypointObj ? waypointObj->getAI() : NULL;
+		if (waypointObj == NULL || waypointAI == NULL)
+			return STATE_FAILURE;
 		if ( m_priorWaypoint )
-			ai->setPriorWaypointID( m_priorWaypoint->getID() );
+			waypointAI->setPriorWaypointID( m_priorWaypoint->getID() );
 		if ( m_currentWaypoint )
-			ai->setCurrentWaypointID( m_currentWaypoint->getID() );
+			waypointAI->setCurrentWaypointID( m_currentWaypoint->getID() );
 		//LORENZEN ADDED LORENZEN ADDED LORENZEN ADDED 
 
 
@@ -4395,7 +4448,7 @@ StateReturnType AIFollowWaypointPathState::update()
 		// if there are no links from this waypoint, we're done
 		if (m_currentWaypoint==NULL)	{
 			/// Trigger "end of waypoint path" scripts (jba)
-			ai->setCompletedWaypoint(m_priorWaypoint);			
+			waypointAI->setCompletedWaypoint(m_priorWaypoint);			
 			return STATE_SUCCESS;
 		}
 		if (m_moveAsGroup) {
@@ -4405,8 +4458,8 @@ StateReturnType AIFollowWaypointPathState::update()
 		} 
 		
 		computeGoal(false);
-		if (getAdjustsDestination() && ai->isDoingGroundMovement()) {
-			if (!TheAI->pathfinder()->adjustDestination(obj, ai->getLocomotorSet(), &m_goalPosition)) {
+		if (getAdjustsDestination() && waypointAI->isDoingGroundMovement()) {
+			if (!TheAI->pathfinder()->adjustDestination(waypointObj, waypointAI->getLocomotorSet(), &m_goalPosition)) {
 				if (m_currentWaypoint) {
 					DEBUG_LOG(("Breaking out of follow waypoint path %s of %s\n", 
 					m_currentWaypoint->getName().str(), m_currentWaypoint->getPathLabel1().str()));
@@ -4414,10 +4467,10 @@ StateReturnType AIFollowWaypointPathState::update()
 				return STATE_FAILURE;
 			}
 		}
-		ai->friend_startingMove();
+		waypointAI->friend_startingMove();
 		computePath();
 		if (getAdjustsDestination()) {
-			TheAI->pathfinder()->updateGoal(obj, &m_goalPosition, m_goalLayer);
+			TheAI->pathfinder()->updateGoal(waypointObj, &m_goalPosition, m_goalLayer);
 		}
 
 		return STATE_CONTINUE;
@@ -4593,7 +4646,14 @@ void AIAttackFollowWaypointPathState::xfer( Xfer *xfer )
  // extend base class
   AIFollowWaypointPathState::xfer( xfer );
  
-	xfer->xferSnapshot(m_attackFollowMachine);
+	xferOptionalSubStateMachine(
+		xfer,
+		this,
+		m_attackFollowMachine,
+		[](Object* owner) -> AIAttackMoveStateMachine*
+		{
+			return newInstance(AIAttackMoveStateMachine)(owner, "AIAttackFollowMachine");
+		});
 }  // end xfer
 
 // ------------------------------------------------------------------------------------------------
@@ -4618,8 +4678,16 @@ AsciiString AIAttackFollowWaypointPathState::getName(  ) const
 //-------------------------------------------------------------------------------------------------
 StateReturnType AIAttackFollowWaypointPathState ::onEnter()
 {
-	if (m_attackFollowMachine == NULL)
+	if (!ensureOptionalSubStateMachine(
+			this,
+			m_attackFollowMachine,
+			[](Object* owner) -> AIAttackMoveStateMachine*
+			{
+				return newInstance(AIAttackMoveStateMachine)(owner, "AIAttackFollowMachine");
+			}))
+	{
 		return STATE_FAILURE;
+	}
 
 	m_attackFollowMachine->clear();
 	m_attackFollowMachine->setState( AI_IDLE );	
@@ -4642,7 +4710,13 @@ StateReturnType AIAttackFollowWaypointPathState::update()
 	{
 		ai->setLocomotorGoalNone();
 		owner->clearModelConditionState(MODELCONDITION_MOVING);
+		StateMachine *ownerMachine = getMachine();
+		Bool shouldUnlockOwnerMachine = ownerMachine != NULL && !ownerMachine->isLocked();
+		if (shouldUnlockOwnerMachine)
+			ownerMachine->lock("AIAttackFollowWaypointPathState::update");
 		m_attackFollowMachine->updateStateMachine();
+		if (shouldUnlockOwnerMachine)
+			ownerMachine->unlock();
 		
 		// if the machine is now idling, then we need to attempt to get a new target
 		if (m_attackFollowMachine->isInIdleState()) 
