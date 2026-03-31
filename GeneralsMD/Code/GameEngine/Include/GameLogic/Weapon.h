@@ -843,6 +843,7 @@ public:
 	*/
 	const WeaponTemplate *findWeaponTemplate(AsciiString name) const;
 	const WeaponTemplate *findWeaponTemplateByNameKey( NameKeyType key ) const { return findWeaponTemplatePrivate( key ); }
+	Bool containsWeaponTemplate(const WeaponTemplate *weaponTemplate) const;
 
 	// this dynamically allocates a new Weapon, which is owned (and must be freed!) by the caller.
 	inline Weapon* allocateNewWeapon(const WeaponTemplate *tmpl, WeaponSlotType wslot) const

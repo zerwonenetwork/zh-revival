@@ -96,6 +96,52 @@
 const DistanceCalculationType DAMAGE_RANGE_CALC_TYPE = FROM_BOUNDINGSPHERE_3D;
 
 //-------------------------------------------------------------------------------------------------
+static const Object* ResolveLiveObjectPtr(const Object* obj)
+{
+	if (obj == NULL || TheGameLogic == NULL)
+		return NULL;
+
+#if defined(_MSC_VER) && defined(_WIN32)
+	__try
+	{
+#endif
+		ObjectID id = obj->getID();
+		if (id == INVALID_ID)
+			return NULL;
+
+		Object* live = TheGameLogic->findObjectByID(id);
+		if (live != obj)
+			return NULL;
+
+		if (obj->isDestroyed() || obj->isEffectivelyDead())
+			return NULL;
+
+		return obj;
+#if defined(_MSC_VER) && defined(_WIN32)
+	}
+	__except (EXCEPTION_EXECUTE_HANDLER)
+	{
+		return NULL;
+	}
+#endif
+}
+
+//-------------------------------------------------------------------------------------------------
+static Object* ResolveLiveObjectPtr(Object* obj)
+{
+	return const_cast<Object*>(ResolveLiveObjectPtr(static_cast<const Object*>(obj)));
+}
+
+//-------------------------------------------------------------------------------------------------
+static const WeaponTemplate* ResolveUsableWeaponTemplate(const WeaponTemplate* weaponTemplate)
+{
+	if (weaponTemplate == NULL || TheWeaponStore == NULL)
+		return NULL;
+
+	return TheWeaponStore->containsWeaponTemplate(weaponTemplate) ? weaponTemplate : NULL;
+}
+
+//-------------------------------------------------------------------------------------------------
 static void parsePerVetLevelAsciiString( INI* ini, void* /*instance*/, void * store, const void* /*userData*/ )
 {
 	AsciiString* s = (AsciiString*)store;
@@ -707,6 +753,12 @@ Real WeaponTemplate::estimateWeaponTemplateDamageImpl(
 	const WeaponBonus& bonus
 ) const
 {
+	if (ResolveUsableWeaponTemplate(this) == NULL)
+		return 0.0f;
+
+	sourceObj = ResolveLiveObjectPtr(sourceObj);
+	victimObj = ResolveLiveObjectPtr(victimObj);
+
 	if (sourceObj == NULL || (victimObj == NULL && victimPos == NULL))
 	{
 		DEBUG_CRASH(("bad args to estimate"));
@@ -934,6 +986,20 @@ UnsignedInt WeaponTemplate::fireWeaponTemplate
 	Bool inflictDamage
 ) const
 {
+	if (ResolveUsableWeaponTemplate(this) == NULL)
+		return 0;
+
+	sourceObj = ResolveLiveObjectPtr(sourceObj);
+	victimObj = ResolveLiveObjectPtr(victimObj);
+
+	const WeaponTemplate* firingWeaponTemplate = NULL;
+	if (firingWeapon != NULL)
+	{
+		firingWeaponTemplate = ResolveUsableWeaponTemplate(firingWeapon->getTemplate());
+		if (firingWeaponTemplate == NULL)
+			return 0;
+	}
+
 
 	//-extraLogging 
 	#if (defined(_DEBUG) || defined(_INTERNAL))
@@ -1087,7 +1153,7 @@ UnsignedInt WeaponTemplate::fireWeaponTemplate
 		VeterancyLevel v = sourceObj->getVeterancyLevel();
 		const FXList* fx = isProjectileDetonation ? getProjectileDetonateFX(v) : getFireFX(v);
 		
-		if ( TheGameLogic->getFrame() < firingWeapon->getSuspendFXFrame() )
+		if ( firingWeapon && TheGameLogic->getFrame() < firingWeapon->getSuspendFXFrame() )
 			fx = NULL;
 
 		Bool handled;
@@ -1191,7 +1257,7 @@ UnsignedInt WeaponTemplate::fireWeaponTemplate
 
 		ObjectID damageID = getDamageDealtAtSelfPosition() ? INVALID_ID : victimID;
 
-		if( firingWeapon->isLaser() )
+		if( firingWeaponTemplate && firingWeaponTemplate->getLaserName().isNotEmpty() )
 		{
 			if( scatterRadius <= getPrimaryDamageRadius( bonus ) || scatterRadius <= getSecondaryDamageRadius( bonus ) )
 			{
@@ -1733,6 +1799,40 @@ const WeaponTemplate *WeaponStore::findWeaponTemplate( AsciiString name ) const
 }
 
 //-------------------------------------------------------------------------------------------------
+Bool WeaponStore::containsWeaponTemplate(const WeaponTemplate *weaponTemplate) const
+{
+	if (weaponTemplate == NULL)
+		return FALSE;
+
+#if defined(_MSC_VER) && defined(_WIN32)
+	__try
+	{
+#endif
+		const WeaponTemplate* current = weaponTemplate;
+		Int guard = 0;
+		while (current != NULL && guard < 64)
+		{
+			for (Int i = 0; i < m_weaponTemplateVector.size(); ++i)
+			{
+				if (m_weaponTemplateVector[i] == current)
+					return TRUE;
+			}
+
+			current = current->m_nextTemplate;
+			++guard;
+		}
+
+		return FALSE;
+#if defined(_MSC_VER) && defined(_WIN32)
+	}
+	__except (EXCEPTION_EXECUTE_HANDLER)
+	{
+		return FALSE;
+	}
+#endif
+}
+
+//-------------------------------------------------------------------------------------------------
 WeaponTemplate *WeaponStore::findWeaponTemplatePrivate( NameKeyType key ) const
 {
 	// search weapon list for name
@@ -1783,6 +1883,12 @@ void WeaponStore::update()
 		UnsignedInt curFrame = TheGameLogic->getFrame();
 		if (curFrame >= ddi->m_delayDamageFrame)
 		{
+			if (!containsWeaponTemplate(ddi->m_delayedWeapon))
+			{
+				ddi = m_weaponDDI.erase(ddi);
+				continue;
+			}
+
 			// we never do projectile-detonation-damage via this code path.
 			const Bool isProjectileDetonation = false;
 			ddi->m_delayedWeapon->dealDamageInternal(ddi->m_delaySourceID, ddi->m_delayIntendedVictimID, &ddi->m_delayDamagePos, ddi->m_bonus, isProjectileDetonation);
@@ -1988,6 +2094,8 @@ void Weapon::computeBonus(const Object *source, WeaponBonusConditionFlags extraB
 {
 	bonus.clear();
 	WeaponBonusConditionFlags flags = extraBonusFlags;
+	source = ResolveLiveObjectPtr(source);
+	const WeaponTemplate* tmpl = ResolveUsableWeaponTemplate(m_template);
 	//CRCDEBUG_LOG(("Weapon::computeBonus() - flags are %X for %s\n", flags, DescribeObject(source).str()));
 
 	if( source )
@@ -2005,7 +2113,7 @@ void Weapon::computeBonus(const Object *source, WeaponBonusConditionFlags extraB
 
 	if (TheGlobalData->m_weaponBonusSet)
 		TheGlobalData->m_weaponBonusSet->appendBonuses(flags, bonus);
-	const WeaponBonusSet* extra = m_template ? m_template->getExtraBonus() : NULL;
+	const WeaponBonusSet* extra = tmpl ? tmpl->getExtraBonus() : NULL;
 	if (extra)
 		extra->appendBonuses(flags, bonus);
 }
@@ -2013,6 +2121,9 @@ void Weapon::computeBonus(const Object *source, WeaponBonusConditionFlags extraB
 //-------------------------------------------------------------------------------------------------
 void Weapon::loadAmmoNow(const Object *sourceObj)
 {
+	if (ResolveUsableWeaponTemplate(m_template) == NULL)
+		return;
+
 	WeaponBonus bonus;
 	computeBonus(sourceObj, 0, bonus);
 	reloadWithBonus(sourceObj, bonus, true);
@@ -2021,6 +2132,8 @@ void Weapon::loadAmmoNow(const Object *sourceObj)
 //-------------------------------------------------------------------------------------------------
 void Weapon::reloadAmmo(const Object *sourceObj)
 {
+	if (ResolveUsableWeaponTemplate(m_template) == NULL)
+		return;
 
 	WeaponBonus bonus;
 	computeBonus(sourceObj, 0, bonus);
@@ -2030,18 +2143,23 @@ void Weapon::reloadAmmo(const Object *sourceObj)
 //-------------------------------------------------------------------------------------------------
 Int Weapon::getClipReloadTime(const Object *source) const
 {
+	const WeaponTemplate* tmpl = ResolveUsableWeaponTemplate(m_template);
+	if (tmpl == NULL)
+		return 1;
+
 	WeaponBonus bonus;
 	computeBonus(source, 0, bonus);
-	return m_template->getClipReloadTime(bonus);
+	return tmpl->getClipReloadTime(bonus);
 }
 
 //-------------------------------------------------------------------------------------------------
 void Weapon::setClipPercentFull(Real percent, Bool allowReduction)
 {
-	if (m_template->getClipSize() == 0)
+	const WeaponTemplate* tmpl = ResolveUsableWeaponTemplate(m_template);
+	if (tmpl == NULL || tmpl->getClipSize() == 0)
 		return;
 
-	Int ammo = REAL_TO_INT_FLOOR(m_template->getClipSize() * percent);
+	Int ammo = REAL_TO_INT_FLOOR(tmpl->getClipSize() * percent);
 	if (ammo > m_ammoInClip || (allowReduction && ammo < m_ammoInClip))
 	{
 		m_ammoInClip = ammo;
@@ -2058,7 +2176,11 @@ void Weapon::setClipPercentFull(Real percent, Bool allowReduction)
 void Weapon::rebuildScatterTargets()
 {
 	m_scatterTargetsUnused.clear();
-	Int scatterTargetsCount = m_template->getScatterTargetsVector().size();
+	const WeaponTemplate* tmpl = ResolveUsableWeaponTemplate(m_template);
+	if (tmpl == NULL)
+		return;
+
+	Int scatterTargetsCount = tmpl->getScatterTargetsVector().size();
 	if (scatterTargetsCount)
 	{
 		// When I reload, I need to rebuild the list of ScatterTargets to shoot at.
@@ -2070,17 +2192,22 @@ void Weapon::rebuildScatterTargets()
 //-------------------------------------------------------------------------------------------------
 void Weapon::reloadWithBonus(const Object *sourceObj, const WeaponBonus& bonus, Bool loadInstantly)
 {
-	if (m_template->getClipSize() > 0 
-			&& m_ammoInClip == m_template->getClipSize()
+	const WeaponTemplate* tmpl = ResolveUsableWeaponTemplate(m_template);
+	sourceObj = ResolveLiveObjectPtr(sourceObj);
+	if (tmpl == NULL || sourceObj == NULL)
+		return;
+
+	if (tmpl->getClipSize() > 0 
+			&& m_ammoInClip == tmpl->getClipSize()
 			&& !sourceObj->isReloadTimeShared())
 		return;	// don't restart our reload delay.
 
-	m_ammoInClip = m_template->getClipSize();
+	m_ammoInClip = tmpl->getClipSize();
 	if (m_ammoInClip <= 0)
 		m_ammoInClip = 0x7fffffff;	// 0 == unlimited (or effectively so)
 
 	m_status = RELOADING_CLIP;
-	Real reloadTime = loadInstantly ? 0 : m_template->getClipReloadTime(bonus);
+	Real reloadTime = loadInstantly ? 0 : tmpl->getClipReloadTime(bonus);
 	m_whenLastReloadStarted = TheGameLogic->getFrame();
 	m_whenWeCanFireAgain = m_whenLastReloadStarted + reloadTime;			
 	//CRCDEBUG_LOG(("Just set m_whenWeCanFireAgain to %d in Weapon::reloadWithBonus 1\n", m_whenWeCanFireAgain));
@@ -2128,6 +2255,11 @@ static void clipToTerrainExtent(Coord3D& approachTargetPos)
 //-------------------------------------------------------------------------------------------------
 void Weapon::onWeaponBonusChange(const Object *source)
 {
+	const WeaponTemplate* tmpl = ResolveUsableWeaponTemplate(m_template);
+	source = ResolveLiveObjectPtr(source);
+	if (tmpl == NULL || source == NULL)
+		return;
+
 	// We are concerned with our reload times being off if our ROF just changed.
 
 	WeaponBonus bonus;
@@ -2138,12 +2270,12 @@ void Weapon::onWeaponBonusChange(const Object *source)
 
 	if( getStatus() == RELOADING_CLIP )
 	{
-		newDelay = m_template->getClipReloadTime(bonus);
+		newDelay = tmpl->getClipReloadTime(bonus);
 		needUpdate = TRUE;
 	}
 	else if( getStatus() == BETWEEN_FIRING_SHOTS )
 	{
-		newDelay = m_template->getDelayBetweenShots(bonus);
+		newDelay = tmpl->getDelayBetweenShots(bonus);
 		needUpdate = TRUE;
 	}
 
@@ -2529,9 +2661,14 @@ Real Weapon::getPercentReadyToFire() const
 //-------------------------------------------------------------------------------------------------
 Real Weapon::getAttackRange(const Object *source) const
 { 
+	const WeaponTemplate* tmpl = ResolveUsableWeaponTemplate(m_template);
+	source = ResolveLiveObjectPtr(source);
+	if (tmpl == NULL || source == NULL)
+		return 0.0f;
+
 	WeaponBonus bonus;
 	computeBonus(source, 0, bonus);
-	return m_template->getAttackRange(bonus); 
+	return tmpl->getAttackRange(bonus); 
 
 	//Contained objects have longer ranges.
 	//const Object *container = source->getContainedBy();
@@ -2564,7 +2701,10 @@ Real Weapon::getAttackDistance(const Object *source, const Object *victimObj, co
 //-------------------------------------------------------------------------------------------------
 Real Weapon::estimateWeaponDamageImpl(const Object *sourceObj, const Object *victimObj, const Coord3D* victimPos)
 {
-	if (!m_template || !sourceObj || (!victimObj && !victimPos))
+	const WeaponTemplate* tmpl = ResolveUsableWeaponTemplate(m_template);
+	sourceObj = ResolveLiveObjectPtr(sourceObj);
+	victimObj = ResolveLiveObjectPtr(victimObj);
+	if (!tmpl || !sourceObj || (!victimObj && !victimPos))
 		return 0.0f;
 
 	if (sourceObj->isDestroyed() || sourceObj->isEffectivelyDead())
@@ -2575,13 +2715,13 @@ Real Weapon::estimateWeaponDamageImpl(const Object *sourceObj, const Object *vic
 
 	// if the weapon is just reloading, it's ok. if it's out of ammo
 	// (and won't autoreload), then we aren't gonna do any damage.
-	if (getStatus() == OUT_OF_AMMO && !m_template->getAutoReloadsClip())
+	if (getStatus() == OUT_OF_AMMO && !tmpl->getAutoReloadsClip())
 		return 0.0f;
 
 	WeaponBonus bonus;
 	computeBonus(sourceObj, 0, bonus);
 
-	return m_template->estimateWeaponTemplateDamage(sourceObj, victimObj, victimPos, bonus);
+	return tmpl->estimateWeaponTemplateDamage(sourceObj, victimObj, victimPos, bonus);
 }
 
 Real Weapon::estimateWeaponDamage(const Object *sourceObj, const Object *victimObj, const Coord3D* victimPos)
@@ -2636,11 +2776,17 @@ void Weapon::newProjectileFired(const Object *sourceObj, const Object *projectil
 //-------------------------------------------------------------------------------------------------
 void Weapon::createLaser( const Object *sourceObj, const Object *victimObj, const Coord3D *victimPos )
 {
-	const ThingTemplate* pst = TheThingFactory->findTemplate(m_template->getLaserName());
+	const WeaponTemplate* tmpl = ResolveUsableWeaponTemplate(m_template);
+	sourceObj = ResolveLiveObjectPtr(sourceObj);
+	victimObj = ResolveLiveObjectPtr(victimObj);
+	if (tmpl == NULL || sourceObj == NULL || victimPos == NULL)
+		return;
+
+	const ThingTemplate* pst = TheThingFactory->findTemplate(tmpl->getLaserName());
 	if( !pst )
 	{
 		DEBUG_CRASH( ("Weapon::createLaser(). %s could not find template for its laser %s.", 
-			sourceObj->getTemplate()->getName().str(), m_template->getLaserName().str() ) );
+			sourceObj->getTemplate()->getName().str(), tmpl->getLaserName().str() ) );
 		return;
 	}
 	Team *ownerTeam = GetWeaponOwnerTeamOrNeutral(sourceObj);
@@ -2669,7 +2815,7 @@ void Weapon::createLaser( const Object *sourceObj, const Object *victimObj, cons
 				//Projectiles are a different story, target their exact position.
 				pos.z += 10.0f;
 			}
-			update->initLaser( sourceObj, victimObj, sourceObj->getPosition(), &pos, m_template->getLaserBoneName() );
+			update->initLaser( sourceObj, victimObj, sourceObj->getPosition(), &pos, tmpl->getLaserBoneName() );
 		}
 	}
 }
@@ -2688,16 +2834,20 @@ Bool Weapon::privateFireWeapon(
 	Bool inflictDamage
 )
 {
+	const WeaponTemplate* tmpl = ResolveUsableWeaponTemplate(m_template);
+	sourceObj = ResolveLiveObjectPtr(sourceObj);
+	victimObj = ResolveLiveObjectPtr(victimObj);
+
 	//CRCDEBUG_LOG(("Weapon::privateFireWeapon() for %s\n", DescribeObject(sourceObj).str()));
 	//USE_PERF_TIMER(fireWeapon)
 	if (projectileID)
 		*projectileID = INVALID_ID;
 
-	if (!m_template || !sourceObj || (!victimObj && !victimPos))
+	if (!tmpl || !sourceObj || (!victimObj && !victimPos))
 		return false;
 
 	// If we are a networked weapon, tell everyone nearby they might want to get in on this shot
-	if( m_template->getRequestAssistRange()  &&  victimObj )
+	if( tmpl->getRequestAssistRange()  &&  victimObj )
 		processRequestAssistance( sourceObj, victimObj );
 
 	//For weapon templates that have the leech range weapon flag set, it essentially grants 
@@ -2707,13 +2857,13 @@ Bool Weapon::privateFireWeapon(
 	//
 	// @todo srj -- this isn't a universally true assertion! eg, FireWeaponDie lets you do this easily.
 	//
-	if( m_template->isLeechRangeWeapon() )
+	if( tmpl->isLeechRangeWeapon() )
 	{
 		setLeechRangeActive( TRUE );
 	}
 
 	//Special case damge type overrides requiring special handling.
-	switch( m_template->getDamageType() )
+	switch( tmpl->getDamageType() )
 	{
 		case DAMAGE_DEPLOY:
 		{
@@ -2740,7 +2890,7 @@ Bool Weapon::privateFireWeapon(
 					if (lmi)
 					{
 						VeterancyLevel v = sourceObj->getVeterancyLevel();
-						FXList::doFXPos(m_template->getFireFX(v), victimObj->getPosition(), victimObj->getTransformMatrix(), 0, victimObj->getPosition(), 0);
+						FXList::doFXPos(tmpl->getFireFX(v), victimObj->getPosition(), victimObj->getTransformMatrix(), 0, victimObj->getPosition(), 0);
 						lmi->disarm();
 						found = true;
 						break;
@@ -2751,7 +2901,7 @@ Bool Weapon::privateFireWeapon(
 				if( !found && victimObj->isKindOf( KINDOF_MINE ) || victimObj->isKindOf( KINDOF_BOOBY_TRAP ) || victimObj->isKindOf( KINDOF_DEMOTRAP ) )
 				{
 					VeterancyLevel v = sourceObj->getVeterancyLevel();
-					FXList::doFXPos(m_template->getFireFX(v), victimObj->getPosition(), victimObj->getTransformMatrix(), 0, victimObj->getPosition(), 0);
+					FXList::doFXPos(tmpl->getFireFX(v), victimObj->getPosition(), victimObj->getTransformMatrix(), 0, victimObj->getPosition(), 0);
 					TheGameLogic->destroyObject( victimObj );// douse this thing before somebody gets hurt!
 					found = true;
 				}
@@ -2766,7 +2916,7 @@ Bool Weapon::privateFireWeapon(
 
 			--m_maxShotCount;
 			--m_ammoInClip;	// so we can use the delay between shots on the mine clearing weapon
-			if (m_ammoInClip <= 0 && m_template->getAutoReloadsClip())
+			if (m_ammoInClip <= 0 && tmpl->getAutoReloadsClip())
 			{
 				reloadAmmo(sourceObj);
 				return TRUE;	// reloaded
@@ -2806,7 +2956,7 @@ Bool Weapon::privateFireWeapon(
 		if (m_curBarrel >= barrelCount)
 		{
 			m_curBarrel = 0;
-			m_numShotsForCurBarrel = m_template->getShotsPerBarrel();
+			m_numShotsForCurBarrel = tmpl->getShotsPerBarrel();
 		}
 
 		if( m_scatterTargetsUnused.size() )
@@ -2822,7 +2972,7 @@ Bool Weapon::privateFireWeapon(
 			Int targetIndex = m_scatterTargetsUnused[randomPick];
 
 			Real scatterTargetScalar = getScatterTargetScalar();// essentially a radius, but operates only on this scatterTarget table
-			Coord2D scatterOffset = m_template->getScatterTargetsVector().at( targetIndex );
+			Coord2D scatterOffset = tmpl->getScatterTargetsVector().at( targetIndex );
 
 			scatterOffset.x *= scatterTargetScalar;
 			scatterOffset.y *= scatterTargetScalar;
@@ -2835,11 +2985,11 @@ Bool Weapon::privateFireWeapon(
 			// To erase from a vector, put the last on the one you used and pop the back.
 			m_scatterTargetsUnused[randomPick] = m_scatterTargetsUnused.back();
 			m_scatterTargetsUnused.pop_back();
-			m_template->fireWeaponTemplate(sourceObj, m_wslot, m_curBarrel, victimObj, &targetPos, bonus, isProjectileDetonation, ignoreRanges, this, projectileID, inflictDamage );
+			tmpl->fireWeaponTemplate(sourceObj, m_wslot, m_curBarrel, victimObj, &targetPos, bonus, isProjectileDetonation, ignoreRanges, this, projectileID, inflictDamage );
 		}
 		else
 		{
-			m_template->fireWeaponTemplate(sourceObj, m_wslot, m_curBarrel, victimObj, victimPos, bonus, isProjectileDetonation, ignoreRanges, this, projectileID, inflictDamage );
+			tmpl->fireWeaponTemplate(sourceObj, m_wslot, m_curBarrel, victimObj, victimPos, bonus, isProjectileDetonation, ignoreRanges, this, projectileID, inflictDamage );
 		}
 		
 		m_lastFireFrame = now;
@@ -2849,12 +2999,12 @@ Bool Weapon::privateFireWeapon(
 		if (m_numShotsForCurBarrel <= 0)
 		{
 			++m_curBarrel;
-			m_numShotsForCurBarrel = m_template->getShotsPerBarrel();
+			m_numShotsForCurBarrel = tmpl->getShotsPerBarrel();
 		}
 
 		if (m_ammoInClip <= 0)
 		{
-			if (m_template->getAutoReloadsClip())
+			if (tmpl->getAutoReloadsClip())
 			{
 				reloadAmmo(sourceObj);
 				reloaded = true;
@@ -2870,7 +3020,7 @@ Bool Weapon::privateFireWeapon(
 		{
 			m_status = BETWEEN_FIRING_SHOTS;
 			//CRCDEBUG_LOG(("Weapon::privateFireWeapon() just set m_status to BETWEEN_FIRING_SHOTS\n"));
-			Int delay = m_template->getDelayBetweenShots(bonus);
+			Int delay = tmpl->getDelayBetweenShots(bonus);
 			m_whenLastReloadStarted = now;
 			m_whenWeCanFireAgain = now + delay;
 			//CRCDEBUG_LOG(("Just set m_whenWeCanFireAgain to %d (delay is %d) in Weapon::privateFireWeapon\n", m_whenWeCanFireAgain, delay));
@@ -2904,12 +3054,18 @@ Bool Weapon::privateFireWeapon(
 //-------------------------------------------------------------------------------------------------
 void Weapon::preFireWeapon( const Object *source, const Object *victim )
 {
+	const WeaponTemplate* tmpl = ResolveUsableWeaponTemplate(m_template);
+	source = ResolveLiveObjectPtr(source);
+	victim = ResolveLiveObjectPtr(victim);
+	if (tmpl == NULL || source == NULL || victim == NULL)
+		return;
+
 	Int delay = getPreAttackDelay( source, victim );
 	if( delay > 0 )
 	{
 		setStatus( PRE_ATTACK );
 		setPreAttackFinishedFrame( TheGameLogic->getFrame() + delay );
-		if( m_template->isLeechRangeWeapon() )
+		if( tmpl->isLeechRangeWeapon() )
 		{
 			setLeechRangeActive( TRUE );
 		}
@@ -3008,18 +3164,27 @@ Bool Weapon::isWithinTargetPitch(const Object *source, const Object *victim) con
 //-------------------------------------------------------------------------------------------------
 Real Weapon::getPrimaryDamageRadius(const Object *source) const
 {
+	const WeaponTemplate* tmpl = ResolveUsableWeaponTemplate(m_template);
+	source = ResolveLiveObjectPtr(source);
+	if (tmpl == NULL || source == NULL)
+		return 0.0f;
+
 	WeaponBonus bonus;
 	computeBonus(source, 0, bonus);
-	return m_template->getPrimaryDamageRadius(bonus);
+	return tmpl->getPrimaryDamageRadius(bonus);
 }
 
 //-------------------------------------------------------------------------------------------------
 Bool Weapon::isDamageWeapon() const
 {
+	const WeaponTemplate* tmpl = ResolveUsableWeaponTemplate(m_template);
+	if (tmpl == NULL)
+		return FALSE;
+
 	//These damage types are special attacks that don't do damage directly, even
 	//if they can indirectly. These are here to prevent the UI from allowing the
 	//user to mouseover a target and think it can attack it using these types.
-	switch( m_template->getDamageType() )
+	switch( tmpl->getDamageType() )
 	{
 		case DAMAGE_DEPLOY:
 			//Kris @todo
@@ -3036,7 +3201,7 @@ Bool Weapon::isDamageWeapon() const
 	
 	//Use no bonus
 	WeaponBonus whoCares;
-	if( m_template->getPrimaryDamage( whoCares ) > 0.0f || m_template->getSecondaryDamage( whoCares ) > 0.0f )
+	if( tmpl->getPrimaryDamage( whoCares ) > 0.0f || tmpl->getSecondaryDamage( whoCares ) > 0.0f )
 	{
 		return TRUE;
 	}
@@ -3047,11 +3212,17 @@ Bool Weapon::isDamageWeapon() const
 //-------------------------------------------------------------------------------------------------
 Int Weapon::getPreAttackDelay( const Object *source, const Object *victim ) const
 {
+	const WeaponTemplate* tmpl = ResolveUsableWeaponTemplate(m_template);
+	source = ResolveLiveObjectPtr(source);
+	victim = ResolveLiveObjectPtr(victim);
+	if (tmpl == NULL || source == NULL)
+		return 0;
+
 	// Look for a reason to return zero and have no delay.
-	WeaponPrefireType type = m_template->getPrefireType();
+	WeaponPrefireType type = tmpl->getPrefireType();
 	if( type == PREFIRE_PER_CLIP )
 	{
-		if( m_template->getClipSize() > 0  &&  m_ammoInClip < m_template->getClipSize() )
+		if( tmpl->getClipSize() > 0  &&  m_ammoInClip < tmpl->getClipSize() )
 			return 0;// I only delay once a clip, and this is not the first shot
 	}
 	else if( type == PREFIRE_PER_ATTACK )
@@ -3063,7 +3234,7 @@ Int Weapon::getPreAttackDelay( const Object *source, const Object *victim ) cons
 
 	WeaponBonus bonus;
 	computeBonus(source, 0, bonus);
-	return m_template->getPreAttackDelay( bonus );
+	return tmpl->getPreAttackDelay( bonus );
 }
 
 //-------------------------------------------------------------------------------------------------
