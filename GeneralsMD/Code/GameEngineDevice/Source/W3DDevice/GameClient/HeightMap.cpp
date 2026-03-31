@@ -1470,6 +1470,14 @@ Int HeightMapRenderObjClass::initHeightData(Int x, Int y, WorldHeightMap *pMap, 
 void HeightMapRenderObjClass::On_Frame_Update(void)
 {	
 	BaseHeightMapRenderObjClass::On_Frame_Update();
+	static Bool s_loggedShellTerrainLightSkip = FALSE;
+	if (UseShellTerrainCompatibilityPath()) {
+		if (!s_loggedShellTerrainLightSkip) {
+			AppendStartupTrace("HeightMapRenderObjClass::On_Frame_Update shell terrain compatibility skip");
+			s_loggedShellTerrainLightSkip = TRUE;
+		}
+		return;
+	}
 	Int i,j,k;
 	DX8VertexBufferClass	**pVB;
 	Int originX,originY;
@@ -1479,6 +1487,9 @@ void HeightMapRenderObjClass::On_Frame_Update(void)
 
 	RefRenderObjListIterator pDynamicLightsIterator(pMyScene->getDynamicLights());
 	if (m_map == NULL) {
+		return;
+	}
+	if (m_vertexBufferTiles == NULL || m_vertexBufferBackup == NULL) {
 		return;
 	}
 
@@ -1642,6 +1653,9 @@ void HeightMapRenderObjClass::On_Frame_Update(void)
 				}
 				pVB=m_vertexBufferTiles+j*m_numVBTilesX+i;	//point to correct row/column of vertex buffers 
 				char **pData = m_vertexBufferBackup+j*m_numVBTilesX+i;
+				if (!pVB || !*pVB || !pData || !*pData) {
+					continue;
+				}
 				updateVBForLight(*pVB, *pData, xMin, yMin, xMax, yMax, originX,originY, enabledLights, numDynaLights);
 			}
 		}
