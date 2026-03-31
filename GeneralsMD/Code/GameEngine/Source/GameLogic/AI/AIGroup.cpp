@@ -62,6 +62,21 @@
 //#pragma MESSAGE("************************************** WARNING, optimization disabled for debugging purposes")
 #endif
 
+static Object* getLiveGroupCommandMember(Object* member)
+{
+	if (member == NULL)
+		return NULL;
+
+	Object* liveMember = TheGameLogic->findObjectByID(member->getID());
+	if (liveMember != member)
+		return NULL;
+
+	if (liveMember->isEffectivelyDead())
+		return NULL;
+
+	return liveMember;
+}
+
 /**
  * NOTE: Only AI objects (ie: having an AIUpdate module) can be in
  * AIGroups.  It is ASSUMED that an object cannot morph from having
@@ -1994,7 +2009,11 @@ void AIGroup::groupMoveToAndEvacuateAndExit( const Coord3D *pos, CommandSourceTy
 	std::list<Object *>::iterator i;
 	for( i = m_memberList.begin(); i != m_memberList.end(); ++i )
 	{
-		AIUpdateInterface *ai = (*i)->getAIUpdateInterface();
+		Object *member = getLiveGroupCommandMember(*i);
+		if (member == NULL)
+			continue;
+
+		AIUpdateInterface *ai = member->getAIUpdateInterface();
 		if (ai)
 		{
 			ai->aiMoveToAndEvacuateAndExit( pos, cmdSource );
@@ -2010,7 +2029,11 @@ void AIGroup::groupFollowWaypointPathAsTeam( const Waypoint *way, CommandSourceT
 	std::list<Object *>::iterator i;
 	for( i = m_memberList.begin(); i != m_memberList.end(); ++i )
 	{
-		AIUpdateInterface *ai = (*i)->getAIUpdateInterface();
+		Object *member = getLiveGroupCommandMember(*i);
+		if (member == NULL)
+			continue;
+
+		AIUpdateInterface *ai = member->getAIUpdateInterface();
 		if (ai)
 		{
 			ai->aiFollowWaypointPathAsTeam( way, cmdSource );
@@ -2026,7 +2049,11 @@ void AIGroup::groupFollowWaypointPathAsTeamExact( const Waypoint *way, CommandSo
 	std::list<Object *>::iterator i;
 	for( i = m_memberList.begin(); i != m_memberList.end(); ++i )
 	{
-		AIUpdateInterface *ai = (*i)->getAIUpdateInterface();
+		Object *member = getLiveGroupCommandMember(*i);
+		if (member == NULL)
+			continue;
+
+		AIUpdateInterface *ai = member->getAIUpdateInterface();
 		if (ai)
 		{
 			ai->aiFollowWaypointPathExactAsTeam( way, cmdSource );
@@ -2056,7 +2083,9 @@ void AIGroup::groupIdle(CommandSourceType cmdSource)
 	std::list<Object *>::iterator i;
 	for( i = m_memberList.begin(); i != m_memberList.end(); ++i )
 	{
-		Object *obj = *i;
+		Object *obj = getLiveGroupCommandMember(*i);
+		if (obj == NULL)
+			continue;
 		
 		AIUpdateInterface *ai = obj->getAIUpdateInterface();
 		if (ai)
@@ -2134,15 +2163,19 @@ void AIGroup::groupAttackObjectPrivate( Bool forced, Object *victim, Int maxShot
 
 	std::list<Object *>::iterator i;
 	for( i = m_memberList.begin(); i != m_memberList.end(); ++i )	{
+		Object *member = getLiveGroupCommandMember(*i);
+		if (member == NULL)
+			continue;
+
 		Real dx, dy;
-		Coord3D unitPos = *((*i)->getPosition());
-		if ((*i)->isDisabledByType( DISABLED_HELD ) ) 
+		Coord3D unitPos = *(member->getPosition());
+		if (member->isDisabledByType( DISABLED_HELD ) ) 
 		{
 			continue; // don't bother telling the occupants to move.
 		}
 		dx = unitPos.x - victimPos.x;
 		dy = unitPos.y - victimPos.y;
-		iter->insert((*i), dx*dx+dy*dy);
+		iter->insert(member, dx*dx+dy*dy);
 	}
 
 	iter->sort(ITER_SORTED_NEAR_TO_FAR);
@@ -2161,7 +2194,10 @@ void AIGroup::groupAttackObjectPrivate( Bool forced, Object *victim, Int maxShot
 			{
 				for( ContainedItemsList::const_iterator it = items->begin(); it != items->end(); ++it )
 				{
-					Object* garrisonedMember = *it;
+					Object* garrisonedMember = getLiveGroupCommandMember(*it);
+					if (garrisonedMember == NULL)
+						continue;
+
 					CanAttackResult result = garrisonedMember->getAbleToAttackSpecificObject( forced ? ATTACK_NEW_TARGET_FORCED : ATTACK_NEW_TARGET, victim, cmdSource );
 					if( result == ATTACKRESULT_POSSIBLE || result == ATTACKRESULT_POSSIBLE_AFTER_MOVING )
 					{
@@ -2209,7 +2245,11 @@ void AIGroup::groupAttackTeam( const Team *team, Int maxShotsToFire, CommandSour
 	std::list<Object *>::iterator i;
 	for( i = m_memberList.begin(); i != m_memberList.end(); ++i )
 	{
-		AIUpdateInterface *ai = (*i)->getAIUpdateInterface();
+		Object *member = getLiveGroupCommandMember(*i);
+		if (member == NULL)
+			continue;
+
+		AIUpdateInterface *ai = member->getAIUpdateInterface();
 		if (ai)
 		{
 			ai->aiAttackTeam( team, maxShotsToFire, cmdSource );
@@ -2230,17 +2270,21 @@ void AIGroup::groupAttackPosition( const Coord3D *pos, Int maxShotsToFire, Comma
 	std::list<Object *>::iterator i;
 	for( i = m_memberList.begin(); i != m_memberList.end(); ++i )
 	{
+		Object *member = getLiveGroupCommandMember(*i);
+		if (member == NULL)
+			continue;
+
 		if( !pos )
 		{
 			//If you specify a NULL position, it means you are attacking your own location.
-			attackPos.set( (*i)->getPosition() );
+			attackPos.set( member->getPosition() );
 		}
 
 		//This code allows garrisoned buildings to force attack a ground position
 		//-----------------------------------------------------------------------
 		//Determine if this object is a garrisoned container capable of firing! 
 		//If so, order everyone inside to attack as well!
-		ContainModuleInterface *contain = (*i)->getContain();
+		ContainModuleInterface *contain = member->getContain();
 		if( contain && contain->isPassengerAllowedToFire() )
 		{
 			//Loop through each member and order them to attack the same target (if possible)
@@ -2249,7 +2293,10 @@ void AIGroup::groupAttackPosition( const Coord3D *pos, Int maxShotsToFire, Comma
 			{
 				for( ContainedItemsList::const_iterator it = items->begin(); it != items->end(); ++it )
 				{
-					Object* garrisonedMember = *it;
+					Object* garrisonedMember = getLiveGroupCommandMember(*it);
+					if (garrisonedMember == NULL)
+						continue;
+
 					CanAttackResult result = garrisonedMember->getAbleToUseWeaponAgainstTarget( ATTACK_NEW_TARGET, NULL, &attackPos, cmdSource ) ;
 					if( result == ATTACKRESULT_POSSIBLE || result == ATTACKRESULT_POSSIBLE_AFTER_MOVING )
 					{
@@ -2264,13 +2311,13 @@ void AIGroup::groupAttackPosition( const Coord3D *pos, Int maxShotsToFire, Comma
 		}
 
 		//Also handle slaves. If we have slaves, then order them to stop too!
-		SpawnBehaviorInterface *spawnInterface = (*i)->getSpawnBehaviorInterface();
+		SpawnBehaviorInterface *spawnInterface = member->getSpawnBehaviorInterface();
 		if( spawnInterface && !spawnInterface->doSlavesHaveFreedom() )
 		{
 			spawnInterface->orderSlavesToAttackPosition( &attackPos, maxShotsToFire, cmdSource );
 		}
 
-		AIUpdateInterface *ai = (*i)->getAIUpdateInterface();
+		AIUpdateInterface *ai = member->getAIUpdateInterface();
 		if (ai)
 		{
 			ai->aiAttackPosition( &attackPos, maxShotsToFire, cmdSource );
@@ -2286,10 +2333,14 @@ void AIGroup::groupAttackMoveToPosition( const Coord3D *pos, Int maxShotsToFire,
 	std::list<Object *>::iterator i;
 	for( i = m_memberList.begin(); i != m_memberList.end(); ++i )
 	{
-		AIUpdateInterface *ai = (*i)->getAIUpdateInterface();
+		Object *member = getLiveGroupCommandMember(*i);
+		if (member == NULL)
+			continue;
+
+		AIUpdateInterface *ai = member->getAIUpdateInterface();
 		if (ai)
 		{
-			if ((*i)->isAbleToAttack())
+			if (member->isAbleToAttack())
 				ai->aiAttackMoveToPosition( pos, maxShotsToFire, cmdSource );
 			else
 				ai->aiMoveToPosition( pos, cmdSource );
@@ -2305,7 +2356,11 @@ void AIGroup::groupHunt( CommandSourceType cmdSource )
 	std::list<Object *>::iterator i;
 	for( i = m_memberList.begin(); i != m_memberList.end(); ++i )
 	{
-		AIUpdateInterface *ai = (*i)->getAIUpdateInterface();
+		Object *member = getLiveGroupCommandMember(*i);
+		if (member == NULL)
+			continue;
+
+		AIUpdateInterface *ai = member->getAIUpdateInterface();
 		if (ai)
 		{
 			ai->aiHunt( cmdSource );
@@ -2322,7 +2377,11 @@ void AIGroup::groupRepair( Object *obj, CommandSourceType cmdSource )
 	std::list<Object *>::iterator i;
 	for( i = m_memberList.begin(); i != m_memberList.end(); ++i )
 	{
-		AIUpdateInterface *ai = (*i)->getAIUpdateInterface();
+		Object *member = getLiveGroupCommandMember(*i);
+		if (member == NULL)
+			continue;
+
+		AIUpdateInterface *ai = member->getAIUpdateInterface();
 		if (ai)
 		{
 			ai->aiRepair( obj, cmdSource );
@@ -2338,7 +2397,11 @@ void AIGroup::groupResumeConstruction( Object *obj, CommandSourceType cmdSource 
 	std::list<Object *>::iterator i;
 	for( i = m_memberList.begin(); i != m_memberList.end(); ++i )
 	{
-		AIUpdateInterface *ai = (*i)->getAIUpdateInterface();
+		Object *member = getLiveGroupCommandMember(*i);
+		if (member == NULL)
+			continue;
+
+		AIUpdateInterface *ai = member->getAIUpdateInterface();
 		if (ai)
 		{
 			ai->aiResumeConstruction( obj, cmdSource );
