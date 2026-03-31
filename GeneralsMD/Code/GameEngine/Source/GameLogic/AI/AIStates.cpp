@@ -870,7 +870,9 @@ void AIStateMachine::loadPostProcess( void )
  */
 void AIStateMachine::setGoalPath( const std::vector<Coord3D>* path )
 {
-	m_goalPath = *path;
+	m_goalPath.clear();
+	if (path != NULL)
+		m_goalPath = *path;
 }
 
 #ifdef STATE_MACHINE_DEBUG
@@ -898,7 +900,9 @@ StateReturnType AIStateMachine::updateStateMachine()
 {
 	//-extraLogging
 	#if (defined(_DEBUG) || defined(_INTERNAL))
-		Bool idle = getOwner()->getAI()->isIdle();
+		Object* owner = getOwner();
+		AIUpdateInterface* ai = owner ? owner->getAI() : NULL;
+		Bool idle = ai ? ai->isIdle() : true;
 		if( !idle && TheGlobalData->m_extraLogging )
 			DEBUG_LOG( ("%d - %s::update() start - %s", TheGameLogic->getFrame(), getCurrentStateName().str(), getOwner()->getTemplate()->getName().str() ) );
 	#endif
@@ -906,14 +910,24 @@ StateReturnType AIStateMachine::updateStateMachine()
 
 	if (m_temporaryState)
 	{
+		State* tempStateBeforeUpdate = m_temporaryState;
 		// execute this state
-		StateReturnType status = m_temporaryState->update();
+		StateReturnType status = tempStateBeforeUpdate->update();
+		if (m_temporaryState == NULL)
+			return STATE_FAILURE;
+
 		if (m_temporaryStateFramEnd < TheGameLogic->getFrame()) {
 			// ran out of time.
 			if (status == STATE_CONTINUE) {
 				status = STATE_SUCCESS;
 			}
 		}
+
+		// update() can replace the temporary state; if that happened, leave the new
+		// state alone and keep running rather than calling onExit() on the wrong one.
+		if (tempStateBeforeUpdate != m_temporaryState)
+			status = STATE_CONTINUE;
+
 		if (status==STATE_CONTINUE)	
 		{
 			//-extraLogging
@@ -925,8 +939,9 @@ StateReturnType AIStateMachine::updateStateMachine()
 
 			return status;
 		}
-		m_temporaryState->onExit(EXIT_NORMAL);
+		State* exitingTemporaryState = m_temporaryState;
 		m_temporaryState = NULL;
+		exitingTemporaryState->onExit(EXIT_NORMAL);
 	}
 	StateReturnType retType = StateMachine::updateStateMachine();
 
@@ -989,15 +1004,17 @@ StateReturnType AIStateMachine::setTemporaryState( StateID newStateID, Int frame
 	}
 #endif
 	if (m_temporaryState) {
-		m_temporaryState->onExit(EXIT_RESET);
+		State* exitingTemporaryState = m_temporaryState;
 		m_temporaryState = NULL;
+		exitingTemporaryState->onExit(EXIT_RESET);
 	}
 	if (newState) {
 		m_temporaryState = newState;
 		StateReturnType ret = m_temporaryState->onEnter();
 		if (ret != STATE_CONTINUE) {
-			m_temporaryState->onExit(EXIT_NORMAL);
+			State* exitingTemporaryState = m_temporaryState;
 			m_temporaryState = NULL;
+			exitingTemporaryState->onExit(EXIT_NORMAL);
 			return ret;
 		}
 		enum {FRAME_COUNT_MAX = 60*LOGICFRAMES_PER_SECOND};
@@ -1018,6 +1035,9 @@ StateReturnType AIStateMachine::setTemporaryState( StateID newStateID, Int frame
  */
 void AIStateMachine::addToGoalPath( const Coord3D *pathPoint)
 {	
+	if (pathPoint == NULL)
+		return;
+
 	if (m_goalPath.size()==0) {
 		m_goalPath.push_back(*pathPoint);
 	}	else {
@@ -1068,7 +1088,8 @@ void AIStateMachine::clear()
 	m_goalWaypoint = NULL;
 	m_goalSquad = NULL;
 
-	AIUpdateInterface* ai = getOwner()->getAI();
+	Object* owner = getOwner();
+	AIUpdateInterface* ai = owner ? owner->getAI() : NULL;
 	if (ai)
 		ai->friend_notifyStateMachineChanged();
 }
@@ -1078,7 +1099,8 @@ StateReturnType AIStateMachine::resetToDefaultState()
 {
 	StateReturnType tmp = StateMachine::resetToDefaultState();
 
-	AIUpdateInterface* ai = getOwner()->getAI();
+	Object* owner = getOwner();
+	AIUpdateInterface* ai = owner ? owner->getAI() : NULL;
 	if (ai)
 		ai->friend_notifyStateMachineChanged();
 
@@ -1091,7 +1113,8 @@ StateReturnType AIStateMachine::setState(StateID newStateID)
 	StateID oldID = getCurrentStateID();
 	StateReturnType tmp = StateMachine::setState(newStateID);
 
-	AIUpdateInterface* ai = getOwner()->getAI();
+	Object* owner = getOwner();
+	AIUpdateInterface* ai = owner ? owner->getAI() : NULL;
 	if (ai && oldID != newStateID)
 		ai->friend_notifyStateMachineChanged();
 
@@ -4993,11 +5016,17 @@ void AIAttackAimAtTargetState::loadPostProcess( void )
 StateReturnType AIAttackAimAtTargetState::onEnter()
 {
 	// contained by AIAttackState, so no separate timer
-	Object* source = getMachineOwner();
+	Object* source = NULL;
+	AIUpdateInterface* sourceAI = getLiveMachineAI(this, &source);
+	if (source == NULL || sourceAI == NULL)
+		return STATE_FAILURE;
+
 	Weapon* weapon = source->getCurrentWeapon();
 	Object* victim = getMachineGoalObject();
 	const Coord3D* targetPos = getMachineGoalPosition();
-	AIUpdateInterface* sourceAI = source->getAI();
+	if (!m_isAttackingObject && targetPos == NULL)
+		return STATE_FAILURE;
+
 	AIUpdateInterface* victimAI = victim ? victim->getAI() : NULL;
 
 	Locomotor* curLoco = sourceAI->getCurLocomotor();
@@ -5095,17 +5124,24 @@ StateReturnType AIAttackAimAtTargetState::onEnter()
 StateReturnType AIAttackAimAtTargetState::update()
 {
 	// contained by AIAttackState, so no separate timer
-	Object* source = getMachineOwner();
-	AIUpdateInterface* sourceAI = source->getAI();
+	Object* source = NULL;
+	AIUpdateInterface* sourceAI = getLiveMachineAI(this, &source);
+	if (source == NULL || sourceAI == NULL)
+		return STATE_FAILURE;
 
 	if (!source->hasAnyWeapon())
 		return STATE_FAILURE;
 
 	Object* victim = getMachineGoalObject();
+	const Coord3D* targetPos = getMachineGoalPosition();
 	if (m_isAttackingObject)
 	{
 		if (!victim || victim->isEffectivelyDead())
 			return STATE_FAILURE;	// can't aim at dead things
+	}
+	else if (targetPos == NULL)
+	{
+		return STATE_FAILURE;
 	}
 
 	WhichTurretType tur = sourceAI->getWhichTurretForCurWeapon();
@@ -5117,7 +5153,7 @@ StateReturnType AIAttackAimAtTargetState::update()
 		}
 		else
 		{
-			sourceAI->setTurretTargetPosition(tur, getMachineGoalPosition());
+			sourceAI->setTurretTargetPosition(tur, targetPos);
 		}
 		// if we have a turret, but it is incapable of turning, turn ourself.
 		// (gotta do this for units like the Comanche, which have fake "turrets"
@@ -5140,7 +5176,7 @@ StateReturnType AIAttackAimAtTargetState::update()
 	{
 		Real relAngle = m_isAttackingObject ?
 											ThePartitionManager->getRelativeAngle2D( source, victim ) : 
-											ThePartitionManager->getRelativeAngle2D( source, getMachineGoalPosition() );
+											ThePartitionManager->getRelativeAngle2D( source, targetPos );
 
 		const Real REL_THRESH = 0.035f;	// about 2 degrees. (getRelativeAngle2D is current only accurate to about 1.25 degrees)
 
@@ -5164,7 +5200,7 @@ StateReturnType AIAttackAimAtTargetState::update()
 		}
 		else
 		{
-			sourceAI->setLocomotorGoalPositionExplicit(m_isAttackingObject ? *victim->getPosition() : *getMachineGoalPosition());
+			sourceAI->setLocomotorGoalPositionExplicit(m_isAttackingObject ? *victim->getPosition() : *targetPos);
 		}
 
 		if (fabs(relAngle) < aimDelta /*&& !m_preAttackFrames*/ )
@@ -5205,7 +5241,7 @@ StateReturnType AIAttackAimAtTargetState::update()
 		if( m_isAttackingObject )
 			inRange = weapon ? weapon->isWithinAttackRange(source, victim) : FALSE;
 		else
-			inRange = weapon ? weapon->isWithinAttackRange(source, getMachineGoalPosition()) : FALSE;
+			inRange = weapon ? weapon->isWithinAttackRange(source, targetPos) : FALSE;
 
 		if( !weapon || !inRange )
 		{
@@ -5222,9 +5258,13 @@ StateReturnType AIAttackAimAtTargetState::update()
 void AIAttackAimAtTargetState::onExit( StateExitType status )
 {
 	// contained by AIAttackState, so no separate timer
+	Object* source = getLiveMachineOwner(this);
+	if (source == NULL)
+		return;
+
 	if (m_canTurnInPlace)
 	{
-		AIUpdateInterface* sourceAI = getMachineOwner()->getAI();
+		AIUpdateInterface* sourceAI = source->getAI();
 		// Tell the ai we are done moving, if we set the locomotor goal.
 		if (sourceAI && m_setLocomotor) 
 			sourceAI->setLocomotorGoalNone();
@@ -5234,7 +5274,7 @@ void AIAttackAimAtTargetState::onExit( StateExitType status )
 		// don't do the loco call, or else we will "wiggle"... we already have an appropriate goal
 	}
 
-	getMachineOwner()->clearStatus( MAKE_OBJECT_STATUS_MASK( OBJECT_STATUS_IS_AIMING_WEAPON ) );
+	source->clearStatus( MAKE_OBJECT_STATUS_MASK( OBJECT_STATUS_IS_AIMING_WEAPON ) );
 
 	//getMachineOwner()->clearModelConditionState( MODELCONDITION_PREATTACK );
 }

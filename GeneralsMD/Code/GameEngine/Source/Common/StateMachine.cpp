@@ -385,11 +385,13 @@ void StateMachine::clear()
 		return;
 	}
 
-	// invoke the old state's onExit()
-	if (m_currentState)
-		m_currentState->onExit( EXIT_RESET );
-
+	State* exitingState = m_currentState;
 	m_currentState = NULL;
+
+	// Let the old state unwind only after detaching it so reentrant clears or
+	// transitions cannot keep operating on a stale current-state pointer.
+	if (exitingState)
+		exitingState->onExit( EXIT_RESET );
 
 	internalClear();
 }
@@ -416,10 +418,13 @@ StateReturnType StateMachine::resetToDefaultState()
 		return STATE_FAILURE;
 	}
 
-	// allow current state to exit with EXIT_RESET if present
-	if (m_currentState)
-		m_currentState->onExit( EXIT_RESET );
+	State* exitingState = m_currentState;
 	m_currentState = NULL;
+
+	// Detach before onExit so nested reset/clear paths cannot reuse the same
+	// current-state pointer after it has begun tearing down.
+	if (exitingState)
+		exitingState->onExit( EXIT_RESET );
 
 	//
 	// the current state has done an onExit, clear the internal guts before we set
@@ -631,9 +636,13 @@ StateReturnType StateMachine::internalSetState( StateID newStateID )
 #endif
 	}
 
-	// invoke the old state's onExit()
-	if (m_currentState)
-		m_currentState->onExit( EXIT_NORMAL );
+	State* exitingState = m_currentState;
+	m_currentState = NULL;
+
+	// Detach the outgoing state first so reentrant state changes during onExit
+	// cannot keep driving a stale current-state pointer.
+	if (exitingState)
+		exitingState->onExit( EXIT_NORMAL );
 
 	// set the new state
 	m_currentState = newState;
