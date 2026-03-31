@@ -1097,8 +1097,25 @@ StateReturnType AIStateMachine::updateStateMachine()
 StateReturnType AIStateMachine::setTemporaryState( StateID newStateID, Int frameLimitCoount )
 
 {
+	enum {FRAME_COUNT_MAX = 60*LOGICFRAMES_PER_SECOND};
+	if (frameLimitCoount < 0) {
+		frameLimitCoount = 0;
+	}
+	// If you need to up this check, ok, but 1 minute seems overly long for a temporary state override.  jba.
+	DEBUG_ASSERTCRASH(frameLimitCoount<=FRAME_COUNT_MAX, ("Unusually long time to set temporary state."));
+	if (frameLimitCoount>FRAME_COUNT_MAX) {
+		frameLimitCoount = FRAME_COUNT_MAX;
+	}
+
 	// extract the state associated with the given ID
 	State *newState = internalGetState( newStateID );
+	if (newState != NULL && m_temporaryState == newState) {
+		UnsignedInt requestedFrameEnd = TheGameLogic->getFrame() + frameLimitCoount;
+		if (requestedFrameEnd > m_temporaryStateFramEnd) {
+			m_temporaryStateFramEnd = requestedFrameEnd;
+		}
+		return STATE_CONTINUE;
+	}
 #ifdef STATE_MACHINE_DEBUG
 	if (getWantsDebugOutput()) 
 	{
@@ -1132,12 +1149,6 @@ StateReturnType AIStateMachine::setTemporaryState( StateID newStateID, Int frame
 			m_temporaryState = NULL;
 			exitingTemporaryState->onExit(EXIT_NORMAL);
 			return ret;
-		}
-		enum {FRAME_COUNT_MAX = 60*LOGICFRAMES_PER_SECOND};
-		// If you need to up this check, ok, but 1 minute seems overly long for a temporary state override.  jba.
-		DEBUG_ASSERTCRASH(frameLimitCoount<=FRAME_COUNT_MAX, ("Unusually long time to set temporary state."));
-		if (frameLimitCoount>FRAME_COUNT_MAX) {
-			frameLimitCoount = FRAME_COUNT_MAX;
 		}
 		m_temporaryStateFramEnd = TheGameLogic->getFrame()+frameLimitCoount; 
 		return ret;
