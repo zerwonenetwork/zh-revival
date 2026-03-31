@@ -286,18 +286,43 @@ StateMachine::StateMachine( Object *owner, AsciiString name )
  */
 StateMachine::~StateMachine()
 {
+	State* exitingState = m_currentState;
+	m_currentState = NULL;
 
 	// do not allow current state to exit
-	if (m_currentState)
-		m_currentState->onExit( EXIT_RESET );
+	if (exitingState)
+		exitingState->onExit( EXIT_RESET );
 
+	std::vector<State*> statesToDelete;
+	statesToDelete.reserve(m_stateMap.size());
 	std::map<StateID, State *>::iterator i;
 
-	// delete all states in the mapping
+	// Take a unique snapshot first so reentrant teardown cannot double-delete
+	// the same state through duplicate map entries or recursive cleanup.
 	for( i = m_stateMap.begin(); i != m_stateMap.end(); ++i )
 	{
-		if ((*i).second)
-			(*i).second->deleteInstance();
+		State* state = (*i).second;
+		(*i).second = NULL;
+		if (state == NULL)
+			continue;
+
+		Bool alreadyQueued = false;
+		for (std::vector<State*>::const_iterator queued = statesToDelete.begin(); queued != statesToDelete.end(); ++queued)
+		{
+			if (*queued == state)
+			{
+				alreadyQueued = true;
+				break;
+			}
+		}
+
+		if (!alreadyQueued)
+			statesToDelete.push_back(state);
+	}
+
+	for (std::vector<State*>::iterator queued = statesToDelete.begin(); queued != statesToDelete.end(); ++queued)
+	{
+		(*queued)->deleteInstance();
 	}
 }
 

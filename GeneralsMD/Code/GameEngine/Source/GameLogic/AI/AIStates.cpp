@@ -84,11 +84,13 @@ static void destroySubStateMachine(T*& machine, Bool haltFirst = false)
 	if (machine == NULL)
 		return;
 
-	if (haltFirst)
-		machine->halt();
-
-	machine->deleteInstance();
+	T* machineToDestroy = machine;
 	machine = NULL;
+
+	if (haltFirst)
+		machineToDestroy->halt();
+
+	machineToDestroy->deleteInstance();
 }
 
 static Object* getLiveMachineOwner(State* state)
@@ -770,9 +772,12 @@ AIStateMachine::AIStateMachine( Object *obj, AsciiString name ) : StateMachine( 
 //----------------------------------------------------------------------------------------------------------
 AIStateMachine::~AIStateMachine()
 {
-	if (m_goalSquad) 
+	Squad* goalSquad = m_goalSquad;
+	m_goalSquad = NULL;
+
+	if (goalSquad) 
 	{
-		m_goalSquad->deleteInstance();
+		goalSquad->deleteInstance();
 	}
 }
 
