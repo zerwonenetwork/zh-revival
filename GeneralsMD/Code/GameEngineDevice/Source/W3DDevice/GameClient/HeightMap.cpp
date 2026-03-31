@@ -142,13 +142,13 @@ void HeightMapRenderObjClass::freeIndexVertexBuffers(void)
 	if (m_vertexBufferTiles) {
 		for (int i=0; i<m_numVertexBufferTiles; i++)
 			REF_PTR_RELEASE(m_vertexBufferTiles[i]);
-		delete m_vertexBufferTiles;
+		delete [] m_vertexBufferTiles;
 		m_vertexBufferTiles = NULL;
 	}
 	if (m_vertexBufferBackup) {
 		for (int i=0; i<m_numVertexBufferTiles; i++)
-			delete m_vertexBufferBackup[i];
-		delete m_vertexBufferBackup;
+			delete [] m_vertexBufferBackup[i];
+		delete [] m_vertexBufferBackup;
 		m_vertexBufferBackup = NULL;
 	}
 	m_numVertexBufferTiles = 0;
@@ -332,6 +332,21 @@ Int HeightMapRenderObjClass::updateVB(DX8VertexBufferClass	*pVB, char *data, Int
 	AppendStartupTrace("updateVB after REF_PTR_SET m_map");
 	if (m_vertexBufferTiles && pMap && pVB)
 	{
+		if (x0 < originX) {
+			x0 = originX;
+		}
+		if (y0 < originY) {
+			y0 = originY;
+		}
+		if (x1 > originX + VERTEX_BUFFER_TILE_LENGTH) {
+			x1 = originX + VERTEX_BUFFER_TILE_LENGTH;
+		}
+		if (y1 > originY + VERTEX_BUFFER_TILE_LENGTH) {
+			y1 = originY + VERTEX_BUFFER_TILE_LENGTH;
+		}
+		if (x1 <= x0 || y1 <= y0) {
+			return 0;
+		}
 #ifdef _DEBUG
 		assert(x0 >= originX && y0 >= originY && x1>x0 && y1>y0 && x1<=originX+VERTEX_BUFFER_TILE_LENGTH && y1<=originY+VERTEX_BUFFER_TILE_LENGTH);
 #endif
@@ -1036,6 +1051,10 @@ Int HeightMapRenderObjClass::updateBlock(Int x0, Int y0, Int x1, Int y1,  WorldH
 	DEBUG_ASSERTCRASH(y0<=y1, ("HeightMapRenderObjClass::UpdateBlock parameters have inside-out rectangle (on Y)."));
 #endif
 	AppendStartupTrace("updateBlock start x0=%d y0=%d x1=%d y1=%d pMap=%p", x0, y0, x1, y1, pMap);
+	if (!m_vertexBufferTiles || !m_vertexBufferBackup || m_numVBTilesX <= 0 || m_numVBTilesY <= 0) {
+		AppendStartupTrace("updateBlock skip: vertex buffers not ready tiles=%p backup=%p numX=%d numY=%d", m_vertexBufferTiles, m_vertexBufferBackup, m_numVBTilesX, m_numVBTilesY);
+		return -1;
+	}
 	Invalidate_Cached_Bounding_Volumes();
 	AppendStartupTrace("updateBlock after Invalidate_Cached_Bounding_Volumes");
 	if (pMap) {
@@ -1074,8 +1093,14 @@ Int HeightMapRenderObjClass::updateBlock(Int x0, Int y0, Int x1, Int y1,  WorldH
 			}
 			pVB=m_vertexBufferTiles+j*m_numVBTilesX+i;	//point to correct row/column of vertex buffers
 			char **pData = m_vertexBufferBackup+j*m_numVBTilesX+i;
-			AppendStartupTrace("updateBlock before updateVB tile j=%d i=%d vb=%p data=%p xMin=%d yMin=%d xMax=%d yMax=%d", j, i, *pVB, *pData, xMin, yMin, xMax, yMax);
-			updateVB(*pVB, *pData, xMin, yMin, xMax, yMax, originX, originY, pMap, pLightsIterator);
+			DX8VertexBufferClass *vbTile = (pVB != NULL) ? *pVB : NULL;
+			char *backupTile = (pData != NULL) ? *pData : NULL;
+			if (!vbTile || !backupTile) {
+				AppendStartupTrace("updateBlock skip invalid tile j=%d i=%d vb=%p data=%p", j, i, vbTile, backupTile);
+				continue;
+			}
+			AppendStartupTrace("updateBlock before updateVB tile j=%d i=%d vb=%p data=%p xMin=%d yMin=%d xMax=%d yMax=%d", j, i, vbTile, backupTile, xMin, yMin, xMax, yMax);
+			updateVB(vbTile, backupTile, xMin, yMin, xMax, yMax, originX, originY, pMap, pLightsIterator);
 			AppendStartupTrace("updateBlock after updateVB tile j=%d i=%d", j, i);
 		}
 	}
@@ -1397,8 +1422,8 @@ Int HeightMapRenderObjClass::initHeightData(Int x, Int y, WorldHeightMap *pMap, 
 		m_numVertexBufferTiles=m_numVBTilesX*m_numVBTilesY;
 		m_x=x;
 		m_y=y;
-		m_vertexBufferTiles = NEW DX8VertexBufferClass*[m_numVertexBufferTiles];
-		m_vertexBufferBackup = NEW char *[m_numVertexBufferTiles];
+		m_vertexBufferTiles = NEW DX8VertexBufferClass*[m_numVertexBufferTiles]();
+		m_vertexBufferBackup = NEW char *[m_numVertexBufferTiles]();
 
 		Int numVertex = VERTEX_BUFFER_TILE_LENGTH*2*VERTEX_BUFFER_TILE_LENGTH*2;
 
@@ -1741,10 +1766,6 @@ void HeightMapRenderObjClass::updateCenter(CameraClass *camera , RefRenderObjLis
 		return; // no need to center. 
 	}
 
-	Int cellOffset = 1;
-	if (HALF_RES_MESH) {
-		cellOffset = 2;
-	}
 	// determine the ray corresponding to the camera and distance to projection plane
 	Matrix3D camera_matrix = camera->Get_Transform();
 	
@@ -1854,81 +1875,36 @@ void HeightMapRenderObjClass::updateCenter(CameraClass *camera , RefRenderObjLis
 			newOrgX &= 0xFFFFFFFE;
 			newOrgY &= 0xFFFFFFFE;
 		}
+		if (newOrgX < 0) {
+			newOrgX = 0;
+		}
+		if (newOrgY < 0) {
+			newOrgY = 0;
+		}
+		Int maxDrawOrgX = m_map->getXExtent() - m_x;
+		Int maxDrawOrgY = m_map->getYExtent() - m_y;
+		if (maxDrawOrgX < 0) {
+			maxDrawOrgX = 0;
+		}
+		if (maxDrawOrgY < 0) {
+			maxDrawOrgY = 0;
+		}
+		if (newOrgX > maxDrawOrgX) {
+			newOrgX = maxDrawOrgX;
+		}
+		if (newOrgY > maxDrawOrgY) {
+			newOrgY = maxDrawOrgY;
+		}
 		Int deltaX = newOrgX - m_map->getDrawOrgX();
 		Int deltaY = newOrgY - m_map->getDrawOrgY();
-		if (IABS(deltaX) > m_x/2 || IABS(deltaY)>m_x/2) {
-			m_map->setDrawOrg(newOrgX, newOrgY);
-			m_originY = 0;
-			m_originX = 0;
-			updateBlock(0, 0, m_x-1, m_y-1, m_map, pLightsIterator); 
-			m_updating = false;
-			return;
-		}
 
-		if (abs(deltaX)>CENTER_LIMIT || abs(deltaY)>CENTER_LIMIT) {
-			if (abs(deltaY) >= CENTER_LIMIT) {
-				if (m_map->setDrawOrg(m_map->getDrawOrgX(), newOrgY)) {
-					Int minY = 0;
-					Int maxY = 0;
-					deltaY -= newOrgY - m_map->getDrawOrgY(); 
-					m_originY += deltaY;
-					if (m_originY >= m_y-1) m_originY -= m_y-1;
-					if (deltaY<0) {
-						minY = m_originY;
-						maxY = m_originY-deltaY;
-					} else {
-						minY = m_originY - deltaY;
-						maxY = m_originY;
-					}
-					minY-=cellOffset;
-					if (m_originY < 0) m_originY += m_y-1;
-					if (minY<0) {
-						minY += m_y-1;
-						if (minY<0) minY = 0;
-						updateBlock(0, minY, m_x-1, m_y-1, m_map, pLightsIterator);
-						updateBlock(0, 0, m_x-1, maxY, m_map, pLightsIterator);
-					} else {
-						updateBlock(0, minY, m_x-1, maxY, m_map, pLightsIterator);
-					}
-				}
-				// It is much more efficient to update a cople of columns one frame, and then
-				// a couple of rows.  So if we aren't "jumping" to a new view, and have done X
-				// recently, return.
-				if (abs(deltaX) < BIG_JUMP && !m_doXNextTime) {
-					m_updating = false;
-					m_doXNextTime = true;
-					return;	// Only do the y this frame.  Do x next frame.  jba.
-				}
-			}
-			if (abs(deltaX) > CENTER_LIMIT) {
+		if (IABS(deltaX) > m_x/2 || IABS(deltaY)>m_x/2 || abs(deltaX)>CENTER_LIMIT || abs(deltaY)>CENTER_LIMIT) {
+			if (m_map->setDrawOrg(newOrgX, newOrgY)) {
+				m_originY = 0;
+				m_originX = 0;
 				m_doXNextTime = false;
-				newOrgX = m_map->getDrawOrgX() + deltaX;
-				if (m_map->setDrawOrg(newOrgX, m_map->getDrawOrgY())) {
-					Int minX = 0;
-					Int maxX = 0;
-					deltaX -= newOrgX - m_map->getDrawOrgX(); 
-					m_originX += deltaX;
-					if (m_originX >= m_x-1) m_originX -= m_x-1;
-					if (deltaX<0) {
-						minX = m_originX;
-						maxX = m_originX-deltaX;
-					} else {
-						minX = m_originX - deltaX;
-						maxX = m_originX;
-					}
-					minX-=cellOffset;
-					maxX+=cellOffset;
-					if (m_originX < 0) m_originX += m_x-1;
-					if (minX<0) {
-						minX += m_x-1;
-						if (minX<0) minX = 0;
-						updateBlock(minX,0,m_x-1, m_y-1, m_map, pLightsIterator);
-						updateBlock(0,0,maxX, m_y-1, m_map, pLightsIterator);
-					} else {
-						updateBlock(minX,0,maxX, m_y-1, m_map, pLightsIterator);
-					}
-				}
-			} 
+				updateBlock(0, 0, m_x-1, m_y-1, m_map, pLightsIterator);
+			}
 		}
 	}
 	m_updating = false;
