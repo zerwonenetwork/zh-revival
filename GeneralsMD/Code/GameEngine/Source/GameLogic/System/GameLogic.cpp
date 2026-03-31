@@ -152,6 +152,14 @@ GameLogic *TheGameLogic = NULL;
 
 static void findAndSelectCommandCenter(Object *obj, void* alreadyFound);
 
+static AsciiString MakeControlBarOverrideKey(const AsciiString& commandSetName, Int slot)
+{
+	AsciiString key;
+	key.concat(static_cast<char>('0' + slot));
+	key.concat(commandSetName);
+	return key;
+}
+
 
 // ------------------------------------------------------------------------------------------------
 /** This enum is for loading screen bar progress */
@@ -4587,20 +4595,13 @@ Bool GameLogic::findBuildableStatusOverride(const ThingTemplate* tt, BuildableSt
 // ------------------------------------------------------------------------------------------------
 void GameLogic::setControlBarOverride(const AsciiString& commandSetName, Int slot, ConstCommandButtonPtr commandButton)
 {
-	char buf[256];
-	buf[0] = '0' + slot;
-	strcpy(&buf[1], commandSetName.str());
-	m_controlBarOverrides[buf] = commandButton;
+	m_controlBarOverrides[MakeControlBarOverrideKey(commandSetName, slot)] = commandButton;
 }
 
 // ------------------------------------------------------------------------------------------------
 Bool GameLogic::findControlBarOverride(const AsciiString& commandSetName, Int slot, ConstCommandButtonPtr& commandButton) const
 {
-	char buf[256];
-	buf[0] = '0' + slot;
-	strcpy(&buf[1], commandSetName.str());
-
-	ControlBarOverrideMap::const_iterator it = m_controlBarOverrides.find(buf);
+	ControlBarOverrideMap::const_iterator it = m_controlBarOverrides.find(MakeControlBarOverrideKey(commandSetName, slot));
 	if (it != m_controlBarOverrides.end())
 	{
 		commandButton = it->second;	// could be null.
