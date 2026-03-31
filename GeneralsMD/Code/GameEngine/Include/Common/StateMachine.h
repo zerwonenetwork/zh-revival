@@ -303,8 +303,8 @@ public:
 	 * There need not be an object with a machine, but it is so common
 	 * that it is useful to have this method in the generic state machine.
 	 */
-	Object *getOwner() { return m_owner; }
-	const Object *getOwner() const { return m_owner; }
+	Object *getOwner();
+	const Object *getOwner() const;
 
 	// common parameters for state machines
 	void setGoalObject( const Object *obj );
@@ -366,6 +366,7 @@ private:
 
 	std::map<StateID, State *>	m_stateMap;			///< the mapping of ids to states
 	Object*											m_owner;				///< object that "owns" this machine 
+	ObjectID										m_ownerID;			///< stable owner lookup for stale-pointer-safe access
 
 	UnsignedInt		m_sleepTill;									///< if nonzero, we are sleeping 'till this frame
 

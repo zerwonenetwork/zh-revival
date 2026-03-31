@@ -93,12 +93,44 @@ static void destroySubStateMachine(T*& machine, Bool haltFirst = false)
 	machineToDestroy->deleteInstance();
 }
 
+static const Object* ResolveBoundStateObjectPtr(const Object* obj)
+{
+	if (obj == NULL || TheGameLogic == NULL)
+		return NULL;
+
+	ObjectID id = INVALID_ID;
+
+#if defined(_MSC_VER) && defined(_WIN32)
+	__try
+	{
+		id = obj->getID();
+	}
+	__except (EXCEPTION_EXECUTE_HANDLER)
+	{
+		return NULL;
+	}
+#else
+	id = obj->getID();
+#endif
+
+	if (id == INVALID_ID)
+		return NULL;
+
+	Object* live = TheGameLogic->findObjectByID(id);
+	return live == obj ? obj : NULL;
+}
+
+static Object* ResolveBoundStateObjectPtr(Object* obj)
+{
+	return const_cast<Object*>(ResolveBoundStateObjectPtr(static_cast<const Object*>(obj)));
+}
+
 static Object* getLiveMachineOwner(State* state)
 {
 	if (state == NULL)
 		return NULL;
 
-	return state->getMachineOwner();
+	return ResolveBoundStateObjectPtr(state->getMachineOwner());
 }
 
 static AIUpdateInterface* getLiveMachineAI(State* state, Object** ownerOut = NULL)
@@ -111,6 +143,14 @@ static AIUpdateInterface* getLiveMachineAI(State* state, Object** ownerOut = NUL
 		return NULL;
 
 	return owner->getAI();
+}
+
+static Object* getBoundMachineGoalObject(State* state)
+{
+	if (state == NULL)
+		return NULL;
+
+	return ResolveBoundStateObjectPtr(state->getMachineGoalObject());
 }
 
 template <typename T, typename Factory>
@@ -1434,16 +1474,17 @@ Bool outOfWeaponRangePosition( State *thisState, void* userData )
 static Bool cannotPossiblyAttackObject( State *thisState, void* userData )
 {
 	AbleToAttackType attackType = (AbleToAttackType)(uintptr_t)userData;
-	Object *obj = thisState->getMachineOwner();
-	Object *victim = thisState->getMachineGoalObject();
+	Object *obj = getLiveMachineOwner(thisState);
+	Object *victim = getBoundMachineGoalObject(thisState);
+	AIUpdateInterface *ai = obj ? obj->getAI() : NULL;
 
-	if (obj && victim)
+	if (obj && victim && ai)
 	{
 		if( !obj->isAbleToAttack() )
 		{
 			return TRUE; 
 		}
-		CanAttackResult result = obj->getAbleToAttackSpecificObject( attackType, victim, obj->getAI()->getLastCommandSource() );
+		CanAttackResult result = obj->getAbleToAttackSpecificObject( attackType, victim, ai->getLastCommandSource() );
 		if( result != ATTACKRESULT_POSSIBLE && result != ATTACKRESULT_POSSIBLE_AFTER_MOVING )
 		{
 			return TRUE;
@@ -2649,14 +2690,19 @@ Bool AIAttackApproachTargetState::computePath()
 	m_approachTimestamp = TheGameLogic->getFrame();
 
 	// if we have a goal object, move to it, otherwise move to goal position
-	if (getMachineGoalObject())
+	Object* source = getLiveMachineOwner(this);
+	Object* victim = getBoundMachineGoalObject(this);
+	if (source == NULL)
 	{
+		return false;
+	}
 
-		Object* source = getMachineOwner();
+	if (victim)
+	{
 		// if our victim's position hasn't changed, don't re-path
-		if (!forceRepath && isSamePosition(source->getPosition(), &m_prevVictimPos, getMachineGoalObject()->getPosition() ))
+		if (!forceRepath && isSamePosition(source->getPosition(), &m_prevVictimPos, victim->getPosition() ))
 		{
-			CRCDEBUG_LOG(("AIAttackApproachTargetState::computePath - bailing because victim in same place for object %d\n", getMachineOwner()->getID()));
+			CRCDEBUG_LOG(("AIAttackApproachTargetState::computePath - bailing because victim in same place for object %d\n", source->getID()));
 			return true;
 		}
 
@@ -2668,7 +2714,6 @@ Bool AIAttackApproachTargetState::computePath()
 		}
 
 		// remember where we think our victim is, so if it moves, we can re-path
-		Object *victim = getMachineGoalObject();	 
 		m_prevVictimPos = *victim->getPosition();
 		if (canPursue(source, weapon, victim)) 
 		{
@@ -2763,8 +2808,10 @@ StateReturnType AIAttackApproachTargetState::onEnter()
 	// contained by AIAttackState, so no separate timer
 	// urg. hacky. if we are a projectile, turn on precise z-pos.
 	//CRCDEBUG_LOG(("AIAttackApproachTargetState::onEnter() - object %d\n", getMachineOwner()->getID()));
-	Object* source = getMachineOwner();
-	AIUpdateInterface* ai = source->getAI();
+	Object* source = NULL;
+	AIUpdateInterface* ai = getLiveMachineAI(this, &source);
+	if (source == NULL || ai == NULL)
+		return STATE_FAILURE;
 	if (source->isKindOf(KINDOF_PROJECTILE))
 	{
 		if (ai->getCurLocomotor())
@@ -2789,7 +2836,7 @@ StateReturnType AIAttackApproachTargetState::onEnter()
 	m_approachTimestamp = -MIN_RECOMPUTE_TIME;
 
 	// See if we're close enough.
-	Object *victim = getMachineGoalObject();
+	Object *victim = getBoundMachineGoalObject(this);
 	if (victim) 
 	{
 		Weapon* weapon = source->getCurrentWeapon();
@@ -2869,7 +2916,10 @@ StateReturnType AIAttackApproachTargetState::onEnter()
 //----------------------------------------------------------------------------------------------------------
 StateReturnType AIAttackApproachTargetState::updateInternal()
 {
-	AIUpdateInterface* ai = getMachineOwner()->getAI();
+	Object* source = NULL;
+	AIUpdateInterface* ai = getLiveMachineAI(this, &source);
+	if (source == NULL || ai == NULL)
+		return STATE_FAILURE;
 	//CRCDEBUG_LOG(("AIAttackApproachTargetState::updateInternal() - object %d\n", getMachineOwner()->getID()));
 	if (getMachine()->isGoalObjectDestroyed()) 
 	{
@@ -2880,9 +2930,8 @@ StateReturnType AIAttackApproachTargetState::updateInternal()
 	m_stopIfInRange = !ai->isAttackPath();
 
 	StateReturnType code = STATE_FAILURE;
- 	Object* source = getMachineOwner();
 	Weapon* weapon = source->getCurrentWeapon();
-	Object *victim = getMachineGoalObject();
+ 	Object *victim = getBoundMachineGoalObject(this);
 	if (victim) 
 	{ 
  		if (source->getControllingPlayer()->getPlayerType() == PLAYER_COMPUTER) 
@@ -2959,13 +3008,15 @@ StateReturnType AIAttackApproachTargetState::update()
 	// contained by AIAttackState, so no separate timer
 
 	StateReturnType code = updateInternal();
-	Object* source = getMachineOwner();
-	AIUpdateInterface *ai = source->getAI();
+	Object* source = NULL;
+	AIUpdateInterface *ai = getLiveMachineAI(this, &source);
+	if (source == NULL || ai == NULL)
+		return STATE_FAILURE;
 
 	if (m_follow && m_isAttackingObject)
 	{
 		// Basically, if the object is alive, we continue, in case the target moves.
-		Object* victim = getMachineGoalObject();
+		Object* victim = getBoundMachineGoalObject(this);
 		if (source && victim && source->isMobile() && !victim->getTemplate()->isKindOf(KINDOF_IMMOBILE)) 
 		{
 			if (code != STATE_CONTINUE) 
@@ -3000,8 +3051,10 @@ void AIAttackApproachTargetState::onExit( StateExitType status )
 	// contained by AIAttackState, so no separate timer
 	AIInternalMoveToState::onExit( status );
 
-	AIUpdateInterface *ai = getMachineOwner()->getAI();
-	Object *obj = getMachineOwner();
+	Object *obj = NULL;
+	AIUpdateInterface *ai = getLiveMachineAI(this, &obj);
+	if (obj == NULL)
+		return;
 	if (ai) {
 		ai->ignoreObstacle(NULL);
 		
@@ -3010,7 +3063,7 @@ void AIAttackApproachTargetState::onExit( StateExitType status )
 		// users.
 		// ai->destroyPath();
 		// urg. hacky. if we are a projectile, reset precise z-pos.
-		if (getMachineOwner()->isKindOf(KINDOF_PROJECTILE))
+		if (obj->isKindOf(KINDOF_PROJECTILE))
 		{
 			if (ai && ai->getCurLocomotor())
 				ai->getCurLocomotor()->setUsePreciseZPos(false);
@@ -3047,10 +3100,11 @@ Bool AIAttackPursueTargetState::computePath()
 	Bool forceRepath = false;
 
 	// if we're immobile we can't possibly approach the target
-	if( getMachineOwner()->isMobile() == false )
+	Object* owner = getLiveMachineOwner(this);
+	if (owner == NULL || owner->isMobile() == false)
 		return false;
 
-	AIUpdateInterface *ai = getMachineOwner()->getAI();
+	AIUpdateInterface *ai = owner->getAI();
 
 	if (ai->isBlockedAndStuck()) 
 	{
@@ -3072,14 +3126,19 @@ Bool AIAttackPursueTargetState::computePath()
 
 	m_approachTimestamp = TheGameLogic->getFrame();
 
-	DEBUG_ASSERTLOG(getMachineGoalObject(), ("***************************Should only be pursuing objects.  jba"));
+	Object* source = getLiveMachineOwner(this);
+	Object* victim = getBoundMachineGoalObject(this);
+	DEBUG_ASSERTLOG(victim, ("***************************Should only be pursuing objects.  jba"));
 	// if we have a goal object, move to it, otherwise fail & continue to AIAttackApproachTargetState
-	if (getMachineGoalObject())
+	if (source == NULL)
 	{
+		return false;
+	}
 
-		Object* source = getMachineOwner();
+	if (victim)
+	{
 		// if our victim's position hasn't changed, don't re-path
-		if (!forceRepath && isSamePosition(source->getPosition(), &m_prevVictimPos, getMachineGoalObject()->getPosition() ))
+		if (!forceRepath && isSamePosition(source->getPosition(), &m_prevVictimPos, victim->getPosition() ))
 			return true;
 
 		Weapon* weapon = source->getCurrentWeapon();
@@ -3087,12 +3146,11 @@ Bool AIAttackPursueTargetState::computePath()
 		{
 			return false;
 		}
-		if (!canPursue(source, weapon, getMachineGoalObject())) {
+		if (!canPursue(source, weapon, victim)) {
 			return false;
 		}
 
 		// remember where we think our victim is, so if it moves, we can re-path
-		Object *victim = getMachineGoalObject();
 		m_prevVictimPos = *victim->getPosition();
 
 		setAdjustsDestination(true);
@@ -3151,8 +3209,10 @@ StateReturnType AIAttackPursueTargetState::onEnter()
 {
 	// contained by AIAttackState, so no separate timer
 	// If we return STATE_SUCCESS or STATE_FAILURE, we proceed to AIAttackApproachTargetState.
-	Object* source = getMachineOwner();
-	AIUpdateInterface* ai = source->getAI();	 
+	Object* source = NULL;
+	AIUpdateInterface* ai = getLiveMachineAI(this, &source);
+	if (source == NULL || ai == NULL)
+		return STATE_FAILURE;
 
 	if (source->isKindOf(KINDOF_PROJECTILE))
 	{
@@ -3194,7 +3254,7 @@ StateReturnType AIAttackPursueTargetState::onEnter()
 	m_approachTimestamp = -MIN_RECOMPUTE_TIME;
 
 	// See if we're close enough.
-	Object *victim = getMachineGoalObject();
+	Object *victim = getBoundMachineGoalObject(this);
 	if (victim) {	
 		Weapon* weapon = source->getCurrentWeapon();
 		if (!weapon) 
@@ -3230,7 +3290,10 @@ StateReturnType AIAttackPursueTargetState::onEnter()
 //----------------------------------------------------------------------------------------------------------
 StateReturnType AIAttackPursueTargetState::updateInternal()
 {
-	AIUpdateInterface* ai = getMachineOwner()->getAI();	  
+	Object* source = NULL;
+	AIUpdateInterface* ai = getLiveMachineAI(this, &source);
+	if (source == NULL || ai == NULL)
+		return STATE_FAILURE;
 	if (getMachine()->isGoalObjectDestroyed()) 
 	{
 		ai->notifyVictimIsDead();
@@ -3239,9 +3302,8 @@ StateReturnType AIAttackPursueTargetState::updateInternal()
 	}
 	m_stopIfInRange = false;
 
-	Object* source = getMachineOwner();
 	StateReturnType code = STATE_FAILURE;
- 	Object *victim = getMachineGoalObject();
+ 	Object *victim = getBoundMachineGoalObject(this);
 	if (victim) 
 	{ 
 		if( victim->testStatus( OBJECT_STATUS_STEALTHED ) && !victim->testStatus( OBJECT_STATUS_DETECTED ) && !victim->testStatus( OBJECT_STATUS_DISGUISED ) )
@@ -3304,8 +3366,10 @@ StateReturnType AIAttackPursueTargetState::update()
 	// contained by AIAttackState, so no separate timer
 
 	StateReturnType code = updateInternal();
-	Object* source = getMachineOwner();
-	AIUpdateInterface *ai = source->getAI();
+	Object* source = NULL;
+	AIUpdateInterface *ai = getLiveMachineAI(this, &source);
+	if (source == NULL || ai == NULL)
+		return STATE_FAILURE;
 
 	if (m_isInitialApproach) 
 	{
@@ -5203,7 +5267,7 @@ StateReturnType AIAttackAimAtTargetState::onEnter()
 		return STATE_FAILURE;
 
 	Weapon* weapon = source->getCurrentWeapon();
-	Object* victim = getMachineGoalObject();
+	Object* victim = getBoundMachineGoalObject(this);
 	const Coord3D* targetPos = getMachineGoalPosition();
 	if (!m_isAttackingObject && targetPos == NULL)
 		return STATE_FAILURE;
@@ -5313,7 +5377,7 @@ StateReturnType AIAttackAimAtTargetState::update()
 	if (!source->hasAnyWeapon())
 		return STATE_FAILURE;
 
-	Object* victim = getMachineGoalObject();
+	Object* victim = getBoundMachineGoalObject(this);
 	const Coord3D* targetPos = getMachineGoalPosition();
 	if (m_isAttackingObject)
 	{
@@ -5484,7 +5548,7 @@ StateReturnType AIAttackFireWeaponState::onEnter()
 	{
 		return STATE_FAILURE;
 	}
-	Object *victim = getMachineGoalObject();
+	Object *victim = getBoundMachineGoalObject(this);
 
 	if (victim && obj->getTeam()->getPrototype()->getTemplateInfo()->m_attackCommonTarget) {
 		if (obj->getTeam()->getTeamTargetObject()==NULL) {
@@ -5493,7 +5557,7 @@ StateReturnType AIAttackFireWeaponState::onEnter()
 	}
 
 	obj->setStatus( MAKE_OBJECT_STATUS_MASK( OBJECT_STATUS_IS_FIRING_WEAPON ) );
-	obj->preFireCurrentWeapon( getMachineGoalObject() );
+	obj->preFireCurrentWeapon(victim);
 	return STATE_CONTINUE;	
 }
 
@@ -5510,7 +5574,8 @@ StateReturnType AIAttackFireWeaponState::update()
 	AIUpdateInterface *ai = getLiveMachineAI(this, &obj);
 	if (obj == NULL || ai == NULL)
 		return STATE_FAILURE;
-	Object* victim = getMachineGoalObject();
+	Object* victim = getBoundMachineGoalObject(this);
+	ObjectID firedVictimID = victim ? victim->getID() : INVALID_ID;
 
 	if (m_att->isAttackingObject())
 	{
@@ -5558,6 +5623,16 @@ StateReturnType AIAttackFireWeaponState::update()
 
 
 		obj->fireCurrentWeapon(victim);
+		obj = getLiveMachineOwner(this);
+		ai = getLiveMachineAI(this, &obj);
+		if (obj == NULL || ai == NULL)
+			return STATE_FAILURE;
+		victim = ResolveBoundStateObjectPtr(victim);
+		if (victim == NULL && firedVictimID != INVALID_ID && TheGameLogic != NULL)
+		{
+			victim = ResolveBoundStateObjectPtr(TheGameLogic->findObjectByID(firedVictimID));
+		}
+		Object* currentVictim = ResolveBoundStateObjectPtr(ai->getCurrentVictim());
 
 		//Kris: October 21, 2003 - Patch 1.01
 		//Fixes cases where some units couldn't transfer their attack to a different object. One example was Colonel Burton attacking
@@ -5565,9 +5640,10 @@ StateReturnType AIAttackFireWeaponState::update()
 		//to transfer attackers (AIUpdateInterface::transferAttack), it is unable to modify our current victim in our attack state
 		//machine. When we move immediately to the aim state in the same frame as the transfer (after this call in fact), the victim
 		//was still pointing to the building and not the hole we transferred to. This code fixes that.
-		if( victim != ai->getCurrentVictim() )
+		if( victim != currentVictim )
 		{
-			getMachine()->setGoalObject( ai->getCurrentVictim() );
+			getMachine()->setGoalObject(currentVictim);
+			victim = currentVictim;
 		}
 
 		// clear this, just in case.
@@ -5744,7 +5820,7 @@ void AIAttackState::xfer( Xfer *xfer )
 // ------------------------------------------------------------------------------------------------
 void AIAttackState::loadPostProcess( void )
 {
-	Object* victim = getMachineGoalObject();
+	Object* victim = getBoundMachineGoalObject(this);
 	if (victim) 
 	{
 		m_victimTeam = victim->getTeam();
@@ -5774,7 +5850,7 @@ AsciiString AIAttackState::getName(  ) const
 //----------------------------------------------------------------------------------------------------------
 Bool AIAttackState::chooseWeapon()
 {
-	Object* victim = getMachineGoalObject();
+	Object* victim = getBoundMachineGoalObject(this);
 	if (m_isAttackingObject && !victim)
 		return FALSE;
 
@@ -5851,7 +5927,7 @@ StateReturnType AIAttackState::onEnter()
 	// tell the attack machine who the victim of the attack is
 	if (m_isAttackingObject)
 	{
-		Object* victim = getMachineGoalObject();
+		Object* victim = getBoundMachineGoalObject(this);
 		if (victim == NULL || victim->isEffectivelyDead())	
 		{
 			ai->notifyVictimIsDead();
@@ -5921,7 +5997,7 @@ StateReturnType AIAttackState::update()
 
 	if (m_isAttackingObject)
 	{
-		Object* victim = getMachineGoalObject();
+		Object* victim = getBoundMachineGoalObject(this);
 
 		if (victim == NULL || victim->isEffectivelyDead()) 	
 		{
