@@ -340,11 +340,47 @@ static Real calcDistSquared(const Coord3D& a, const Coord3D& b)
 	return sqr(a.x - b.x) + sqr(a.y - b.y) + sqr(a.z - b.z);
 }
 
+//-----------------------------------------------------------------------------
+static Object *ResolveLiveMinefieldCollider(Object *other)
+{
+	if (other == NULL)
+		return NULL;
+
+	if (other->isDestroyed() || other->isEffectivelyDead())
+		return NULL;
+
+	Object *liveOther = TheGameLogic->findObjectByID(other->getID());
+	if (liveOther == NULL || liveOther != other)
+		return NULL;
+
+	if (liveOther->isDestroyed() || liveOther->isEffectivelyDead())
+		return NULL;
+
+	return liveOther;
+}
+
+//-----------------------------------------------------------------------------
+static Bool IsActiveMineClearer(const Object *other)
+{
+	if (other == NULL)
+		return FALSE;
+
+	if (!other->testStatus(OBJECT_STATUS_IS_ATTACKING))
+		return FALSE;
+
+	const Weapon *weapon = other->getCurrentWeapon();
+	if (weapon == NULL)
+		return FALSE;
+
+	return (weapon->getAntiMask() & WEAPON_ANTI_MINE) != 0;
+}
+
 // ------------------------------------------------------------------------------------------------
 //-------------------------------------------------------------------------------------------------
 void MinefieldBehavior::onCollide( Object *other, const Coord3D *loc, const Coord3D *normal )
 {
-	if (other == NULL || other->isEffectivelyDead())
+	other = ResolveLiveMinefieldCollider(other);
+	if (other == NULL)
 		return;
 
 	if (m_virtualMinesRemaining == 0)
@@ -389,8 +425,7 @@ void MinefieldBehavior::onCollide( Object *other, const Coord3D *loc, const Coor
 	// even if we aren't the specific mine they are trying to clear. (however, they must
 	// have a real mine they area trying to clear... it's possible they could be trying to
 	// clear a position where there is no mine, in which case we grant them no immunity, muwahahaha)
-	AIUpdateInterface* otherAI = other->getAI();
-	if (otherAI && otherAI->isClearingMines() && otherAI->getGoalObject() != NULL)
+	if (IsActiveMineClearer(other))
 	{
 		// mine-clearers are granted immunity to us for as long as they continuously
 		// collide, even if no longer clearing mines. (this prevents the problem
