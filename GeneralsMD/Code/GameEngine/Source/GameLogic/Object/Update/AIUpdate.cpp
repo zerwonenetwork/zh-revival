@@ -291,11 +291,12 @@ AIUpdateInterface::AIUpdateInterface( Thing *thing, const ModuleData* moduleData
 
 	// ---------------------------------------------
 
+	const AIUpdateModuleData* data = getAIUpdateModuleData();
 	for (i = 0; i < MAX_TURRETS; i++)
 	{
-		if (getAIUpdateModuleData()->m_turretData[i])
+		if (data && data->m_turretData[i])
 		{
-			m_turretAI[i] = newInstance(TurretAI)(getObject(), getAIUpdateModuleData()->m_turretData[i], (WhichTurretType)i);
+			m_turretAI[i] = newInstance(TurretAI)(getObject(), data->m_turretData[i], (WhichTurretType)i);
 		}
 	}
 
@@ -317,6 +318,8 @@ void AIUpdateInterface::setSurrendered( const Object *objWeSurrenderedTo, Bool s
 		Bool wasSurrendered = isSurrendered();
 
 		const AIUpdateModuleData* d = getAIUpdateModuleData();
+		if (!d)
+			return;
 
 		if (m_surrenderedFramesLeft < d->m_surrenderDuration)
 			m_surrenderedFramesLeft = d->m_surrenderDuration;
@@ -836,7 +839,11 @@ Bool AIUpdateInterface::chooseLocomotorSet(LocomotorSetType wst)
 // it does no sanity checking; it just jams it in.
 Bool AIUpdateInterface::chooseLocomotorSetExplicit(LocomotorSetType wst)
 {
-	const LocomotorTemplateVector* set = getAIUpdateModuleData()->findLocomotorTemplateVector(wst);
+	const AIUpdateModuleData* data = getAIUpdateModuleData();
+	if (!data)
+		return FALSE;
+
+	const LocomotorTemplateVector* set = data->findLocomotorTemplateVector(wst);
 	if (set)
 	{
 		m_locomotorSet.clear();
@@ -2608,8 +2615,7 @@ Bool AIUpdateInterface::isAllowedToRespondToAiCommands(const AICommandParms* par
 		return FALSE;
 
   const AIUpdateModuleData *data = getAIUpdateModuleData();
-
-  Bool forbidden = data->m_forbidPlayerCommands;
+  Bool forbidden = data ? data->m_forbidPlayerCommands : FALSE;
 
   if ( parms->m_cmdSource == CMD_FROM_PLAYER && forbidden )
     return FALSE; 
@@ -4484,7 +4490,9 @@ Bool AIUpdateInterface::canAutoAcquireWhileStealthed() const
 { 
   if ( getObject() && getObject()->getStealth() && getObject()->getStealth()->isGrantedBySpecialPower() )
     return TRUE;
-  return getAIUpdateModuleData()->m_autoAcquireEnemiesWhenIdle & AAS_Idle_Stealthed;
+
+  const AIUpdateModuleData* data = getAIUpdateModuleData();
+  return data ? (data->m_autoAcquireEnemiesWhenIdle & AAS_Idle_Stealthed) : FALSE;
 }
 
 
@@ -4505,6 +4513,8 @@ Object* AIUpdateInterface::getNextMoodTarget( Bool calledByAI, Bool calledDuring
 	}
 
 	const AIUpdateModuleData* d = getAIUpdateModuleData();
+	if (!d)
+		return NULL;
 	
 	if (calledDuringIdle)
 	{
