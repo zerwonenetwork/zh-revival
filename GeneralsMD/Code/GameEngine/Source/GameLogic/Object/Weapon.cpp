@@ -579,7 +579,7 @@ Bool WeaponTemplate::isContactWeapon() const
 }
 
 //-------------------------------------------------------------------------------------------------
-Real WeaponTemplate::estimateWeaponTemplateDamage(
+Real WeaponTemplate::estimateWeaponTemplateDamageImpl(
 	const Object *sourceObj, 
 	const Object *victimObj, 
 	const Coord3D* victimPos, 
@@ -678,6 +678,27 @@ Real WeaponTemplate::estimateWeaponTemplateDamage(
 		damageInfo.m_amount = damageAmount;
 		return victimObj->estimateDamage(damageInfo);
 	}
+}
+
+Real WeaponTemplate::estimateWeaponTemplateDamage(
+	const Object *sourceObj, 
+	const Object *victimObj, 
+	const Coord3D* victimPos, 
+	const WeaponBonus& bonus
+) const
+{
+#if defined(_MSC_VER) && defined(_WIN32)
+	__try
+	{
+		return estimateWeaponTemplateDamageImpl(sourceObj, victimObj, victimPos, bonus);
+	}
+	__except (EXCEPTION_EXECUTE_HANDLER)
+	{
+		return 0.0f;
+	}
+#else
+	return estimateWeaponTemplateDamageImpl(sourceObj, victimObj, victimPos, bonus);
+#endif
 }
 
 //-------------------------------------------------------------------------------------------------
@@ -2420,7 +2441,7 @@ Real Weapon::getAttackDistance(const Object *source, const Object *victimObj, co
 }
 
 //-------------------------------------------------------------------------------------------------
-Real Weapon::estimateWeaponDamage(const Object *sourceObj, const Object *victimObj, const Coord3D* victimPos)
+Real Weapon::estimateWeaponDamageImpl(const Object *sourceObj, const Object *victimObj, const Coord3D* victimPos)
 {
 	if (!m_template || !sourceObj || (!victimObj && !victimPos))
 		return 0.0f;
@@ -2440,6 +2461,22 @@ Real Weapon::estimateWeaponDamage(const Object *sourceObj, const Object *victimO
 	computeBonus(sourceObj, 0, bonus);
 
 	return m_template->estimateWeaponTemplateDamage(sourceObj, victimObj, victimPos, bonus);
+}
+
+Real Weapon::estimateWeaponDamage(const Object *sourceObj, const Object *victimObj, const Coord3D* victimPos)
+{
+#if defined(_MSC_VER) && defined(_WIN32)
+	__try
+	{
+		return estimateWeaponDamageImpl(sourceObj, victimObj, victimPos);
+	}
+	__except (EXCEPTION_EXECUTE_HANDLER)
+	{
+		return 0.0f;
+	}
+#else
+	return estimateWeaponDamageImpl(sourceObj, victimObj, victimPos);
+#endif
 }
 
 //-------------------------------------------------------------------------------------------------

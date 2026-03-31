@@ -476,6 +476,13 @@ protected:
 	void trimOldHistoricDamage() const;
 
 private:
+	Real estimateWeaponTemplateDamageImpl(
+		const Object *sourceObj,
+		const Object *victimObj,
+		const Coord3D* victimPos,
+		const WeaponBonus& bonus
+	) const;
+
 	
 	// NOTE: m_nextTemplate will be cleaned up if it is NON-NULL.
 	WeaponTemplate *m_nextTemplate;
@@ -787,6 +794,8 @@ protected:
 
 
 private:
+	Real estimateWeaponDamageImpl(const Object *sourceObj, const Object *victimObj, const Coord3D* victimPos);
+
 	const WeaponTemplate*			m_template;									///< the kind of weapon this is
 	WeaponSlotType						m_wslot;										///< are we primary, secondary, etc. weapon? (used for projectile placement on reload)
 	mutable WeaponStatus			m_status;										///< weapon status 
