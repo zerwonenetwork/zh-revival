@@ -91,6 +91,26 @@ static void destroySubStateMachine(T*& machine, Bool haltFirst = false)
 	machine = NULL;
 }
 
+static Object* getLiveMachineOwner(State* state)
+{
+	if (state == NULL)
+		return NULL;
+
+	return state->getMachineOwner();
+}
+
+static AIUpdateInterface* getLiveMachineAI(State* state, Object** ownerOut = NULL)
+{
+	Object* owner = getLiveMachineOwner(state);
+	if (ownerOut != NULL)
+		*ownerOut = owner;
+
+	if (owner == NULL)
+		return NULL;
+
+	return owner->getAI();
+}
+
 //----------------------------------------------------------------------------------------------------------
 AICommandParms::AICommandParms(AICommandType cmd, CommandSourceType cmdSource) : 
 	m_cmd(cmd),
@@ -4030,16 +4050,15 @@ StateReturnType AIFollowWaypointPathState::onEnter()
 	m_appendGoalPosition = false; // not moving off the map at this point.
 	m_priorWaypoint = NULL;
 	m_currentWaypoint = ((AIStateMachine *)getMachine())->getGoalWaypoint();
-	AIUpdateInterface *ai = getMachineOwner()->getAI();
+	Object *obj = NULL;
+	AIUpdateInterface *ai = getLiveMachineAI(this, &obj);
+	if (obj == NULL || ai == NULL)
+		return STATE_FAILURE;
 
 	if (m_currentWaypoint == NULL && !m_moveAsGroup)		return STATE_FAILURE;
 
-	getMachine()->setGoalPosition(m_currentWaypoint->getLocation());
-
 	m_framesSleeping = 0;
 	m_groupOffset.x = m_groupOffset.y = 0;
-
-	Object *obj = getMachineOwner();
 /*	Interesting thought experiment.  Didn't work well. jba
 	Real distSqrLimit = 9*obj->getGeometryInfo().getMajorRadius()*obj->getGeometryInfo().getMajorRadius();
 	const Waypoint *way = m_currentWaypoint;
@@ -4062,8 +4081,11 @@ StateReturnType AIFollowWaypointPathState::onEnter()
 
 
 	Real speed = FAST_AS_POSSIBLE;
+	Team *team = obj->getTeam();
 	if (m_moveAsGroup && m_currentWaypoint) {
-		obj->getTeam()->setCurrentWaypoint(m_currentWaypoint);
+		if (team == NULL)
+			return STATE_FAILURE;
+		team->setCurrentWaypoint(m_currentWaypoint);
 		AIGroup *group = ai->getGroup();
 		if (group) {
 			speed = group->getSpeed();
@@ -4075,8 +4097,14 @@ StateReturnType AIFollowWaypointPathState::onEnter()
 		}
 	}
 	if (m_currentWaypoint==NULL && m_moveAsGroup) {
-		m_currentWaypoint = obj->getTeam()->getCurrentWaypoint();
+		if (team == NULL)
+			return STATE_FAILURE;
+		m_currentWaypoint = team->getCurrentWaypoint();
 	}
+	if (m_currentWaypoint == NULL)
+		return STATE_FAILURE;
+
+	getMachine()->setGoalPosition(m_currentWaypoint->getLocation());
 	// set initial movement goal
 	computeGoal(m_moveAsGroup);
 	StateReturnType ret = AIInternalMoveToState::onEnter();
@@ -4116,7 +4144,7 @@ void AIFollowWaypointPathState::onExit( StateExitType status )
 	AIInternalMoveToState::onExit( status );
 
 	// turn off precision-z-pos when we exit, just in case.
-	AIUpdateInterface *ai = getMachineOwner()->getAI();
+	AIUpdateInterface *ai = getLiveMachineAI(this);
 	if (ai && ai->getCurLocomotor()) {
 		ai->getCurLocomotor()->setUsePreciseZPos(false);
 		ai->getCurLocomotor()->setUltraAccurate(false);
@@ -4130,8 +4158,10 @@ StateReturnType AIFollowWaypointPathState::update()
 		m_framesSleeping--;
 		return STATE_CONTINUE;
 	}
-	Object *obj = getMachineOwner();
- 	AIUpdateInterface *ai = obj->getAI();
+	Object *obj = NULL;
+	AIUpdateInterface *ai = getLiveMachineAI(this, &obj);
+	if (obj == NULL || ai == NULL || m_currentWaypoint == NULL)
+		return STATE_FAILURE;
 
 
 	getMachine()->setGoalPosition(m_currentWaypoint->getLocation());
@@ -4147,15 +4177,18 @@ StateReturnType AIFollowWaypointPathState::update()
 
 	if (m_appendGoalPosition) {	 
 		Path *thePath = ai->getPath();
-		if (!ai->isWaitingForPath() && ai->getPath()) {
+		if (!ai->isWaitingForPath() && thePath) {
 			//Coord3D pathEnd = *thePath->getLastNode()->getPosition();
 			thePath->appendNode(&m_goalPosition, LAYER_GROUND);	// waypoints are always on the ground.
 			m_appendGoalPosition = false; // just did it.
 		}
 	}
-	if (m_moveAsGroup && m_currentWaypoint != obj->getTeam()->getCurrentWaypoint()) {
+	Team *team = obj->getTeam();
+	if (m_moveAsGroup && (team == NULL || m_currentWaypoint != team->getCurrentWaypoint())) {
 		m_priorWaypoint = m_currentWaypoint;
-		m_currentWaypoint = obj->getTeam()->getCurrentWaypoint();
+		if (team == NULL)
+			return STATE_FAILURE;
+		m_currentWaypoint = team->getCurrentWaypoint();
 		if (m_currentWaypoint == NULL) {
 			return STATE_SUCCESS;
 		}			 
@@ -4184,8 +4217,9 @@ StateReturnType AIFollowWaypointPathState::update()
 	// If it is, then we compute the group centroid, and see if it is within some distance of the 
 	if (m_moveAsGroup) {
 		if (obj->getControllingPlayer()->isSkirmishAIPlayer()) {
-			Team *team = obj->getTeam();
 			AIGroup *group = TheAI->createGroup();
+			if (team == NULL || group == NULL)
+				return STATE_FAILURE;
 			team->getTeamAsAIGroup(group);
 
 			Coord3D pos;
@@ -4226,7 +4260,9 @@ StateReturnType AIFollowWaypointPathState::update()
 			return STATE_SUCCESS;
 		}
 		if (m_moveAsGroup) {
-			obj->getTeam()->setCurrentWaypoint(m_currentWaypoint);
+			if (team == NULL)
+				return STATE_FAILURE;
+			team->setCurrentWaypoint(m_currentWaypoint);
 		} 
 		
 		computeGoal(false);
@@ -4301,16 +4337,16 @@ void AIFollowWaypointPathExactState::loadPostProcess( void )
 StateReturnType AIFollowWaypointPathExactState::onEnter()
 {
 	const Waypoint *currentWaypoint = ((AIStateMachine *)getMachine())->getGoalWaypoint();
-	AIUpdateInterface *ai = getMachineOwner()->getAI();
+	Object *obj = NULL;
+	AIUpdateInterface *ai = getLiveMachineAI(this, &obj);
 
-	if (currentWaypoint == NULL) return STATE_FAILURE;
+	if (obj == NULL || ai == NULL || currentWaypoint == NULL)
+		return STATE_FAILURE;
 
 	getMachine()->setGoalPosition(currentWaypoint->getLocation());
 
 	Coord2D groupOffset;
 	groupOffset.x = groupOffset.y = 0;
-
-	Object *obj = getMachineOwner();
 
 	Real speed = FAST_AS_POSSIBLE;
 	if (m_moveAsGroup) {
@@ -4330,7 +4366,8 @@ StateReturnType AIFollowWaypointPathExactState::onEnter()
 	StateReturnType ret = AIInternalMoveToState::onEnter();
 	ai->setPathFromWaypoint(currentWaypoint, &groupOffset);	
 	m_lastWaypoint = currentWaypoint;
-	ai->getCurLocomotor()->setAllowInvalidPosition(true); // allow it to move off the map.
+	if (ai->getCurLocomotor())
+		ai->getCurLocomotor()->setAllowInvalidPosition(true); // allow it to move off the map.
 
 	//Kris: October 4, 2002 -- Commented out by guidance of John A.
 	//			Artist couldn't load his map, and turned out that it was because
@@ -4350,11 +4387,12 @@ void AIFollowWaypointPathExactState::onExit( StateExitType status )
 	AIInternalMoveToState::onExit( status );
 
 	// turn off precision-z-pos when we exit, just in case.
-	AIUpdateInterface *ai = getMachineOwner()->getAI();
+	AIUpdateInterface *ai = getLiveMachineAI(this);
 	if (ai) {
 		ai->setCompletedWaypoint(m_lastWaypoint);			
 		ai->setCanPathThroughUnits(false);
-		ai->getCurLocomotor()->setAllowInvalidPosition(false); // turn off allow it to move off the map.
+		if (ai->getCurLocomotor())
+			ai->getCurLocomotor()->setAllowInvalidPosition(false); // turn off allow it to move off the map.
 	}
 }
 
@@ -4362,8 +4400,10 @@ void AIFollowWaypointPathExactState::onExit( StateExitType status )
 StateReturnType AIFollowWaypointPathExactState::update()
 {
 
-	AIUpdateInterface *ai = getMachineOwner()->getAI();
-	if (ai) ai->setCanPathThroughUnits(true);
+	AIUpdateInterface *ai = getLiveMachineAI(this);
+	if (ai == NULL)
+		return STATE_FAILURE;
+	ai->setCanPathThroughUnits(true);
 	// do movement
 	StateReturnType status = AIInternalMoveToState::update();
 
@@ -4439,6 +4479,9 @@ AsciiString AIAttackFollowWaypointPathState::getName(  ) const
 //-------------------------------------------------------------------------------------------------
 StateReturnType AIAttackFollowWaypointPathState ::onEnter()
 {
+	if (m_attackFollowMachine == NULL)
+		return STATE_FAILURE;
+
 	m_attackFollowMachine->clear();
 	m_attackFollowMachine->setState( AI_IDLE );	
 
@@ -4449,8 +4492,10 @@ StateReturnType AIAttackFollowWaypointPathState ::onEnter()
 StateReturnType AIAttackFollowWaypointPathState::update()
 {
 
-	Object *owner = getMachineOwner();
-	AIUpdateInterface *ai = owner->getAI();
+	Object *owner = NULL;
+	AIUpdateInterface *ai = getLiveMachineAI(this, &owner);
+	if (owner == NULL || ai == NULL || m_attackFollowMachine == NULL)
+		return STATE_FAILURE;
 
 	Bool forceRetargetThisFrame = false;
 	Bool shouldRepathThisFrame = false;
@@ -4512,7 +4557,8 @@ StateReturnType AIAttackFollowWaypointPathState::update()
 //-------------------------------------------------------------------------------------------------
 void AIAttackFollowWaypointPathState ::onExit( StateExitType status )
 {
-	m_attackFollowMachine->setState(AI_IDLE);
+	if (m_attackFollowMachine)
+		m_attackFollowMachine->setState(AI_IDLE);
 	AIFollowWaypointPathState::onExit(status);
 }
 
@@ -4565,9 +4611,10 @@ StateReturnType AIWanderState::onEnter()
 {
 	m_currentWaypoint = ((AIStateMachine *)getMachine())->getGoalWaypoint();
 
-	AIUpdateInterface *ai = getMachineOwner()->getAI();
+	Object *obj = NULL;
+	AIUpdateInterface *ai = getLiveMachineAI(this, &obj);
 	m_priorWaypoint = NULL;
-	if (m_currentWaypoint == NULL || ai==NULL)
+	if (obj == NULL || m_currentWaypoint == NULL || ai == NULL)
 		return STATE_FAILURE;
 	m_groupOffset.x = m_groupOffset.y = 0;
 	Locomotor* curLoco = ai->getCurLocomotor();
@@ -4578,7 +4625,7 @@ StateReturnType AIWanderState::onEnter()
 		m_groupOffset.y = GameLogicRandomValue(-delta, delta)*PATHFIND_CELL_SIZE_F;
 	}
 	m_timer = 0;
-	m_waitFrames = 10 + (getMachineOwner()->getID() & 0x7);
+	m_waitFrames = 10 + (obj->getID() & 0x7);
 	// set initial movement goal
 	computeGoal(false);
 	StateReturnType ret = AIInternalMoveToState::onEnter();
@@ -4591,7 +4638,9 @@ StateReturnType AIWanderState::onEnter()
 StateReturnType AIWanderState::update()
 {
 	// do movement
-	Object *obj = getMachineOwner();
+	Object *obj = getLiveMachineOwner(this);
+	if (obj == NULL)
+		return STATE_FAILURE;
 	StateReturnType status = AIInternalMoveToState::update();
 	if (obj->isKindOf(KINDOF_CAN_BE_REPULSED)) {
 		m_timer--;
@@ -4607,6 +4656,8 @@ StateReturnType AIWanderState::update()
 	if (status != STATE_CONTINUE)
 	{
 		AIUpdateInterface *ai = obj->getAI();
+		if (ai == NULL)
+			return STATE_FAILURE;
 
 		m_currentWaypoint = getNextWaypoint();
 		// if there are no links from this waypoint, we're done
@@ -4685,12 +4736,14 @@ void AIWanderInPlaceState::loadPostProcess( void )
 // ------------------------------------------------------------------------------------------------
 StateReturnType AIWanderInPlaceState::onEnter()
 {
-	m_origin = *getMachineOwner()->getPosition();
+	Object *obj = getLiveMachineOwner(this);
+	AIUpdateInterface *ai = getLiveMachineAI(this);
+	if (obj == NULL || ai == NULL)
+		return STATE_FAILURE;
 
-	AIUpdateInterface *ai = getMachineOwner()->getAI();
-	if (ai) {
-		ai->chooseLocomotorSet(LOCOMOTORSET_WANDER);
-	}
+	m_origin = *obj->getPosition();
+
+	ai->chooseLocomotorSet(LOCOMOTORSET_WANDER);
 
 	Int delta = 3;
 	if (ai->getCurLocomotor()) {
@@ -4703,7 +4756,7 @@ StateReturnType AIWanderInPlaceState::onEnter()
 	m_goalPosition.x += offset.x;
 	m_goalPosition.y += offset.y;
 	m_timer = 0;
-	m_waitFrames = 10 + (getMachineOwner()->getID() & 0x7);
+	m_waitFrames = 10 + (obj->getID() & 0x7);
 	StateReturnType ret = AIInternalMoveToState::onEnter();
 	return ret;
 }
@@ -4715,9 +4768,10 @@ StateReturnType AIWanderInPlaceState::update()
 	// do movement
 	StateReturnType status = AIInternalMoveToState::update();
 
-	Object *obj = getMachineOwner();
-	AIUpdateInterface *ai = getMachineOwner()->getAI();
-	if (!ai) return STATE_FAILURE;
+	Object *obj = getLiveMachineOwner(this);
+	AIUpdateInterface *ai = getLiveMachineAI(this);
+	if (obj == NULL || ai == NULL)
+		return STATE_FAILURE;
 	if (obj->isKindOf(KINDOF_CAN_BE_REPULSED)) {
 		m_timer--;
 		if (m_timer<0) {
@@ -4798,9 +4852,9 @@ StateReturnType AIPanicState::onEnter()
 {
 	m_currentWaypoint = ((AIStateMachine *)getMachine())->getGoalWaypoint();
 
-	Object *obj = getMachineOwner();
-	AIUpdateInterface *ai = obj->getAI();
-	if (m_currentWaypoint == NULL)
+	Object *obj = NULL;
+	AIUpdateInterface *ai = getLiveMachineAI(this, &obj);
+	if (obj == NULL || ai == NULL || m_currentWaypoint == NULL)
 		return STATE_FAILURE;
 	// set initial movement goal
 	Locomotor* curLoco = ai->getCurLocomotor();
@@ -4814,13 +4868,10 @@ StateReturnType AIPanicState::onEnter()
 	StateReturnType ret = AIInternalMoveToState::onEnter();
 
 	m_timer = 0;
-	m_waitFrames = 10 + (getMachineOwner()->getID() & 0x7);
+	m_waitFrames = 10 + (obj->getID() & 0x7);
 	// Update the extra path distance.   AIInternalMoveToState::onEnter resets it.
 	ai->setPathExtraDistance(calcExtraPathDistance());
-	if (obj)
-	{
-		obj->setModelConditionState(MODELCONDITION_PANICKING);
-	}
+	obj->setModelConditionState(MODELCONDITION_PANICKING);
 
 	return ret;
 }
@@ -4831,7 +4882,9 @@ StateReturnType AIPanicState::update()
 	// do movement
 	StateReturnType status = AIInternalMoveToState::update();
 
-	Object *obj = getMachineOwner();
+	Object *obj = getLiveMachineOwner(this);
+	if (obj == NULL)
+		return STATE_FAILURE;
 	if (obj->isKindOf(KINDOF_CAN_BE_REPULSED)) {
 		m_timer--;
 		if (m_timer<0) {
@@ -4846,8 +4899,9 @@ StateReturnType AIPanicState::update()
 	// if move to has finished, move to next point on waypoint path
 	if (status == STATE_SUCCESS)
 	{
-		Object *obj = getMachineOwner();
 		AIUpdateInterface *ai = obj->getAI();
+		if (ai == NULL)
+			return STATE_FAILURE;
 
 		m_currentWaypoint = getNextWaypoint();
 		// if there are no links from this waypoint, we're done
@@ -4876,8 +4930,9 @@ StateReturnType AIPanicState::update()
 //----------------------------------------------------------------------------------------------------------
 void AIPanicState::onExit( StateExitType status )
 {
-	Object *obj = getMachineOwner();
-	obj->clearModelConditionState(MODELCONDITION_PANICKING);
+	Object *obj = getLiveMachineOwner(this);
+	if (obj)
+		obj->clearModelConditionState(MODELCONDITION_PANICKING);
 	AIInternalMoveToState::onExit( status );
 }
 
