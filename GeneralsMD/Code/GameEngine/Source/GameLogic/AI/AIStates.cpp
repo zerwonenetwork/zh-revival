@@ -5530,7 +5530,13 @@ void AIAttackState::loadPostProcess( void )
 	{
 		m_victimTeam = victim->getTeam();
 	}
-	Object* source = getMachineOwner();
+	Object* source = getLiveMachineOwner(this);
+	if (source == NULL)
+	{
+		m_lockedWeaponOnEnter = NULL;
+		return;
+	}
+
 	m_lockedWeaponOnEnter = source->isCurWeaponLocked() ? source->getCurrentWeapon() : NULL;
 }  // end loadPostProcess
 
@@ -5553,8 +5559,10 @@ Bool AIAttackState::chooseWeapon()
 	if (m_isAttackingObject && !victim)
 		return FALSE;
 
-	Object* source = getMachineOwner();
-	AIUpdateInterface *ai = source->getAI();
+	Object* source = NULL;
+	AIUpdateInterface *ai = getLiveMachineAI(this, &source);
+	if (source == NULL || ai == NULL)
+		return FALSE;
 
 	Bool found = FALSE;
 //	if (victim) // Pardon?  We still need to pick a weapon if we are attacking the ground.
@@ -5589,8 +5597,10 @@ StateReturnType AIAttackState::onEnter()
 {
 	USE_PERF_TIMER(AIAttackState)
 	//CRCDEBUG_LOG(("AIAttackState::onEnter() - start for object %d\n", getMachineOwner()->getID()));
-	Object* source = getMachineOwner();
-	AIUpdateInterface *ai = source->getAI();
+	Object* source = NULL;
+	AIUpdateInterface *ai = getLiveMachineAI(this, &source);
+	if (source == NULL || ai == NULL)
+		return STATE_FAILURE;
 	// if we are in sleep mode, we will not attack
 	if ((ai->getMoodMatrixActionAdjustment(MM_Action_Attack) & MAA_Action_Ok) == 0)
 		return STATE_SUCCESS;
@@ -5678,7 +5688,10 @@ StateReturnType AIAttackState::update()
 		return STATE_SUCCESS;
 	}
 
-	Object* source = getMachineOwner();
+	Object* source = NULL;
+	AIUpdateInterface *ai = getLiveMachineAI(this, &source);
+	if (source == NULL || ai == NULL || m_attackMachine == NULL)
+		return STATE_FAILURE;
 	
 	// if all of our weapons are out of ammo, can't attack.
 	// (this can happen for units which never auto-reload, like the Raptor)
@@ -5693,13 +5706,13 @@ StateReturnType AIAttackState::update()
 
 		if (victim == NULL || victim->isEffectivelyDead()) 	
 		{
-			source->getAI()->notifyVictimIsDead();
+			ai->notifyVictimIsDead();
 			return STATE_SUCCESS;	// my, that was easy
 		}
 
 		if (victim) 
 		{
-			source->getAI()->setCurrentVictim(victim);
+			ai->setCurrentVictim(victim);
 		}
 
 		if( victim->getTeam() != m_victimTeam )
@@ -5708,7 +5721,6 @@ StateReturnType AIAttackState::update()
 			//(a recently de-garrisoned building) I should bail here... 
 			// We are not sure whether the problem occurs here or sometime before, but this is an edge case failsafe for it
 			// Steven calls this hack 'greasy,' and I agreesy.-Lorenzen
-			AIUpdateInterface *ai = source->getAI();
 			if (ai)
 			{
 				if( !victim->getStatusBits().test( OBJECT_STATUS_CAN_ATTACK ) )
@@ -5947,8 +5959,12 @@ AsciiString AIAttackSquadState::getName(  ) const
  */
 StateReturnType AIAttackSquadState::onEnter( void )
 {
+	Object* owner = getLiveMachineOwner(this);
+	if (owner == NULL)
+		return STATE_FAILURE;
+
 	// create new state machine for attack behavior
-	m_attackSquadMachine = newInstance(AIAttackThenIdleStateMachine)( getMachineOwner(), "AIAttackMachine"  );
+	m_attackSquadMachine = newInstance(AIAttackThenIdleStateMachine)( owner, "AIAttackMachine"  );
 	
 	Object *victim = chooseVictim();
 	// tell the attack machine who the victim of the attack is
@@ -5965,11 +5981,15 @@ StateReturnType AIAttackSquadState::onEnter( void )
 
 StateReturnType AIAttackSquadState::update( void )
 {
-
 	if( !m_attackSquadMachine )
 	{
 		return STATE_FAILURE;
 	}
+
+	Object* owner = NULL;
+	AIUpdateInterface *ai = getLiveMachineAI(this, &owner);
+	if (owner == NULL || ai == NULL)
+		return STATE_FAILURE;
 
 	/* 
 		Note the use of CONVERT_SLEEP_TO_CONTINUE; even if the sub-machine
@@ -5984,7 +6004,6 @@ StateReturnType AIAttackSquadState::update( void )
 	}
 
 	// Check to see if we have created a crate we need to pick up.
-	AIUpdateInterface *ai = getMachineOwner()->getAI();
 	Object* crate = ai->checkForCrateToPickup();
 	if (crate)
 	{
@@ -6023,8 +6042,10 @@ Object *AIAttackSquadState::chooseVictim(void)
 		return NULL;
 	}
 
-	Object *owner = getMachineOwner();
-	AIUpdateInterface *ai = owner->getAI();
+	Object *owner = NULL;
+	AIUpdateInterface *ai = getLiveMachineAI(this, &owner);
+	if (owner == NULL || ai == NULL)
+		return NULL;
 	UnsignedInt moodVal = ai->getMoodMatrixValue();
 	
 	if (moodVal & MM_Controller_AI) 
