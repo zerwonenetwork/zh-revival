@@ -69,6 +69,7 @@
 #include "GameClient/View.h"
 #include "GameClient/Water.h"
 
+#include "GameLogic/GameLogic.h"
 #include "GameLogic/AIPathfind.h"
 #include "GameLogic/TerrainLogic.h"
 #include "W3DDevice/GameClient/TerrainTex.h"
@@ -97,6 +98,18 @@
 #include "Common/UnitTimings.h" //Contains the DO_UNIT_TIMINGS define jba.
 
 extern void AppendStartupTrace(const char *format, ...);
+
+static Bool UseShellTerrainCompatibilityPath(void)
+{
+	return TheGameLogic && TheGameLogic->isInShellGame();
+}
+
+static void RestoreTerrainCompatTexture(CloudMapTerrainTextureClass *texture)
+{
+	if (texture) {
+		texture->restore();
+	}
+}
 
 #ifdef _INTERNAL
 // for occasional debugging...
@@ -1920,6 +1933,10 @@ void HeightMapRenderObjClass::updateCenter(CameraClass *camera , RefRenderObjLis
 void HeightMapRenderObjClass::Render(RenderInfoClass & rinfo)
 {
 	//USE_PERF_TIMER(Terrain_Render)
+
+	if (!m_indexBuffer || !m_vertexBufferTiles) {
+		return;
+	}
 	
 	Int i,j,devicePasses;
 	W3DShaderManager::ShaderTypes st;
@@ -1963,7 +1980,7 @@ void HeightMapRenderObjClass::Render(RenderInfoClass & rinfo)
 
 	// Force shaders to update.
 	if (!m_stageTwoTexture) return;	// textures not yet initialized; skip render
-	m_stageTwoTexture->restore();
+	RestoreTerrainCompatTexture(m_stageTwoTexture);
 	DX8Wrapper::Set_Texture(0,NULL);
 	DX8Wrapper::Set_Texture(1,NULL);
 	ShaderClass::Invalidate();
@@ -2080,11 +2097,15 @@ void HeightMapRenderObjClass::Render(RenderInfoClass & rinfo)
 				count++;
 				Int numPolys = VERTEX_BUFFER_TILE_LENGTH*VERTEX_BUFFER_TILE_LENGTH*2;
 				Int numVertex = (VERTEX_BUFFER_TILE_LENGTH*2)*(VERTEX_BUFFER_TILE_LENGTH*2);
+				DX8VertexBufferClass *vbTile = m_vertexBufferTiles[j*m_numVBTilesX+i];
+				if (!vbTile) {
+					continue;
+				}
 				if (HALF_RES_MESH) {
 					numPolys /= 4;
 					numVertex /= 4;
 				}
-				DX8Wrapper::Set_Vertex_Buffer(m_vertexBufferTiles[j*m_numVBTilesX+i]);
+				DX8Wrapper::Set_Vertex_Buffer(vbTile);
 #ifdef PRE_TRANSFORM_VERTEX
 				if (m_xformedVertexBuffer && pass==0) {
 					// Note - m_xformedVertexBuffer should only be used for non T&L hardware.  jba.
@@ -2114,6 +2135,24 @@ void HeightMapRenderObjClass::Render(RenderInfoClass & rinfo)
 		if (pass)	//shader was applied at least once?
  			W3DShaderManager::resetShader(st);
 
+		const Bool useShellTerrainCompat = UseShellTerrainCompatibilityPath();
+		static Bool s_loggedShellTerrainCompat = FALSE;
+		if (useShellTerrainCompat)
+		{
+			if (!s_loggedShellTerrainCompat)
+			{
+				AppendStartupTrace("HeightMapRenderObjClass::Render shell terrain compatibility path enabled");
+				s_loggedShellTerrainCompat = TRUE;
+			}
+
+			DX8Wrapper::Set_Texture(0,NULL);
+			DX8Wrapper::Set_Texture(1,NULL);
+			RestoreTerrainCompatTexture(m_stageTwoTexture);
+			ShaderClass::Invalidate();
+			DX8Wrapper::Set_Material(NULL);
+			return;
+		}
+
 		//Draw feathered shorelines
 		renderShoreLines(&rinfo.Camera);
 
@@ -2129,17 +2168,17 @@ void HeightMapRenderObjClass::Render(RenderInfoClass & rinfo)
 		// Draw edging just before last pass.
 		DX8Wrapper::Set_Texture(0,NULL);
 		DX8Wrapper::Set_Texture(1,NULL);
-		m_stageTwoTexture->restore();
+		RestoreTerrainCompatTexture(m_stageTwoTexture);
 		m_customEdging->drawEdging(m_map, xCoordMin, xCoordMax, yCoordMin, yCoordMax, 
 			m_stageZeroTexture, doCloud?m_stageTwoTexture:NULL, TheGlobalData->m_useLightMap?m_stageThreeTexture:NULL);
 	#endif
 	#ifdef DO_ROADS
 		DX8Wrapper::Set_Texture(0,NULL);
 		DX8Wrapper::Set_Texture(1,NULL);
-		m_stageTwoTexture->restore();
+		RestoreTerrainCompatTexture(m_stageTwoTexture);
 
 		ShaderClass::Invalidate();
-		if (!ShaderClass::Is_Backface_Culling_Inverted()) {
+		if (m_roadBuffer && !ShaderClass::Is_Backface_Culling_Inverted()) {
 			DX8Wrapper::Set_Material(m_vertexMaterialClass);
 			if (Scene) {
 				RTS3DScene *pMyScene = (RTS3DScene *)Scene;
@@ -2155,7 +2194,7 @@ void HeightMapRenderObjClass::Render(RenderInfoClass & rinfo)
 	#ifdef DO_SCORCH
 		DX8Wrapper::Set_Texture(0,NULL);
 		DX8Wrapper::Set_Texture(1,NULL);
-		m_stageTwoTexture->restore();
+		RestoreTerrainCompatTexture(m_stageTwoTexture);
 
 		ShaderClass::Invalidate();
 		if (!ShaderClass::Is_Backface_Culling_Inverted()) {
@@ -2164,11 +2203,13 @@ void HeightMapRenderObjClass::Render(RenderInfoClass & rinfo)
 	#endif
 		DX8Wrapper::Set_Texture(0,NULL);
 		DX8Wrapper::Set_Texture(1,NULL);
-		m_stageTwoTexture->restore();
+		RestoreTerrainCompatTexture(m_stageTwoTexture);
 		ShaderClass::Invalidate();
 		DX8Wrapper::Apply_Render_State_Changes();
 
-		m_bridgeBuffer->drawBridges(&rinfo.Camera, m_disableTextures, doCloud?m_stageTwoTexture:NULL);
+		if (m_bridgeBuffer) {
+			m_bridgeBuffer->drawBridges(&rinfo.Camera, m_disableTextures, doCloud?m_stageTwoTexture:NULL);
+		}
 
 		if (TheTerrainTracksRenderObjClassSystem)
 			TheTerrainTracksRenderObjClassSystem->flush();
@@ -2184,17 +2225,23 @@ void HeightMapRenderObjClass::Render(RenderInfoClass & rinfo)
 		DX8Wrapper::Apply_Render_State_Changes();
 	}
 	else
+	{
+		if (m_bridgeBuffer) {
 			m_bridgeBuffer->drawBridges(&rinfo.Camera, m_disableTextures, m_stageTwoTexture);
+		}
+	}
 
   if ( m_waypointBuffer ) 
 	  m_waypointBuffer->drawWaypoints(rinfo);
 
-	m_bibBuffer->renderBibs();
+	if (m_bibBuffer) {
+		m_bibBuffer->renderBibs();
+	}
 
 	// We do some custom blending, so tell the shader class to reset everything.
 	DX8Wrapper::Set_Texture(0,NULL);
 	DX8Wrapper::Set_Texture(1,NULL);
-	m_stageTwoTexture->restore();
+	RestoreTerrainCompatTexture(m_stageTwoTexture);
 	ShaderClass::Invalidate();
 	DX8Wrapper::Set_Material(NULL);
 
@@ -2205,6 +2252,10 @@ void HeightMapRenderObjClass::Render(RenderInfoClass & rinfo)
 ///Performs additional terrain rendering pass, blending in the black shroud texture.
 void HeightMapRenderObjClass::renderTerrainPass(CameraClass *pCamera)
 {
+	if (!m_indexBuffer || !m_vertexBufferTiles) {
+		return;
+	}
+
 	DX8Wrapper::Set_Transform(D3DTS_WORLD,Matrix3D(1));
 
 	//Apply the shader and material
@@ -2218,11 +2269,15 @@ void HeightMapRenderObjClass::renderTerrainPass(CameraClass *pCamera)
 			count++;
 			Int numPolys = VERTEX_BUFFER_TILE_LENGTH*VERTEX_BUFFER_TILE_LENGTH*2;
 			Int numVertex = (VERTEX_BUFFER_TILE_LENGTH*2)*(VERTEX_BUFFER_TILE_LENGTH*2);
+			DX8VertexBufferClass *vbTile = m_vertexBufferTiles[j*m_numVBTilesX+i];
+			if (!vbTile) {
+				continue;
+			}
 			if (HALF_RES_MESH) {
 				numPolys /= 4;
 				numVertex /= 4;
 			}
-			DX8Wrapper::Set_Vertex_Buffer(m_vertexBufferTiles[j*m_numVBTilesX+i]);
+			DX8Wrapper::Set_Vertex_Buffer(vbTile);
 #ifdef PRE_TRANSFORM_VERTEX
 			if (m_xformedVertexBuffer && pass==0) {
 				// Note - m_xformedVertexBuffer should only be used for non T&L hardware.  jba.
