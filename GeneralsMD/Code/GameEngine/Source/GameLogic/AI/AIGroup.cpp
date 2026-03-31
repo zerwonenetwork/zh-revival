@@ -77,6 +77,39 @@ static Object* getLiveGroupCommandMember(Object* member)
 	return liveMember;
 }
 
+static void appendLiveGroupCommandMemberIDs(const std::list<Object*>& members, std::vector<ObjectID>& ids)
+{
+	ids.clear();
+	ids.reserve(members.size());
+
+	for (std::list<Object*>::const_iterator it = members.begin(); it != members.end(); ++it)
+	{
+		Object* liveMember = getLiveGroupCommandMember(*it);
+		if (liveMember != NULL)
+		{
+			ids.push_back(liveMember->getID());
+		}
+	}
+}
+
+template <typename Callback>
+static void forEachLiveGroupCommandMemberSnapshot(const std::list<Object*>& members, Callback callback)
+{
+	std::vector<ObjectID> ids;
+	appendLiveGroupCommandMemberIDs(members, ids);
+
+	for (std::vector<ObjectID>::const_iterator it = ids.begin(); it != ids.end(); ++it)
+	{
+		Object* member = TheGameLogic->findObjectByID(*it);
+		if (member == NULL || member->isEffectivelyDead())
+		{
+			continue;
+		}
+
+		callback(member);
+	}
+}
+
 /**
  * NOTE: Only AI objects (ie: having an AIUpdate module) can be in
  * AIGroups.  It is ASSUMED that an object cannot morph from having
@@ -1957,15 +1990,14 @@ void AIGroup::groupTightenToPosition( const Coord3D *pos, Bool addWaypoint, Comm
  */
 void AIGroup::groupFollowWaypointPath( const Waypoint *way, CommandSourceType cmdSource )
 {
-	std::list<Object *>::iterator i;
-	for( i = m_memberList.begin(); i != m_memberList.end(); ++i )
+	forEachLiveGroupCommandMemberSnapshot(m_memberList, [way, cmdSource](Object* member)
 	{
-		AIUpdateInterface *ai = (*i)->getAIUpdateInterface();
+		AIUpdateInterface *ai = member->getAIUpdateInterface();
 		if (ai)
 		{
 			ai->aiFollowWaypointPath( way, cmdSource );
 		}
-	}
+	});
 }
 
 /**
@@ -1973,15 +2005,14 @@ void AIGroup::groupFollowWaypointPath( const Waypoint *way, CommandSourceType cm
  */
 void AIGroup::groupFollowWaypointPathExact( const Waypoint *way, CommandSourceType cmdSource )
 {
-	std::list<Object *>::iterator i;
-	for( i = m_memberList.begin(); i != m_memberList.end(); ++i )
+	forEachLiveGroupCommandMemberSnapshot(m_memberList, [way, cmdSource](Object* member)
 	{
-		AIUpdateInterface *ai = (*i)->getAIUpdateInterface();
+		AIUpdateInterface *ai = member->getAIUpdateInterface();
 		if (ai)
 		{
 			ai->aiFollowWaypointPathExact( way, cmdSource );
 		}
-	}
+	});
 }
 
 /**
@@ -1989,15 +2020,14 @@ void AIGroup::groupFollowWaypointPathExact( const Waypoint *way, CommandSourceTy
  */
 void AIGroup::groupMoveToAndEvacuate( const Coord3D *pos, CommandSourceType cmdSource )
 {
-	std::list<Object *>::iterator i;
-	for( i = m_memberList.begin(); i != m_memberList.end(); ++i )
+	forEachLiveGroupCommandMemberSnapshot(m_memberList, [pos, cmdSource](Object* member)
 	{
-		AIUpdateInterface *ai = (*i)->getAIUpdateInterface();
+		AIUpdateInterface *ai = member->getAIUpdateInterface();
 		if (ai)
 		{
 			ai->aiMoveToAndEvacuate( pos, cmdSource );
 		}
-	}
+	});
 }
 
 /**
@@ -2006,19 +2036,14 @@ void AIGroup::groupMoveToAndEvacuate( const Coord3D *pos, CommandSourceType cmdS
  */
 void AIGroup::groupMoveToAndEvacuateAndExit( const Coord3D *pos, CommandSourceType cmdSource )
 {
-	std::list<Object *>::iterator i;
-	for( i = m_memberList.begin(); i != m_memberList.end(); ++i )
+	forEachLiveGroupCommandMemberSnapshot(m_memberList, [pos, cmdSource](Object* member)
 	{
-		Object *member = getLiveGroupCommandMember(*i);
-		if (member == NULL)
-			continue;
-
 		AIUpdateInterface *ai = member->getAIUpdateInterface();
 		if (ai)
 		{
 			ai->aiMoveToAndEvacuateAndExit( pos, cmdSource );
 		}
-	}
+	});
 }
 
 /**
@@ -2026,19 +2051,14 @@ void AIGroup::groupMoveToAndEvacuateAndExit( const Coord3D *pos, CommandSourceTy
  */
 void AIGroup::groupFollowWaypointPathAsTeam( const Waypoint *way, CommandSourceType cmdSource )
 {
-	std::list<Object *>::iterator i;
-	for( i = m_memberList.begin(); i != m_memberList.end(); ++i )
+	forEachLiveGroupCommandMemberSnapshot(m_memberList, [way, cmdSource](Object* member)
 	{
-		Object *member = getLiveGroupCommandMember(*i);
-		if (member == NULL)
-			continue;
-
 		AIUpdateInterface *ai = member->getAIUpdateInterface();
 		if (ai)
 		{
 			ai->aiFollowWaypointPathAsTeam( way, cmdSource );
 		}
-	}
+	});
 }
 
 /**
@@ -2046,19 +2066,14 @@ void AIGroup::groupFollowWaypointPathAsTeam( const Waypoint *way, CommandSourceT
  */
 void AIGroup::groupFollowWaypointPathAsTeamExact( const Waypoint *way, CommandSourceType cmdSource )
 {
-	std::list<Object *>::iterator i;
-	for( i = m_memberList.begin(); i != m_memberList.end(); ++i )
+	forEachLiveGroupCommandMemberSnapshot(m_memberList, [way, cmdSource](Object* member)
 	{
-		Object *member = getLiveGroupCommandMember(*i);
-		if (member == NULL)
-			continue;
-
 		AIUpdateInterface *ai = member->getAIUpdateInterface();
 		if (ai)
 		{
 			ai->aiFollowWaypointPathExactAsTeam( way, cmdSource );
 		}
-	}
+	});
 }
 
 //Callback for groupIdle -- contained buildings.
@@ -2080,13 +2095,8 @@ void makeMemberStop( Object *obj, void* userData )
  */
 void AIGroup::groupIdle(CommandSourceType cmdSource)
 {
-	std::list<Object *>::iterator i;
-	for( i = m_memberList.begin(); i != m_memberList.end(); ++i )
+	forEachLiveGroupCommandMemberSnapshot(m_memberList, [cmdSource](Object* obj)
 	{
-		Object *obj = getLiveGroupCommandMember(*i);
-		if (obj == NULL)
-			continue;
-		
 		AIUpdateInterface *ai = obj->getAIUpdateInterface();
 		if (ai)
 		{
@@ -2122,7 +2132,8 @@ void AIGroup::groupIdle(CommandSourceType cmdSource)
 			ContainModuleInterface *contain = obj->getContain();
 			if( contain )
 			{
-				contain->iterateContained( makeMemberStop, &cmdSource, false );
+				CommandSourceType containedCmdSource = cmdSource;
+				contain->iterateContained( makeMemberStop, &containedCmdSource, false );
 			}
 		}
 
@@ -2134,7 +2145,7 @@ void AIGroup::groupIdle(CommandSourceType cmdSource)
 			//Do we need to delay mood check?
 		}
 
-	}
+	});
 }
 
 /**
@@ -2242,19 +2253,14 @@ void AIGroup::groupAttackTeam( const Team *team, Int maxShotsToFire, CommandSour
 		// Hard to kill em if they're already dead.  jba
 		return;
 	}
-	std::list<Object *>::iterator i;
-	for( i = m_memberList.begin(); i != m_memberList.end(); ++i )
+	forEachLiveGroupCommandMemberSnapshot(m_memberList, [team, maxShotsToFire, cmdSource](Object* member)
 	{
-		Object *member = getLiveGroupCommandMember(*i);
-		if (member == NULL)
-			continue;
-
 		AIUpdateInterface *ai = member->getAIUpdateInterface();
 		if (ai)
 		{
 			ai->aiAttackTeam( team, maxShotsToFire, cmdSource );
 		}
-	}
+	});
 }
 
 /**
@@ -2267,13 +2273,8 @@ void AIGroup::groupAttackPosition( const Coord3D *pos, Int maxShotsToFire, Comma
 	{
 		attackPos = *pos;
 	}
-	std::list<Object *>::iterator i;
-	for( i = m_memberList.begin(); i != m_memberList.end(); ++i )
+	forEachLiveGroupCommandMemberSnapshot(m_memberList, [this, pos, attackPos, maxShotsToFire, cmdSource](Object* member) mutable
 	{
-		Object *member = getLiveGroupCommandMember(*i);
-		if (member == NULL)
-			continue;
-
 		if( !pos )
 		{
 			//If you specify a NULL position, it means you are attacking your own location.
@@ -2322,7 +2323,7 @@ void AIGroup::groupAttackPosition( const Coord3D *pos, Int maxShotsToFire, Comma
 		{
 			ai->aiAttackPosition( &attackPos, maxShotsToFire, cmdSource );
 		}
-	}
+	});
 }
 
 /**
@@ -2330,13 +2331,8 @@ void AIGroup::groupAttackPosition( const Coord3D *pos, Int maxShotsToFire, Comma
  */
 void AIGroup::groupAttackMoveToPosition( const Coord3D *pos, Int maxShotsToFire, CommandSourceType cmdSource )
 {
-	std::list<Object *>::iterator i;
-	for( i = m_memberList.begin(); i != m_memberList.end(); ++i )
+	forEachLiveGroupCommandMemberSnapshot(m_memberList, [pos, maxShotsToFire, cmdSource](Object* member)
 	{
-		Object *member = getLiveGroupCommandMember(*i);
-		if (member == NULL)
-			continue;
-
 		AIUpdateInterface *ai = member->getAIUpdateInterface();
 		if (ai)
 		{
@@ -2345,7 +2341,7 @@ void AIGroup::groupAttackMoveToPosition( const Coord3D *pos, Int maxShotsToFire,
 			else
 				ai->aiMoveToPosition( pos, cmdSource );
 		}
-	}
+	});
 }
 
 /**
@@ -2353,19 +2349,14 @@ void AIGroup::groupAttackMoveToPosition( const Coord3D *pos, Int maxShotsToFire,
  */
 void AIGroup::groupHunt( CommandSourceType cmdSource )
 {
-	std::list<Object *>::iterator i;
-	for( i = m_memberList.begin(); i != m_memberList.end(); ++i )
+	forEachLiveGroupCommandMemberSnapshot(m_memberList, [cmdSource](Object* member)
 	{
-		Object *member = getLiveGroupCommandMember(*i);
-		if (member == NULL)
-			continue;
-
 		AIUpdateInterface *ai = member->getAIUpdateInterface();
 		if (ai)
 		{
 			ai->aiHunt( cmdSource );
 		}
-	}
+	});
 }
 
 
@@ -2374,19 +2365,14 @@ void AIGroup::groupHunt( CommandSourceType cmdSource )
  */
 void AIGroup::groupRepair( Object *obj, CommandSourceType cmdSource )
 {
-	std::list<Object *>::iterator i;
-	for( i = m_memberList.begin(); i != m_memberList.end(); ++i )
+	forEachLiveGroupCommandMemberSnapshot(m_memberList, [obj, cmdSource](Object* member)
 	{
-		Object *member = getLiveGroupCommandMember(*i);
-		if (member == NULL)
-			continue;
-
 		AIUpdateInterface *ai = member->getAIUpdateInterface();
 		if (ai)
 		{
 			ai->aiRepair( obj, cmdSource );
 		}
-	}
+	});
 }
 
 /**
@@ -2394,19 +2380,14 @@ void AIGroup::groupRepair( Object *obj, CommandSourceType cmdSource )
 	*/
 void AIGroup::groupResumeConstruction( Object *obj, CommandSourceType cmdSource )
 {
-	std::list<Object *>::iterator i;
-	for( i = m_memberList.begin(); i != m_memberList.end(); ++i )
+	forEachLiveGroupCommandMemberSnapshot(m_memberList, [obj, cmdSource](Object* member)
 	{
-		Object *member = getLiveGroupCommandMember(*i);
-		if (member == NULL)
-			continue;
-
 		AIUpdateInterface *ai = member->getAIUpdateInterface();
 		if (ai)
 		{
 			ai->aiResumeConstruction( obj, cmdSource );
 		}
-	}
+	});
 }
 
 /**
@@ -2414,15 +2395,14 @@ void AIGroup::groupResumeConstruction( Object *obj, CommandSourceType cmdSource 
  */
 void AIGroup::groupGetHealed( Object *healDepot, CommandSourceType cmdSource )
 {
-	std::list<Object *>::iterator i;
-	for( i = m_memberList.begin(); i != m_memberList.end(); ++i )
+	forEachLiveGroupCommandMemberSnapshot(m_memberList, [healDepot, cmdSource](Object* member)
 	{
-		AIUpdateInterface *ai = (*i)->getAIUpdateInterface();
+		AIUpdateInterface *ai = member->getAIUpdateInterface();
 		if (ai)
 		{
 			ai->aiGetHealed( healDepot, cmdSource );
 		}
-	}
+	});
 }
 
 /**
@@ -2430,15 +2410,14 @@ void AIGroup::groupGetHealed( Object *healDepot, CommandSourceType cmdSource )
  */
 void AIGroup::groupGetRepaired( Object *repairDepot, CommandSourceType cmdSource )
 {
-	std::list<Object *>::iterator i;
-	for( i = m_memberList.begin(); i != m_memberList.end(); ++i )
+	forEachLiveGroupCommandMemberSnapshot(m_memberList, [repairDepot, cmdSource](Object* member)
 	{
-		AIUpdateInterface *ai = (*i)->getAIUpdateInterface();
+		AIUpdateInterface *ai = member->getAIUpdateInterface();
 		if (ai)
 		{
 			ai->aiGetRepaired( repairDepot, cmdSource );
 		}
-	}
+	});
 }
 
 /**
@@ -2446,15 +2425,14 @@ void AIGroup::groupGetRepaired( Object *repairDepot, CommandSourceType cmdSource
  */
 void AIGroup::groupEnter( Object *obj, CommandSourceType cmdSource )
 {
-	std::list<Object *>::iterator i;
-	for( i = m_memberList.begin(); i != m_memberList.end(); ++i )
+	forEachLiveGroupCommandMemberSnapshot(m_memberList, [obj, cmdSource](Object* member)
 	{
-		AIUpdateInterface *ai = (*i)->getAIUpdateInterface();
+		AIUpdateInterface *ai = member->getAIUpdateInterface();
 		if (ai)
 		{
 			ai->aiEnter( obj, cmdSource );
 		}
-	}
+	});
 }
 
 /**
@@ -2462,15 +2440,14 @@ void AIGroup::groupEnter( Object *obj, CommandSourceType cmdSource )
  */
 void AIGroup::groupDock( Object *obj, CommandSourceType cmdSource )
 {
-	std::list<Object *>::iterator i;
-	for( i = m_memberList.begin(); i != m_memberList.end(); ++i )
+	forEachLiveGroupCommandMemberSnapshot(m_memberList, [obj, cmdSource](Object* member)
 	{
-		AIUpdateInterface *ai = (*i)->getAIUpdateInterface();
+		AIUpdateInterface *ai = member->getAIUpdateInterface();
 		if (ai)
 		{
 			ai->aiDock( obj, cmdSource );
 		}
-	}
+	});
 }
 
 /**
@@ -2478,15 +2455,14 @@ void AIGroup::groupDock( Object *obj, CommandSourceType cmdSource )
  */
 void AIGroup::groupExit( Object *objectToExit,  CommandSourceType cmdSource )
 {
-	std::list<Object *>::iterator i;
-	for( i = m_memberList.begin(); i != m_memberList.end(); ++i )
+	forEachLiveGroupCommandMemberSnapshot(m_memberList, [objectToExit, cmdSource](Object* member)
 	{
-		AIUpdateInterface *ai = (*i)->getAIUpdateInterface();
+		AIUpdateInterface *ai = member->getAIUpdateInterface();
 		if (ai)
 		{
 			ai->aiExit( objectToExit, cmdSource );
 		}
-	}
+	});
 }
 
 /**
@@ -2494,16 +2470,15 @@ void AIGroup::groupExit( Object *objectToExit,  CommandSourceType cmdSource )
  */
 void AIGroup::groupEvacuate( CommandSourceType cmdSource )
 {
-	std::list<Object *>::iterator i;
-	for( i = m_memberList.begin(); i != m_memberList.end(); ++i )
+	forEachLiveGroupCommandMemberSnapshot(m_memberList, [this, cmdSource](Object* member)
 	{
-		AIUpdateInterface *ai = (*i)->getAIUpdateInterface();
+		AIUpdateInterface *ai = member->getAIUpdateInterface();
 		if (ai)
 		{
-			if( (*i)->isKindOf( KINDOF_AIRCRAFT ) && (*i)->isAirborneTarget() )
+			if( member->isKindOf( KINDOF_AIRCRAFT ) && member->isAirborneTarget() )
 			{
 				//Calculate the highest point on the ground to drop off troops (chinook or other air transports)
-				Coord3D pos = *((*i)->getPosition());
+				Coord3D pos = *(member->getPosition());
 				PathfindLayerEnum layerAtDest = TheTerrainLogic->getHighestLayerForDestination( &pos );
 				pos.z = TheTerrainLogic->getLayerHeight( pos.x, pos.y, layerAtDest );
 				ai->aiMoveToAndEvacuate( &pos, cmdSource );
@@ -2513,18 +2488,18 @@ void AIGroup::groupEvacuate( CommandSourceType cmdSource )
 				ai->aiEvacuate( FALSE, cmdSource );
 			}
 		}
-		else if( (*i)->isKindOf( KINDOF_STRUCTURE ) )
+		else if( member->isKindOf( KINDOF_STRUCTURE ) )
 		{
 			//Buildings don't normally have AIUpdateInterfaces. In this special
 			//case, simple call the function directly. Special powers work in a similar
 			//manner.
-			ContainModuleInterface *contain = (*i)->getContain();
+			ContainModuleInterface *contain = member->getContain();
 			if( contain )
 			{
 				contain->orderAllPassengersToExit( cmdSource, FALSE );
 			}
 		}
-	}
+	});
 }
 
 /**
@@ -2532,31 +2507,28 @@ void AIGroup::groupEvacuate( CommandSourceType cmdSource )
 	*/
 void AIGroup::groupExecuteRailedTransport( CommandSourceType cmdSource )
 {
-	std::list<Object *>::iterator i;
-
-	for( i = m_memberList.begin(); i != m_memberList.end(); ++i )
+	forEachLiveGroupCommandMemberSnapshot(m_memberList, [cmdSource](Object* member)
 	{
-		AIUpdateInterface *ai = (*i)->getAIUpdateInterface();
+		AIUpdateInterface *ai = member->getAIUpdateInterface();
 
 		if( ai )
 			ai->aiExecuteRailedTransport( cmdSource );
 
-	}  // end for i
+	});
 
 }  // end groupExecuteRailedTransport
 
 ///< life altering state change, if this AI can do it
 void AIGroup::groupGoProne( const DamageInfo *damageInfo, CommandSourceType cmdSource )
 {
-	std::list<Object *>::iterator i;
-	for( i = m_memberList.begin(); i != m_memberList.end(); ++i )
+	forEachLiveGroupCommandMemberSnapshot(m_memberList, [damageInfo, cmdSource](Object* member)
 	{
-		AIUpdateInterface *ai = (*i)->getAIUpdateInterface();
+		AIUpdateInterface *ai = member->getAIUpdateInterface();
 		if (ai)
 		{
 			ai->aiGoProne( damageInfo, cmdSource );
 		}
-	}
+	});
 }
 
 /**
@@ -2568,15 +2540,14 @@ void AIGroup::groupGuardPosition( const Coord3D *pos, GuardMode guardMode, Comma
 		return;
 	}
 
-	std::list<Object *>::iterator i;
-	for( i = m_memberList.begin(); i != m_memberList.end(); ++i )
+	forEachLiveGroupCommandMemberSnapshot(m_memberList, [pos, guardMode, cmdSource](Object* member)
 	{
-		AIUpdateInterface *ai = (*i)->getAIUpdateInterface();
+		AIUpdateInterface *ai = member->getAIUpdateInterface();
 		if (ai)
 		{
 			ai->aiGuardPosition( pos, guardMode, cmdSource );
 		}
-	}
+	});
 }
 
 /**
@@ -2588,15 +2559,14 @@ void AIGroup::groupGuardObject( Object *objToGuard, GuardMode guardMode, Command
 		return;
 	}
 
-	std::list<Object *>::iterator i;
-	for( i = m_memberList.begin(); i != m_memberList.end(); ++i )
+	forEachLiveGroupCommandMemberSnapshot(m_memberList, [objToGuard, guardMode, cmdSource](Object* member)
 	{
-		AIUpdateInterface *ai = (*i)->getAIUpdateInterface();
+		AIUpdateInterface *ai = member->getAIUpdateInterface();
 		if (ai)
 		{
 			ai->aiGuardObject( objToGuard, guardMode, cmdSource );
 		}
-	}
+	});
 }
 
 /**
@@ -2608,15 +2578,14 @@ void AIGroup::groupGuardArea( const PolygonTrigger *areaToGuard, GuardMode guard
 		return;
 	}
 
-	std::list<Object *>::iterator i;
-	for( i = m_memberList.begin(); i != m_memberList.end(); ++i )
+	forEachLiveGroupCommandMemberSnapshot(m_memberList, [areaToGuard, guardMode, cmdSource](Object* member)
 	{
-		AIUpdateInterface *ai = (*i)->getAIUpdateInterface();
+		AIUpdateInterface *ai = member->getAIUpdateInterface();
 		if (ai)
 		{
 			ai->aiGuardArea( areaToGuard, guardMode, cmdSource );
 		}
-	}
+	});
 }
 
 /**
@@ -2628,28 +2597,26 @@ void AIGroup::groupAttackArea( const PolygonTrigger *areaToGuard, CommandSourceT
 		return;
 	}
 	
-	std::list<Object *>::iterator i;
-	for( i = m_memberList.begin(); i != m_memberList.end(); ++i )
+	forEachLiveGroupCommandMemberSnapshot(m_memberList, [areaToGuard, cmdSource](Object* member)
 	{
-		AIUpdateInterface *ai = (*i)->getAIUpdateInterface();
+		AIUpdateInterface *ai = member->getAIUpdateInterface();
 		if (ai)
 		{
 			ai->aiAttackArea( areaToGuard, cmdSource );
 		}
-	}
+	});
 }
 
 void AIGroup::groupHackInternet( CommandSourceType cmdSource )				///< Begin hacking the internet for free cash from the heavens.
 {
-	std::list<Object *>::iterator i;
-	for( i = m_memberList.begin(); i != m_memberList.end(); ++i )
+	forEachLiveGroupCommandMemberSnapshot(m_memberList, [cmdSource](Object* member)
 	{
-		AIUpdateInterface *ai = (*i)->getAIUpdateInterface();
+		AIUpdateInterface *ai = member->getAIUpdateInterface();
 		if (ai)
 		{
 			ai->aiHackInternet( cmdSource );
 		}
-	}
+	});
 }
 
 
@@ -2659,16 +2626,15 @@ void AIGroup::groupCreateFormation( CommandSourceType cmdSource )				///< Create
 	Coord2D min;
 	Coord2D max;
 	Bool isFormation = getMinMaxAndCenter( &min, &max, &center );
-	std::list<Object *>::iterator i;
 	FormationID id = TheAI->getNextFormationID();
 
 	Int count = 0;
 	FormationID countID = NO_FORMATION_ID;
-	for( i = m_memberList.begin(); i != m_memberList.end(); ++i )
+	forEachLiveGroupCommandMemberSnapshot(m_memberList, [&count, &countID](Object* member)
 	{
 		count++;
-		countID = (*i)->getFormationID();
-	}
+		countID = member->getFormationID();
+	});
 	if (count==1 && countID!=NO_FORMATION_ID) {
 		isFormation = true;
 	}
@@ -2677,10 +2643,9 @@ void AIGroup::groupCreateFormation( CommandSourceType cmdSource )				///< Create
 		id = NO_FORMATION_ID;
 	}
 
-	for( i = m_memberList.begin(); i != m_memberList.end(); ++i )
+	forEachLiveGroupCommandMemberSnapshot(m_memberList, [center, id](Object* obj)
 	{
-		Object *obj = (*i);
-		AIUpdateInterface *ai = (*i)->getAIUpdateInterface();
+		AIUpdateInterface *ai = obj->getAIUpdateInterface();
 		if (ai)
 		{
 			Coord3D pos = *obj->getPosition();
@@ -2690,7 +2655,7 @@ void AIGroup::groupCreateFormation( CommandSourceType cmdSource )				///< Create
 			obj->setFormationID(id);
 			obj->setFormationOffset(offset);
 		}
-	}
+	});
 }
 
 /**
@@ -2701,12 +2666,10 @@ void AIGroup::groupCreateFormation( CommandSourceType cmdSource )				///< Create
 void AIGroup::groupDoSpecialPower( UnsignedInt specialPowerID, UnsignedInt commandOptions )
 {
 	//This is the no target, no position version.
-	std::list<Object *>::iterator i;
-	for( i = m_memberList.begin(); i != m_memberList.end(); ++i )
+	forEachLiveGroupCommandMemberSnapshot(m_memberList, [specialPowerID, commandOptions](Object* object)
 	{
 		//Special powers do a lot of different things, but the top level stuff doesn't use
 		//ai interface code. It finds the special power module and calls it directly for each object.
-		Object *object = (*i);
 		const SpecialPowerTemplate *spTemplate = TheSpecialPowerStore->findSpecialPowerTemplateByID( specialPowerID );
 		if( spTemplate )
 		{
@@ -2714,7 +2677,7 @@ void AIGroup::groupDoSpecialPower( UnsignedInt specialPowerID, UnsignedInt comma
 			if( spTemplate->getRequiredScience() != SCIENCE_INVALID )
 			{
 				if( !object->getControllingPlayer()->hasScience(spTemplate->getRequiredScience()) )
-					continue;// Nice try, smacktard.
+					return;// Nice try, smacktard.
 			}
 
 			SpecialPowerModuleInterface *mod = object->getSpecialPowerModule( spTemplate );
@@ -2728,7 +2691,7 @@ void AIGroup::groupDoSpecialPower( UnsignedInt specialPowerID, UnsignedInt comma
 				}
 			}
 		}
-	}
+	});
 }
 
 /**
@@ -2738,31 +2701,20 @@ void AIGroup::groupDoSpecialPower( UnsignedInt specialPowerID, UnsignedInt comma
  */
 void AIGroup::groupDoSpecialPowerAtLocation( UnsignedInt specialPowerID, const Coord3D *location, Real angle, const Object *objectInWay, UnsignedInt commandOptions )
 {
-  
-
 	//This one requires a position
-	std::list<Object *>::iterator i;
-	for( i = m_memberList.begin(); i != m_memberList.end(); )
+	forEachLiveGroupCommandMemberSnapshot(m_memberList, [specialPowerID, location, angle, objectInWay, commandOptions](Object* object)
 	{
 		//Special powers do a lot of different things, but the top level stuff doesn't use
 		//ai interface code. It finds the special power module and calls it directly for each object.
 
-		Object *object = (*i);
-
-    ++i; // just in case the act of specialpowering changes this list,
-         // like when the rebelambush happens over the ocean, and all the rebels drown
-         // and, of course, their slowdeath behavior calls deselect(), which naturally
-         // destroys the AIGroup list, in order to keep the selection sync'ed with the group.
-         // M Lorenzen... 8/23/03
-    
-    const SpecialPowerTemplate *spTemplate = TheSpecialPowerStore->findSpecialPowerTemplateByID( specialPowerID );
+		const SpecialPowerTemplate *spTemplate = TheSpecialPowerStore->findSpecialPowerTemplateByID( specialPowerID );
 		if( spTemplate )
 		{
 			// Have to justify the execution in case someone changed their button
 			if( spTemplate->getRequiredScience() != SCIENCE_INVALID )
 			{
 				if( !object->getControllingPlayer()->hasScience(spTemplate->getRequiredScience()) )
-					continue;// Nice try, smacktard.
+					return;// Nice try, smacktard.
 			}
 
 			SpecialPowerModuleInterface *mod = object->getSpecialPowerModule( spTemplate );
@@ -2777,7 +2729,7 @@ void AIGroup::groupDoSpecialPowerAtLocation( UnsignedInt specialPowerID, const C
 			}
 		}
 
-	}
+	});
 }
 
 /**
@@ -2788,13 +2740,10 @@ void AIGroup::groupDoSpecialPowerAtLocation( UnsignedInt specialPowerID, const C
 void AIGroup::groupDoSpecialPowerAtObject( UnsignedInt specialPowerID, Object *target, UnsignedInt commandOptions )
 {
 	//This one requires a target
-	std::list<Object *>::iterator i;
-	for( i = m_memberList.begin(); i != m_memberList.end(); ++i )
+	forEachLiveGroupCommandMemberSnapshot(m_memberList, [specialPowerID, target, commandOptions](Object* object)
 	{
 		//Special powers do a lot of different things, but the top level stuff doesn't use
 		//ai interface code. It finds the special power module and calls it directly for each object.
-
-		Object *object = (*i);
 		const SpecialPowerTemplate *spTemplate = TheSpecialPowerStore->findSpecialPowerTemplateByID( specialPowerID );
 		if( spTemplate )
 		{
@@ -2802,7 +2751,7 @@ void AIGroup::groupDoSpecialPowerAtObject( UnsignedInt specialPowerID, Object *t
 			if( spTemplate->getRequiredScience() != SCIENCE_INVALID )
 			{
 				if( !object->getControllingPlayer()->hasScience(spTemplate->getRequiredScience()) )
-					continue;// Nice try, smacktard.
+					return;// Nice try, smacktard.
 			}
 
 			SpecialPowerModuleInterface *mod = object->getSpecialPowerModule( spTemplate );
@@ -2816,36 +2765,33 @@ void AIGroup::groupDoSpecialPowerAtObject( UnsignedInt specialPowerID, Object *t
 				}
 			}
 		}
-	}
+	});
 }
 
 #ifdef ALLOW_SURRENDER
 void AIGroup::groupSurrender( const Object *objWeSurrenderedTo, Bool surrender, CommandSourceType cmdSource )
 {
 	//This is currently only activated via test key
-	std::list<Object *>::iterator i;
-	for( i = m_memberList.begin(); i != m_memberList.end(); ++i )
+	forEachLiveGroupCommandMemberSnapshot(m_memberList, [objWeSurrenderedTo, surrender, cmdSource](Object* member)
 	{
-		AIUpdateInterface *ai = (*i)->getAIUpdateInterface();
+		AIUpdateInterface *ai = member->getAIUpdateInterface();
 		if (ai)
 		{
 			ai->setSurrendered(objWeSurrenderedTo, surrender);
 		}
-	}
+	});
 }
 #endif
 
 void AIGroup::groupCheer( CommandSourceType cmdSource )
 {
 	//This is currently only activated via test key
-	std::list<Object *>::iterator i;
-	for( i = m_memberList.begin(); i != m_memberList.end(); ++i )
+	forEachLiveGroupCommandMemberSnapshot(m_memberList, [](Object* object)
 	{
-		Object *object = (*i);
 		//This allows all special conditions states to reset after a specified delay. Assume
 		//only one works at a time (it'll clear any others).
 		object->setSpecialModelConditionState( MODELCONDITION_SPECIAL_CHEERING, LOGICFRAMES_PER_SECOND * 3 );
-	}
+	});
 }
 
 /**
@@ -2853,24 +2799,10 @@ void AIGroup::groupCheer( CommandSourceType cmdSource )
 	*/
 void AIGroup::groupSell( CommandSourceType cmdSource )
 {
-	std::list<Object *>::iterator i, thisIterator;
-	Object *obj;
-
-	for( i = m_memberList.begin(); i != m_memberList.end(); /*empty*/ )
+	forEachLiveGroupCommandMemberSnapshot(m_memberList, [](Object* obj)
 	{
-
-		// work off of 'thisIterator' as we may change the contents of this list
-		thisIterator = i;
-		++i;
-
-		// get object
-		obj = *thisIterator;
-
-		// try to sell object
 		TheBuildAssistant->sellObject( obj );
-
-	}  // end for, i
-
+	});
 }
 
 /**
@@ -2878,15 +2810,8 @@ void AIGroup::groupSell( CommandSourceType cmdSource )
 	*/
 void AIGroup::groupToggleOvercharge( CommandSourceType cmdSource )
 {
-	std::list<Object *>::iterator i;
-	Object *obj;
-
-	for( i = m_memberList.begin(); i != m_memberList.end(); ++i )
+	forEachLiveGroupCommandMemberSnapshot(m_memberList, [](Object* obj)
 	{
-
-		// get object
-		obj = *i;
-
 		OverchargeBehaviorInterface *obi;
 		for( BehaviorModule **bmi = obj->getBehaviorModules(); *bmi; ++bmi )
 		{
@@ -2897,7 +2822,7 @@ void AIGroup::groupToggleOvercharge( CommandSourceType cmdSource )
 
 		}  // end for
 
-	}  // end for, i
+	});
 
 }
 
@@ -2907,20 +2832,13 @@ void AIGroup::groupToggleOvercharge( CommandSourceType cmdSource )
 	*/
 void AIGroup::groupPickUpPrisoner( Object *prisoner, enum CommandSourceType cmdSource )
 {
-	std::list<Object *>::iterator i;
-	Object *obj;
-
-	for( i = m_memberList.begin(); i != m_memberList.end(); ++i )
+	forEachLiveGroupCommandMemberSnapshot(m_memberList, [prisoner, cmdSource](Object* obj)
 	{
-
-		// get object
-		obj = *i;
-		
 		AIUpdateInterface *ai = obj->getAIUpdateInterface();
 		if( ai )
 			ai->aiPickUpPrisoner( prisoner, cmdSource );
 
-	}  // end for, i
+	});
 
 }
 #endif
@@ -2931,20 +2849,13 @@ void AIGroup::groupPickUpPrisoner( Object *prisoner, enum CommandSourceType cmdS
 	*/
 void AIGroup::groupReturnToPrison( Object *prison, enum CommandSourceType cmdSource )
 {
-	std::list<Object *>::iterator i;
-	Object *obj;
-
-	for( i = m_memberList.begin(); i != m_memberList.end(); ++i )
+	forEachLiveGroupCommandMemberSnapshot(m_memberList, [prison, cmdSource](Object* obj)
 	{
-
-		// get object
-		obj = *i;
-		
 		AIUpdateInterface *ai = obj->getAIUpdateInterface();
 		if( ai )
 			ai->aiReturnPrisoners( prison, cmdSource );
 
-	}  // end for, i
+	});
 }
 #endif
 
@@ -2953,21 +2864,13 @@ void AIGroup::groupReturnToPrison( Object *prison, enum CommandSourceType cmdSou
 	*/
 void AIGroup::groupCombatDrop( Object *target, const Coord3D &pos, CommandSourceType cmdSource )
 {
-	std::list<Object *>::iterator i;
-	Object *obj;
-
-	for( i = m_memberList.begin(); i != m_memberList.end(); ++i )
+	forEachLiveGroupCommandMemberSnapshot(m_memberList, [target, pos, cmdSource](Object* obj)
 	{
-
-		// get object
-		obj = *i;
-
-		// do action
 		AIUpdateInterface *ai = obj->getAIUpdateInterface();
 		if( ai )
 			ai->aiCombatDrop( target, pos, cmdSource );
 
-	}  // end for, i
+	});
 
 }
 
@@ -2977,17 +2880,10 @@ void AIGroup::groupCombatDrop( Object *target, const Coord3D &pos, CommandSource
 //-------------------------------------------------------------------------------------
 void AIGroup::groupDoCommandButton( const CommandButton *commandButton, CommandSourceType cmdSource )
 {
-	std::list<Object *>::iterator i;
-	Object *source;
-
-	for( i = m_memberList.begin(); i != m_memberList.end(); ++i )
+	forEachLiveGroupCommandMemberSnapshot(m_memberList, [commandButton, cmdSource](Object* source)
 	{
-
-		// get object
-		source = *i;
-		
 		source->doCommandButton( commandButton, cmdSource );
-	}  // end for, i
+	});
 }
 
 
@@ -2997,17 +2893,10 @@ void AIGroup::groupDoCommandButton( const CommandButton *commandButton, CommandS
 //-------------------------------------------------------------------------------------
 void AIGroup::groupDoCommandButtonAtPosition( const CommandButton *commandButton, const Coord3D *pos, CommandSourceType cmdSource )
 {
-	std::list<Object *>::iterator i;
-	Object *source;
-
-	for( i = m_memberList.begin(); i != m_memberList.end(); ++i )
+	forEachLiveGroupCommandMemberSnapshot(m_memberList, [commandButton, pos, cmdSource](Object* source)
 	{
-
-		// get object
-		source = *i;
-		
 		source->doCommandButtonAtPosition( commandButton, pos, cmdSource );
-	}  // end for, i
+	});
 }
 
 //-------------------------------------------------------------------------------------
@@ -3016,17 +2905,10 @@ void AIGroup::groupDoCommandButtonAtPosition( const CommandButton *commandButton
 //-------------------------------------------------------------------------------------
 void AIGroup::groupDoCommandButtonUsingWaypoints( const CommandButton *commandButton, const Waypoint *way, CommandSourceType cmdSource )
 {
-	std::list<Object *>::iterator i;
-	Object *source;
-
-	for( i = m_memberList.begin(); i != m_memberList.end(); ++i )
+	forEachLiveGroupCommandMemberSnapshot(m_memberList, [commandButton, way, cmdSource](Object* source)
 	{
-
-		// get object
-		source = *i;
-		
 		source->doCommandButtonUsingWaypoints( commandButton, way, cmdSource );
-	}  // end for, i
+	});
 }
 
 //-------------------------------------------------------------------------------------
@@ -3035,17 +2917,10 @@ void AIGroup::groupDoCommandButtonUsingWaypoints( const CommandButton *commandBu
 //-------------------------------------------------------------------------------------
 void AIGroup::groupDoCommandButtonAtObject( const CommandButton *commandButton, Object *obj, CommandSourceType cmdSource )
 {
-	std::list<Object *>::iterator i;
-	Object *source;
-
-	for( i = m_memberList.begin(); i != m_memberList.end(); ++i )
+	forEachLiveGroupCommandMemberSnapshot(m_memberList, [commandButton, obj, cmdSource](Object* source)
 	{
-
-		// get object
-		source = *i;
-		
 		source->doCommandButtonAtObject( commandButton, obj, cmdSource );
-	}  // end for, i
+	});
 }
 
 
@@ -3305,34 +3180,27 @@ Object *AIGroup::getCommandButtonSourceObject( GUICommandType type )
 //------------------------------------------------------------------------------------------------------------
 void AIGroup::groupSetEmoticon( const AsciiString &name, Int duration )
 {
-	std::list<Object *>::iterator i;
-	for( i = m_memberList.begin(); i != m_memberList.end(); ++i )
+	forEachLiveGroupCommandMemberSnapshot(m_memberList, [&name, duration](Object* object)
 	{
-		Object *object = (*i);
 		Drawable *draw = object->getDrawable();
 		if( draw )
 		{
 			draw->setEmoticon( name, duration );
 		}
-	}
+	});
 }
 
 //-----------------------------------------------------------------------------
 void AIGroup::groupOverrideSpecialPowerDestination( SpecialPowerType spType, const Coord3D *loc, CommandSourceType cmdSource )
 {
-	std::list<Object *>::iterator i;
-	for( i = m_memberList.begin(); i != m_memberList.end(); ++i )
+	forEachLiveGroupCommandMemberSnapshot(m_memberList, [spType, loc, cmdSource](Object* object)
 	{
-		Object *object = (*i);
-		if( object )
+		SpecialPowerUpdateInterface *spuInterface = object->findSpecialPowerWithOverridableDestinationActive( spType );
+		if( spuInterface )
 		{
-			SpecialPowerUpdateInterface *spuInterface = object->findSpecialPowerWithOverridableDestinationActive( spType );
-			if( spuInterface )
-			{
-				spuInterface->setSpecialPowerOverridableDestination( loc );
-			}
+			spuInterface->setSpecialPowerOverridableDestination( loc );
 		}
-	}
+	});
 }
 
 //-----------------------------------------------------------------------------
