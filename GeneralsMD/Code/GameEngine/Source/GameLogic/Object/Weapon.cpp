@@ -592,6 +592,12 @@ Real WeaponTemplate::estimateWeaponTemplateDamage(
 		return 0.0f;
 	}
 
+	if (sourceObj->isDestroyed() || sourceObj->isEffectivelyDead())
+		return 0.0f;
+
+	if (victimObj && (victimObj->isDestroyed() || victimObj->isEffectivelyDead()))
+		return 0.0f;
+
 	DamageType damageType = getDamageType();
 	DeathType deathType = getDeathType();
 
@@ -2417,6 +2423,12 @@ Real Weapon::getAttackDistance(const Object *source, const Object *victimObj, co
 Real Weapon::estimateWeaponDamage(const Object *sourceObj, const Object *victimObj, const Coord3D* victimPos)
 {
 	if (!m_template || !sourceObj || (!victimObj && !victimPos))
+		return 0.0f;
+
+	if (sourceObj->isDestroyed() || sourceObj->isEffectivelyDead())
+		return 0.0f;
+
+	if (victimObj && (victimObj->isDestroyed() || victimObj->isEffectivelyDead()))
 		return 0.0f;
 
 	// if the weapon is just reloading, it's ok. if it's out of ammo

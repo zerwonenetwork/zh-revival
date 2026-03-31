@@ -1983,6 +1983,12 @@ Bool ActionManager::canFireWeaponAtObject( const Object *obj, const Object *targ
 	
 	if( result == ATTACKRESULT_POSSIBLE || result == ATTACKRESULT_POSSIBLE_AFTER_MOVING )
 	{
+		if (obj->isDestroyed() || obj->isEffectivelyDead() ||
+			target->isDestroyed() || target->isEffectivelyDead())
+		{
+			return FALSE;
+		}
+
 		return weapon->estimateWeaponDamage( obj, target ) != 0.0f;
 	}
 	return FALSE;
