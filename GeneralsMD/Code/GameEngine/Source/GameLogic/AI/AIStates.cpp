@@ -113,6 +113,36 @@ static AIUpdateInterface* getLiveMachineAI(State* state, Object** ownerOut = NUL
 	return owner->getAI();
 }
 
+extern void AppendStartupTrace( const char *format, ... );
+
+static void resetDamageInfoForCommand(DamageInfo& damage)
+{
+	damage.in.m_sourceID = INVALID_ID;
+	damage.in.m_sourceTemplate = NULL;
+	damage.in.m_sourcePlayerMask = 0;
+	damage.in.m_damageType = DAMAGE_EXPLOSION;
+	damage.in.m_damageStatusType = OBJECT_STATUS_NONE;
+	damage.in.m_damageFXOverride = DAMAGE_UNRESISTABLE;
+	damage.in.m_deathType = DEATH_NORMAL;
+	damage.in.m_amount = 0.0f;
+	damage.in.m_kill = FALSE;
+	damage.in.m_shockWaveVector.zero();
+	damage.in.m_shockWaveAmount = 0.0f;
+	damage.in.m_shockWaveRadius = 0.0f;
+	damage.in.m_shockWaveTaperOff = 0.0f;
+	damage.out.m_actualDamageDealt = 0.0f;
+	damage.out.m_actualDamageClipped = 0.0f;
+	damage.out.m_noEffect = false;
+}
+
+static void copyProneDamageForCommand(DamageInfo& dst, const DamageInfo& src)
+{
+	resetDamageInfoForCommand(dst);
+	dst.out.m_actualDamageDealt = src.out.m_actualDamageDealt;
+	dst.out.m_actualDamageClipped = src.out.m_actualDamageClipped;
+	dst.out.m_noEffect = src.out.m_noEffect;
+}
+
 //----------------------------------------------------------------------------------------------------------
 AICommandParms::AICommandParms(AICommandType cmd, CommandSourceType cmdSource) : 
 	m_cmd(cmd),
@@ -143,9 +173,21 @@ void AICommandParmsStorage::store(const AICommandParms& parms)
   m_waypoint = parms.m_waypoint; 
   m_polygon = parms.m_polygon;     
   m_intValue = parms.m_intValue;       /// misc usage
-  m_damage = parms.m_damage;
+	copyProneDamageForCommand(m_damage, parms.m_damage);
 	m_commandButton = parms.m_commandButton;
 	m_path = parms.m_path;	/// @todo srj -- probably need a better way to safely save/restore this
+
+	static Int s_proneStoreTraceCount = 0;
+	if (parms.m_cmd == AICMD_GO_PRONE && s_proneStoreTraceCount < 8)
+	{
+		++s_proneStoreTraceCount;
+		AppendStartupTrace(
+			"AICommandParmsStorage::store prone this=%p dealt=%f clipped=%f noEffect=%d",
+			this,
+			(double)m_damage.out.m_actualDamageDealt,
+			(double)m_damage.out.m_actualDamageClipped,
+			m_damage.out.m_noEffect ? 1 : 0);
+	}
 }
 
 //----------------------------------------------------------------------------------------------------------
@@ -161,16 +203,28 @@ void AICommandParmsStorage::reconstitute(AICommandParms& parms) const
   parms.m_waypoint = m_waypoint;
   parms.m_polygon = m_polygon;
   parms.m_intValue = m_intValue;
-  parms.m_damage = m_damage;
+	copyProneDamageForCommand(parms.m_damage, m_damage);
 	parms.m_commandButton = m_commandButton;
 	parms.m_path = m_path;	/// @todo srj -- probably need a better way to safely save/restore this
+
+	static Int s_proneReconstituteTraceCount = 0;
+	if (m_cmd == AICMD_GO_PRONE && s_proneReconstituteTraceCount < 8)
+	{
+		++s_proneReconstituteTraceCount;
+		AppendStartupTrace(
+			"AICommandParmsStorage::reconstitute prone this=%p dealt=%f clipped=%f noEffect=%d",
+			this,
+			(double)parms.m_damage.out.m_actualDamageDealt,
+			(double)parms.m_damage.out.m_actualDamageClipped,
+			parms.m_damage.out.m_noEffect ? 1 : 0);
+	}
 }
 
 //----------------------------------------------------------------------------------------------------------
 void AICommandParmsStorage::doXfer(Xfer *xfer) 
 {
 	xfer->xferUser(&m_cmd, sizeof(m_cmd));
-	xfer->xferUser(&m_cmd, sizeof(m_cmdSource));
+	xfer->xferUser(&m_cmdSource, sizeof(m_cmdSource));
 	xfer->xferCoord3D(&m_pos);
 	xfer->xferObjectID(&m_obj);
 	xfer->xferObjectID(&m_otherObj);
@@ -180,6 +234,7 @@ void AICommandParmsStorage::doXfer(Xfer *xfer)
 	Int i;
 	if (xfer->getXferMode() == XFER_LOAD)
 	{
+		m_coords.clear();
 		for (i=0; i<numCoords; i++) {
 			Coord3D pos;
 			xfer->xferCoord3D(&pos);

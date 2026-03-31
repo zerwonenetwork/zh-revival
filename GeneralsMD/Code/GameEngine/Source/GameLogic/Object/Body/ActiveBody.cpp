@@ -60,6 +60,8 @@
 #include "GameLogic/Module/DamageModule.h"
 #include "GameLogic/Module/DieModule.h"
 
+extern void AppendStartupTrace( const char *format, ... );
+
 
 #ifdef _INTERNAL
 // for occasional debugging...
@@ -569,6 +571,18 @@ void ActiveBody::attemptDamage( DamageInfo *damageInfo )
 		// m_lastDamageTimestamp is initialized to FFFFFFFFFF, so doing a < compare is problematic.
 		// jba.
 		if (m_lastDamageTimestamp!=TheGameLogic->getFrame() && m_lastDamageTimestamp != TheGameLogic->getFrame()-1) {
+			static Int s_lastDamageTraceCount = 0;
+			if (s_lastDamageTraceCount < 10)
+			{
+				++s_lastDamageTraceCount;
+				AppendStartupTrace(
+					"ActiveBody::attemptDamage before snapshot body=%p obj=%p source=%u type=%d amount=%f",
+					this,
+					obj,
+					(UnsignedInt)damageInfo->in.m_sourceID,
+					(Int)damageInfo->in.m_damageType,
+					(double)damageInfo->out.m_actualDamageDealt);
+			}
 			m_lastDamageInfo = *damageInfo;
 			m_lastDamageCleared = false;
 			m_lastDamageTimestamp = TheGameLogic->getFrame();
@@ -580,11 +594,35 @@ void ActiveBody::attemptDamage( DamageInfo *damageInfo )
 				if (srcObj1) {
 					if (srcObj2->isKindOf(KINDOF_VEHICLE) || srcObj2->isKindOf(KINDOF_INFANTRY) ||
 						srcObj2->isFactionStructure()) {
+							static Int s_lastDamageReplaceTraceCount = 0;
+							if (s_lastDamageReplaceTraceCount < 10)
+							{
+								++s_lastDamageReplaceTraceCount;
+								AppendStartupTrace(
+									"ActiveBody::attemptDamage replace snapshot body=%p obj=%p source=%u type=%d amount=%f",
+									this,
+									obj,
+									(UnsignedInt)damageInfo->in.m_sourceID,
+									(Int)damageInfo->in.m_damageType,
+									(double)damageInfo->out.m_actualDamageDealt);
+							}
 							m_lastDamageInfo = *damageInfo;
 							m_lastDamageCleared = false;
 							m_lastDamageTimestamp = TheGameLogic->getFrame();
 						}
 				} else {
+					static Int s_lastDamageAdoptTraceCount = 0;
+					if (s_lastDamageAdoptTraceCount < 10)
+					{
+						++s_lastDamageAdoptTraceCount;
+						AppendStartupTrace(
+							"ActiveBody::attemptDamage adopt snapshot body=%p obj=%p source=%u type=%d amount=%f",
+							this,
+							obj,
+							(UnsignedInt)damageInfo->in.m_sourceID,
+							(Int)damageInfo->in.m_damageType,
+							(double)damageInfo->out.m_actualDamageDealt);
+					}
 					m_lastDamageInfo = *damageInfo;
 					m_lastDamageCleared = false;
 					m_lastDamageTimestamp = TheGameLogic->getFrame();
@@ -838,6 +876,17 @@ void ActiveBody::attemptHealing( DamageInfo *damageInfo )
 
 		//then copy the whole DamageInfo struct for easy lookup 
 		//(object pointer loses scope as soon as atteptdamage's caller ends)
+		static Int s_lastHealingTraceCount = 0;
+		if (s_lastHealingTraceCount < 6)
+		{
+			++s_lastHealingTraceCount;
+			AppendStartupTrace(
+				"ActiveBody::attemptHealing snapshot body=%p obj=%p source=%u amount=%f",
+				this,
+				obj,
+				(UnsignedInt)damageInfo->in.m_sourceID,
+				(double)damageInfo->out.m_actualDamageDealt);
+		}
 		m_lastDamageInfo = *damageInfo;
 		m_lastDamageCleared = false;
 		m_lastDamageTimestamp = TheGameLogic->getFrame();

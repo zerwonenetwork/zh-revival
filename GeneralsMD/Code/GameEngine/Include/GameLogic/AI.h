@@ -746,7 +746,12 @@ public:
 	inline void aiGoProne( const DamageInfo *damageInfo, CommandSourceType cmdSource )
 	{
 		AICommandParms parms(AICMD_GO_PRONE, cmdSource);
-		parms.m_damage = *damageInfo;
+		if (damageInfo != NULL)
+		{
+			parms.m_damage.out.m_actualDamageDealt = damageInfo->out.m_actualDamageDealt;
+			parms.m_damage.out.m_actualDamageClipped = damageInfo->out.m_actualDamageClipped;
+			parms.m_damage.out.m_noEffect = damageInfo->out.m_noEffect;
+		}
 		aiDoCommand(&parms);
 	}
 

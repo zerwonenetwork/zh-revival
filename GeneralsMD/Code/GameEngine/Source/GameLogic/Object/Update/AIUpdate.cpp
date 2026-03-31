@@ -3962,6 +3962,9 @@ void AIUpdateInterface::privateExecuteRailedTransport( CommandSourceType cmdSour
 ///< life altering state change, if this AI can do it
 void AIUpdateInterface::privateGoProne( const DamageInfo *damageInfo, CommandSourceType )
 {
+	if (damageInfo == NULL)
+		return;
+
 	static NameKeyType proneModuleKey = TheNameKeyGenerator->nameToKey( "ProneUpdate" );
 	ProneUpdate *proneModule = (ProneUpdate *)getObject()->findUpdateModule( proneModuleKey );
 
