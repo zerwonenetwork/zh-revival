@@ -1038,13 +1038,15 @@ void AIStateMachine::addToGoalPath( const Coord3D *pathPoint)
 	if (pathPoint == NULL)
 		return;
 
+	Coord3D point = *pathPoint;
+
 	if (m_goalPath.size()==0) {
-		m_goalPath.push_back(*pathPoint);
+		m_goalPath.push_back(point);
 	}	else {
-		Coord3D *finalPoint = &m_goalPath[ m_goalPath.size() - 1 ];
-		if( !finalPoint->equals( *pathPoint ) )
+		Coord3D finalPoint = m_goalPath[ m_goalPath.size() - 1 ];
+		if( !finalPoint.equals(point) )
 		{
-			m_goalPath.push_back(*pathPoint);
+			m_goalPath.push_back(point);
 		}
 	}
 }

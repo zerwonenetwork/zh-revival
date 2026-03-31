@@ -642,7 +642,21 @@ public:
 
 	inline StateID getCurrentStateID() const { return getStateMachine()->getCurrentStateID(); }	///< return the id of the current state of the machine
 /// @ todo -- srj sez: JBA NUKE THIS CODE, IT IS EVIL
-	inline void friend_addToWaypointGoalPath( const Coord3D *pathPoint ) { getStateMachine()->addToGoalPath(pathPoint); }
+	inline void friend_addToWaypointGoalPath( const Coord3D *pathPoint )
+	{
+		AIStateMachine* stateMachine = getStateMachine();
+		if (stateMachine == NULL)
+			return;
+
+		Bool wasLocked = stateMachine->isLocked();
+		if (wasLocked)
+			stateMachine->unlock();
+
+		stateMachine->addToGoalPath(pathPoint);
+
+		if (wasLocked)
+			stateMachine->lock("Relocking after friend_addToWaypointGoalPath");
+	}
 
 	// this is intended for use ONLY by W3dWaypointBuffer and AIFollowPathState.
 	inline const Coord3D* friend_getGoalPathPosition( Int index ) const { return getStateMachine()->getGoalPathPosition( index ); }

@@ -3356,13 +3356,26 @@ void AIUpdateInterface::privateFollowWaypointPathAsTeamExact( const Waypoint *wa
 //----------------------------------------------------------------------------------------
 void AIUpdateInterface::privateFollowPathAppend( const Coord3D *pos, CommandSourceType cmdSource )
 {
+	if (pos == NULL)
+		return;
+
 	// We're adding a dynamic waypoint!
 	Bool effectivelyMoving = isMoving() || isWaitingForPath();
+	AIStateMachine* stateMachine = getStateMachine();
+	if (stateMachine == NULL)
+		return;
 
-	if (getAIStateType() == AI_FOLLOW_PATH && getStateMachine()->getGoalPathSize() > 0 && effectivelyMoving)
+	if (getAIStateType() == AI_FOLLOW_PATH && stateMachine->getGoalPathSize() > 0 && effectivelyMoving)
 	{
 		//We already have a path, so simply add the point to the end of it!
-		getStateMachine()->addToGoalPath(pos);
+		Bool wasLocked = stateMachine->isLocked();
+		if (wasLocked)
+			stateMachine->unlock();
+
+		stateMachine->addToGoalPath(pos);
+
+		if (wasLocked)
+			stateMachine->lock("Relocking after privateFollowPathAppend");
 	}
 	else if (effectivelyMoving)
 	{
