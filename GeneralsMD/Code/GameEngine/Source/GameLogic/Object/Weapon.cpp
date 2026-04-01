@@ -56,6 +56,7 @@
 #include "GameClient/FXList.h"
 #include "GameClient/InGameUI.h"
 #include "GameClient/ParticleSys.h"
+#include "GameClient/Shell.h"
 
 #include "GameLogic/Damage.h"
 #include "GameLogic/ExperienceTracker.h"
@@ -141,6 +142,16 @@ static Object* ResolveLiveObjectByID(ObjectID id)
 		return NULL;
 
 	return ResolveLiveObjectPtr(TheGameLogic->findObjectByID(id));
+}
+
+// Shell-map combat is presentation-only. Skip shell damage before any AoE
+// iteration so shell-only state cannot destabilize real startup.
+static Bool ShouldSkipShellWeaponDamage()
+{
+	return TheGameLogic &&
+		(TheGameLogic->isInShellGame() ||
+		 (TheShell && TheShell->isShellActive()) ||
+		 (TheGlobalData && TheGlobalData->m_shellMapOn));
 }
 
 //-------------------------------------------------------------------------------------------------
@@ -1463,6 +1474,9 @@ static Bool is2DDistSquaredLessThan(const Coord3D& a, const Coord3D& b, Real dis
 //-------------------------------------------------------------------------------------------------
 void WeaponTemplate::dealDamageInternal(ObjectID sourceID, ObjectID victimID, const Coord3D *pos, const WeaponBonus& bonus, Bool isProjectileDetonation) const
 {
+	if (ShouldSkipShellWeaponDamage())
+		return;
+
 	if (sourceID == 0)	// must have a source
 		return;
 
