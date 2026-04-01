@@ -3432,8 +3432,16 @@ void DX8Wrapper::Set_Render_Target_With_Z
 )
 {
 	WWASSERT(texture!=NULL);
+	if (!texture) {
+		AppendStartupTrace("Set_Render_Target_With_Z: texture is NULL; skipping render-target switch");
+		return;
+	}
 	IDirect3DSurface8 * d3d_surf = texture->Get_D3D_Surface_Level();
 	WWASSERT(d3d_surf != NULL);
+	if (!d3d_surf) {
+		AppendStartupTrace("Set_Render_Target_With_Z: Get_D3D_Surface_Level returned NULL (D3D texture missing); skipping");
+		return;
+	}
 
 	IDirect3DSurface8* d3d_zbuf=NULL;
 	if (ztexture!=NULL)

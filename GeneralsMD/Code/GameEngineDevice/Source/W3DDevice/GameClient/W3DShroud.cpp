@@ -550,6 +550,9 @@ void W3DShroud::render(CameraClass *cam)
 	if (!m_pSrcTexture)
 		return; //nothing to update from.  Must be in reset state.
 
+	if (!m_pDstTexture)
+		return; // destination texture creation failed (e.g. POOL_DEFAULT on DXWrapper); shroud disabled
+
 	if (DX8Wrapper::_Get_D3D_Device8() && (DX8Wrapper::_Get_D3D_Device8()->TestCooperativeLevel()) != D3D_OK)
 		return;	//device not ready to render anything
 
@@ -710,6 +713,10 @@ void W3DShroud::render(CameraClass *cam)
 	SurfaceClass* pDestSurface;
 	{
 		pDestSurface=m_pDstTexture->Get_Surface_Level(0);
+	}
+	if (!pDestSurface) {
+		AppendStartupTrace("W3DShroud::render: Get_Surface_Level returned NULL (D3D texture missing); skipping shroud copy");
+		return;
 	}
 
 	RECT	srcRect;

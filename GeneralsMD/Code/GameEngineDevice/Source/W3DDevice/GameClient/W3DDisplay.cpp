@@ -3164,6 +3164,10 @@ void W3DDisplay::takeScreenShot(void)
 
 	IDirect3DSurface8 *fb;
 	fb=DX8Wrapper::_Get_DX8_Front_Buffer();
+	if (!fb) {
+		AppendStartupTrace("W3DDisplay screenshot: _Get_DX8_Front_Buffer returned NULL; screenshot skipped");
+		return;
+	}
 	D3DSURFACE_DESC desc;
 	fb->GetDesc(&desc);
 
