@@ -2393,7 +2393,7 @@ void Object::updateTriggerAreaFlags()
 //-------------------------------------------------------------------------------------------------
 void Object::onCollide( Object *other, const Coord3D *loc, const Coord3D *normal )
 {
-	if (TheShell && TheShell->isShellActive())
+	if ((TheShell && TheShell->isShellActive()) || (TheGlobalData && TheGlobalData->m_shellMapOn))
 		return;
 
 	if (isDestroyed() || isEffectivelyDead())
