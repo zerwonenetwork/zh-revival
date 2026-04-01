@@ -2392,6 +2392,9 @@ void Object::updateTriggerAreaFlags()
 //-------------------------------------------------------------------------------------------------
 void Object::onCollide( Object *other, const Coord3D *loc, const Coord3D *normal )
 {
+	if (isDestroyed() || isEffectivelyDead())
+		return;
+
 	for (BehaviorModule** m = m_behaviors; *m; ++m)
 	{
 		CollideModuleInterface* collide = (*m)->getCollide();

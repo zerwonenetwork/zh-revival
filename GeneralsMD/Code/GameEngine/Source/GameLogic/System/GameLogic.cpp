@@ -4157,6 +4157,7 @@ void GameLogic::destroyObject( Object *obj )
 
 	// mark object as destroyed
 	obj->setStatus( MAKE_OBJECT_STATUS_MASK( OBJECT_STATUS_DESTROYED ) );
+	obj->setStatus( MAKE_OBJECT_STATUS_MASK( OBJECT_STATUS_NO_COLLISIONS ) );
 
 	// We desperately need to stop here, or else the destructor of the statemachine will try to do
 	// stopping logic, which uses virtual functions and deleted modules, which will crash us.
