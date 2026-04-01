@@ -1052,6 +1052,7 @@ SurfaceClass *TextureClass::Get_Surface_Level(unsigned int level)
 */
 void TextureClass::Get_Level_Description( SurfaceClass::SurfaceDescription & desc, unsigned int level )
 {
+	::ZeroMemory(&desc, sizeof(desc));
 	SurfaceClass * surf = Get_Surface_Level(level);
 	if (surf != NULL) {
 		surf->Get_Description(desc);

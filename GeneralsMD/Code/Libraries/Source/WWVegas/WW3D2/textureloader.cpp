@@ -1271,6 +1271,12 @@ bool TextureLoadTaskClass::Begin_Load(void)
 bool TextureLoadTaskClass::Load(void)
 {
 	WWMEMLOG(MEM_TEXTURE);
+	if (!Peek_D3D_Texture()) {
+		AppendStartupTrace(
+			"TextureLoadTaskClass::Load missing d3d texture for %s",
+			Texture ? Texture->Get_Full_Path().Peek_Buffer() : "<null>");
+		return false;
+	}
 	WWASSERT(Peek_D3D_Texture());
 
 	bool loaded = false;

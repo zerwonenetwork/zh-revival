@@ -58,6 +58,8 @@
 #include <wwstring.h>
 #include <wwmath.h>
 
+extern void AppendStartupTrace(const char *format, ...);
+
 /*
 ** Class static members:
 */
@@ -309,6 +311,10 @@ void MetalMapManagerClass::Update_Textures(void)
 		Vector3 white(1.0f, 1.0f, 1.0f);
 
 		SurfaceClass * metal_map_surface = Textures[i]->Get_Surface_Level(0);
+		if (!metal_map_surface) {
+			AppendStartupTrace("MetalMapManagerClass::Update_Textures missing surface index=%d", i);
+			continue;
+		}
 		int pitch;
 		unsigned char *map=(unsigned char *) metal_map_surface->Lock(&pitch);
 		int idx=0;

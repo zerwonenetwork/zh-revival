@@ -2143,12 +2143,22 @@ void W3DProjectedShadow::init(void)
 {
 
 	DEBUG_ASSERTCRASH(m_shadowProjector == NULL, ("Init of existing shadow projector"));
+	W3DShadowTexture *shadow_texture = m_shadowTexture[0];
+	TextureClass *shadow_map = shadow_texture ? shadow_texture->getTexture() : NULL;
+	if (!shadow_texture || !shadow_map)
+	{
+		AppendStartupTrace(
+			"W3DProjectedShadow::init missing shadow texture wrapper=%p texture=%p",
+			shadow_texture,
+			shadow_map);
+		return;
+	}
 
 	if (m_type == SHADOW_PROJECTION)
 	{
 		m_shadowProjector = NEW_REF(TexProjectClass,());
 		m_shadowProjector->Set_Intensity(0.4f,true);
-		m_shadowProjector->Set_Texture(m_shadowTexture[0]->getTexture());
+		m_shadowProjector->Set_Texture(shadow_map);
 	}
 }
 
@@ -2159,6 +2169,16 @@ void W3DProjectedShadow::updateTexture(Vector3 &lightPos)
 	SpecialRenderInfoClass *context;
 	//default uv coordinates before rotation starting at top/left going clockwise
 	static Vector2 uvData[4]={Vector2(-0.5,-0.5f),Vector2(-0.5,0.5f),Vector2(0.5f,0.5f),Vector2(-0.5f,0.5f)};
+	W3DShadowTexture *shadow_texture = m_shadowTexture[0];
+	TextureClass *shadow_map = shadow_texture ? shadow_texture->getTexture() : NULL;
+	if (!shadow_texture || !shadow_map)
+	{
+		AppendStartupTrace(
+			"W3DProjectedShadow::updateTexture missing shadow texture wrapper=%p texture=%p",
+			shadow_texture,
+			shadow_map);
+		return;
+	}
 
 	//force light always 2000 units from object - for some reason projection fails if
 	//light is too far.
@@ -2185,7 +2205,7 @@ void W3DProjectedShadow::updateTexture(Vector3 &lightPos)
 		m_shadowProjector->Compute_Texture(m_robj,context);
 
 		//Need to copy generated texture into permanent texture.
-		SurfaceClass *oldSurface=m_shadowTexture[0]->getTexture()->Get_Surface_Level();
+		SurfaceClass *oldSurface=shadow_map->Get_Surface_Level();
 		SurfaceClass *newSurface=TheW3DProjectedShadowManager->getRenderTarget()->Get_Surface_Level();
 		if (!oldSurface || !newSurface)
 		{
@@ -2202,7 +2222,7 @@ void W3DProjectedShadow::updateTexture(Vector3 &lightPos)
 		oldSurface->Copy(0,0,0,0,DEFAULT_RENDER_TARGET_WIDTH,DEFAULT_RENDER_TARGET_HEIGHT,newSurface);
 		REF_PTR_RELEASE(newSurface);
 		REF_PTR_RELEASE(oldSurface);
-		m_shadowTexture[0]->updateBounds(TheW3DShadowManager->getLightPosWorld(0),m_robj);	//update local shadow bounds
+		shadow_texture->updateBounds(TheW3DShadowManager->getLightPosWorld(0),m_robj);	//update local shadow bounds
 	}
 	else
 	if (m_type == SHADOW_DECAL)
@@ -2220,13 +2240,22 @@ void W3DProjectedShadow::updateTexture(Vector3 &lightPos)
 			objectToLight.Set(1.0f,0.0f,0.0f);
 
 		SurfaceClass::SurfaceDescription surface_desc;
-		m_shadowTexture[0]->getTexture()->Get_Level_Description(surface_desc);
+		shadow_map->Get_Level_Description(surface_desc);
+		if (surface_desc.Width <= 0 || surface_desc.Height <= 0)
+		{
+			AppendStartupTrace(
+				"W3DProjectedShadow::updateTexture invalid decal surface desc width=%d height=%d texture=%p",
+				surface_desc.Width,
+				surface_desc.Height,
+				shadow_map);
+			return;
+		}
 		//default shadow texture points along world -x axis (west).  Rotate uv coordinates to fit actual light direction
 		Vector3 uVec = objectToLight * DECAL_TEXELS_PER_WORLD_UNIT / (float)surface_desc.Width;
 		objectToLight.Rotate_Z(-1.0f,0.0f);	//rotate u vector by -90 degress to get v vector.
 		Vector3 vVec = objectToLight * DECAL_TEXELS_PER_WORLD_UNIT / (float)surface_desc.Height;
 
-		m_shadowTexture[0]->setDecalUVAxis(uVec, vVec);
+		shadow_texture->setDecalUVAxis(uVec, vVec);
 
 		///@todo: tweak decal bounding volumes to something sensible
 		AABoxClass	box;
@@ -2234,11 +2263,11 @@ void W3DProjectedShadow::updateTexture(Vector3 &lightPos)
 		m_robj->Get_Obj_Space_Bounding_Box(box);	//shadow uses same bounding box as object
 		m_robj->Get_Obj_Space_Bounding_Sphere(sphere);
 
-		m_shadowTexture[0]->setBoundingSphere(sphere);
-		m_shadowTexture[0]->setBoundingBox(box);
+		shadow_texture->setBoundingSphere(sphere);
+		shadow_texture->setBoundingBox(box);
 	}
 
-	m_shadowTexture[0]->setLightPosHistory(lightPos);	//store position of light at time of texture update.
+	shadow_texture->setLightPosHistory(lightPos);	//store position of light at time of texture update.
 
 }
 
@@ -2250,7 +2279,17 @@ void W3DProjectedShadow::updateProjectionParameters(const Matrix3D &cameraXform)
 
 void W3DProjectedShadow::update(void)
 {
-	if (m_shadowTexture[0]->getLightPosHistory() != TheW3DShadowManager->getLightPosWorld(0))
+	W3DShadowTexture *shadow_texture = m_shadowTexture[0];
+	if (!shadow_texture || !shadow_texture->getTexture())
+	{
+		AppendStartupTrace(
+			"W3DProjectedShadow::update missing shadow texture wrapper=%p texture=%p",
+			shadow_texture,
+			shadow_texture ? shadow_texture->getTexture() : NULL);
+		return;
+	}
+
+	if (shadow_texture->getLightPosHistory() != TheW3DShadowManager->getLightPosWorld(0))
 	{	//light has moved since last time this shadow was calculated. Need update
 		updateTexture(TheW3DShadowManager->getLightPosWorld(0));
 	}
@@ -2276,8 +2315,22 @@ Int W3DShadowTexture::init(RenderObjClass *robj)
 {
 	///@todo: implement this function
 	SurfaceClass::SurfaceDescription surface_desc;
+	TextureClass *render_target = TheW3DProjectedShadowManager->getRenderTarget();
+	if (!render_target)
+	{
+		AppendStartupTrace("W3DShadowTexture::init missing render target");
+		return FALSE;
+	}
 
-	TheW3DProjectedShadowManager->getRenderTarget()->Get_Level_Description(surface_desc);
+	render_target->Get_Level_Description(surface_desc);
+	if (surface_desc.Width <= 0 || surface_desc.Height <= 0)
+	{
+		AppendStartupTrace(
+			"W3DShadowTexture::init invalid render target desc width=%d height=%d",
+			surface_desc.Width,
+			surface_desc.Height);
+		return FALSE;
+	}
 
 	TextureClass *new_texture = MSGNEW("TextureClass") TextureClass(surface_desc.Width,surface_desc.Height,surface_desc.Format,MIP_LEVELS_1);
 
