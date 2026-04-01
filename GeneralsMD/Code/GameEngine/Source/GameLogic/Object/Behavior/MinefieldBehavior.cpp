@@ -36,6 +36,7 @@
 #include "Common/Xfer.h"
 #include "GameClient/Drawable.h"
 #include "GameClient/InGameUI.h"
+#include "GameClient/Shell.h"
 #include "GameLogic/GameLogic.h"
 #include "GameLogic/Object.h"
 #include "GameLogic/Module/AIUpdate.h"
@@ -379,7 +380,7 @@ static Bool IsActiveMineClearer(const Object *other)
 //-------------------------------------------------------------------------------------------------
 void MinefieldBehavior::onCollide( Object *other, const Coord3D *loc, const Coord3D *normal )
 {
-	if (TheGameLogic->isInShellGame())
+	if ((TheShell && TheShell->isShellActive()) || TheGameLogic->isInShellGame())
 		return;
 
 	other = ResolveLiveMinefieldCollider(other);
