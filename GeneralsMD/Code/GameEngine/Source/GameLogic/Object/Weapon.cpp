@@ -30,6 +30,8 @@
 // INCLUDES ///////////////////////////////////////////////////////////////////////////////////////
 #include "PreRTS.h"	// This must go first in EVERY cpp file int the GameEngine
 
+#include <vector>
+
 #define DEFINE_DEATH_NAMES
 #define DEFINE_WEAPONBONUSCONDITION_NAMES
 #define DEFINE_WEAPONBONUSFIELD_NAMES
@@ -1459,6 +1461,7 @@ void WeaponTemplate::dealDamageInternal(ObjectID sourceID, ObjectID victimID, co
 		return;
 
 	Object *source = TheGameLogic->findObjectByID(sourceID);	// might be null...
+	const ObjectID primaryVictimID = victimID;
 
 	//
 	/** @todo We need to rewrite the historic stuff ... if you fire 5 missiles, and the 5th,
@@ -1520,9 +1523,16 @@ void WeaponTemplate::dealDamageInternal(ObjectID sourceID, ObjectID victimID, co
 	ObjectStatusTypes damageStatusType = getDamageStatusType();
 	if (getProjectileTemplate() == NULL || isProjectileDetonation)
 	{
+		struct DamageTargetSnapshot
+		{
+			ObjectID m_victimID;
+			Real m_distSqr;
+		};
+
 		SimpleObjectIterator *iter;
 		Object *curVictim;
 		Real curVictimDistSqr;
+		std::vector<DamageTargetSnapshot> damageTargets;
 
 		Real primaryRadius = getPrimaryDamageRadius(bonus);
 		Real secondaryRadius = getSecondaryDamageRadius(bonus);
@@ -1564,14 +1574,42 @@ void WeaponTemplate::dealDamageInternal(ObjectID sourceID, ObjectID victimID, co
 		}
 		MemoryPoolObjectHolder hold(iter);
 
+		if (iter != NULL)
+		{
+			damageTargets.reserve(iter->getCount());
+		}
+
 		for (; curVictim != NULL; curVictim = iter ? iter->nextWithNumeric(&curVictimDistSqr) : NULL)
 		{
+			DamageTargetSnapshot snapshot;
+			snapshot.m_victimID = curVictim->getID();
+			snapshot.m_distSqr = curVictimDistSqr;
+			damageTargets.push_back(snapshot);
+		}
+
+		for (std::vector<DamageTargetSnapshot>::const_iterator targetIt = damageTargets.begin();
+				 targetIt != damageTargets.end();
+				 ++targetIt)
+		{
+			if (targetIt->m_victimID == INVALID_ID)
+			{
+				continue;
+			}
+
+			curVictim = TheGameLogic->findObjectByID(targetIt->m_victimID);
+			if (curVictim == NULL)
+			{
+				continue;
+			}
+
+			curVictimDistSqr = targetIt->m_distSqr;
+
 			Bool killSelf = false;
 			if (source != NULL)
 			{
 				// anytime something is designated as the "primary victim" (ie, the direct target
 				// of the weapon), we ignore all the "affects" flags.
-				if (curVictim != primaryVictim)
+				if (curVictim->getID() != primaryVictimID)
 				{
 
 					if( (affects & WEAPON_KILLS_SELF) && source == curVictim )
