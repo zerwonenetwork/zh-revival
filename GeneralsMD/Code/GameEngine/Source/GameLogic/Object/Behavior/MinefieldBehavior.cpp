@@ -32,6 +32,7 @@
 #include "PreRTS.h"	// This must go first in EVERY cpp file int the GameEngine
 #define DEFINE_RELATIONSHIP_NAMES
 #include "Common/GameState.h"
+#include "Common/GlobalData.h"
 #include "Common/RandomValue.h"
 #include "Common/Xfer.h"
 #include "GameClient/Drawable.h"
@@ -60,6 +61,14 @@ const Real MIN_HEALTH = 0.1f;
 namespace
 {
 	static Int s_minefieldCtorTraceCount = 0;
+	static Int s_shellMinefieldDisableTraceCount = 0;
+
+	static Bool ShouldDisableMinefieldForShell()
+	{
+		return (TheGameLogic && TheGameLogic->isInShellGame()) ||
+			(TheShell && TheShell->isShellActive()) ||
+			(TheGlobalData && TheGlobalData->m_shellMapOn);
+	}
 }
 
 //-------------------------------------------------------------------------------------------------
@@ -115,20 +124,42 @@ MinefieldBehaviorModuleData::MinefieldBehaviorModuleData()
 MinefieldBehavior::MinefieldBehavior( Thing *thing, const ModuleData* moduleData ) 
 								 : UpdateModule( thing, moduleData )
 {
-	const MinefieldBehaviorModuleData* d = getMinefieldBehaviorModuleData();
 	m_nextDeathCheckFrame = 0;
 	m_scootFramesLeft = 0;
 	m_scootVel.zero();
 	m_scootAccel.zero();
 	m_detonators.clear();
 	m_ignoreDamage = false;
-	m_regenerates = d->m_regenerates;
+	m_regenerates = false;
 	m_draining = false;
-	m_virtualMinesRemaining = d->m_numVirtualMines;
+	m_virtualMinesRemaining = 0;
 	for (Int i = 0; i < MAX_IMMUNITY; ++i)
 	{
 		m_immunes[i].id = INVALID_ID;
 		m_immunes[i].collideTime = 0;
+	}
+
+	if (ShouldDisableMinefieldForShell())
+	{
+		if (s_shellMinefieldDisableTraceCount < 8)
+		{
+			AppendStartupTrace(
+				"MinefieldBehavior::ctor shell-disable obj=%p moduleData=%p shellActive=%d shellMap=%d inShell=%d",
+				getObject(),
+				moduleData,
+				(TheShell && TheShell->isShellActive()) ? 1 : 0,
+				(TheGlobalData && TheGlobalData->m_shellMapOn) ? 1 : 0,
+				(TheGameLogic && TheGameLogic->isInShellGame()) ? 1 : 0);
+			++s_shellMinefieldDisableTraceCount;
+		}
+		return;
+	}
+
+	const MinefieldBehaviorModuleData* d = getMinefieldBehaviorModuleData();
+	if (d != NULL)
+	{
+		m_regenerates = d->m_regenerates;
+		m_virtualMinesRemaining = d->m_numVirtualMines;
 	}
 
 	if (s_minefieldCtorTraceCount < 8)
@@ -190,6 +221,9 @@ UpdateSleepTime MinefieldBehavior::calcSleepTime()
 //-------------------------------------------------------------------------------------------------
 UpdateSleepTime MinefieldBehavior::update()
 {
+	if (ShouldDisableMinefieldForShell())
+		return UPDATE_SLEEP_FOREVER;
+
 	Object* obj = getObject();
 	const MinefieldBehaviorModuleData* d = getMinefieldBehaviorModuleData();
 	UnsignedInt now = TheGameLogic->getFrame();
@@ -505,6 +539,9 @@ void MinefieldBehavior::onCollide( Object *other, const Coord3D *loc, const Coor
 //-------------------------------------------------------------------------------------------------
 void MinefieldBehavior::onDamage( DamageInfo *damageInfo )
 {
+	if (ShouldDisableMinefieldForShell())
+		return;
+
 	if (m_ignoreDamage)
 		return;
 
@@ -576,6 +613,9 @@ void MinefieldBehavior::onHealing( DamageInfo *damageInfo )
 //-------------------------------------------------------------------------------------------------
 void MinefieldBehavior::onDie( const DamageInfo *damageInfo )
 {
+	if (ShouldDisableMinefieldForShell())
+		return;
+
 	TheGameLogic->destroyObject(getObject());
 }
 
@@ -583,6 +623,9 @@ void MinefieldBehavior::onDie( const DamageInfo *damageInfo )
 //-------------------------------------------------------------------------------------------------
 void MinefieldBehavior::disarm()
 {
+	if (ShouldDisableMinefieldForShell())
+		return;
+
 	if (!m_regenerates)
 	{
 		TheGameLogic->destroyObject(getObject());
@@ -619,6 +662,9 @@ void MinefieldBehavior::disarm()
 //-------------------------------------------------------------------------------------------------
 void MinefieldBehavior::setScootParms(const Coord3D& start, const Coord3D& end)
 {
+	if (ShouldDisableMinefieldForShell())
+		return;
+
 	Object* obj = getObject();
 	const MinefieldBehaviorModuleData* d = getMinefieldBehaviorModuleData();
 	UnsignedInt scootFromStartingPointTime = d->m_scootFromStartingPointTime;
@@ -756,6 +802,21 @@ void MinefieldBehavior::loadPostProcess( void )
 
 	// extend base class
 	UpdateModule::loadPostProcess();
+
+	if (ShouldDisableMinefieldForShell())
+	{
+		if (s_shellMinefieldDisableTraceCount < 12)
+		{
+			AppendStartupTrace(
+				"MinefieldBehavior::loadPostProcess shell-disable obj=%p shellActive=%d shellMap=%d inShell=%d",
+				getObject(),
+				(TheShell && TheShell->isShellActive()) ? 1 : 0,
+				(TheGlobalData && TheGlobalData->m_shellMapOn) ? 1 : 0,
+				(TheGameLogic && TheGameLogic->isInShellGame()) ? 1 : 0);
+			++s_shellMinefieldDisableTraceCount;
+		}
+		return;
+	}
 
 	Object *obj = getObject();
 	if (s_minefieldCtorTraceCount < 16)
