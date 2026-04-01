@@ -428,6 +428,10 @@ void TerrainTextureClass::setLOD(Int LOD)
 Bool TerrainTextureClass::updateFlat(WorldHeightMap *htMap, Int xCell, Int yCell, Int cellWidth, Int pixelsPerCell)
 {
 	// D3DTexture is our texture;
+	if (!Peek_D3D_Texture()) {
+		AppendStartupTrace("TerrainTextureClass::updateFlat: D3D texture is NULL; skipping fill");
+		return false;
+	}
 
 	IDirect3DSurface8 *surface_level;
 	D3DSURFACE_DESC surface_desc;
