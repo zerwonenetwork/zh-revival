@@ -176,6 +176,10 @@ void W3DShroud::init(WorldHeightMap *pMap, Real worldCellSizeX, Real worldCellSi
 	AppendStartupTrace("W3DShroud::init after _Create_DX8_Surface src=%p", m_pSrcTexture);
 
 	DEBUG_ASSERTCRASH( m_pSrcTexture != NULL, ("Failed to Allocate Shroud Src Surface"));
+	if (!m_pSrcTexture) {
+		AppendStartupTrace("W3DShroud::init: m_pSrcTexture is NULL; shroud disabled");
+		return;
+	}
 
 	D3DLOCKED_RECT rect;
 
@@ -191,7 +195,9 @@ void W3DShroud::init(WorldHeightMap *pMap, Real worldCellSizeX, Real worldCellSi
 	m_srcTexturePitch=rect.Pitch;
 
 	//clear entire texture to black
-	memset(m_srcTextureData,0,m_srcTexturePitch*srcHeight);
+	if (m_srcTextureData) {
+		memset(m_srcTextureData,0,m_srcTexturePitch*srcHeight);
+	}
 
 #if defined(_DEBUG) || defined(_INTERNAL)
 	if (TheGlobalData && TheGlobalData->m_fogOfWarOn)
