@@ -67,6 +67,46 @@ extern void AppendStartupTrace(const char *format, ...);
 #include "W3DDevice/GameClient/W3DScene.h"
 #include "W3DDevice/GameClient/W3DCustomScene.h"
 
+namespace
+{
+	static Int s_missingWaterSurfaceTraceCount = 0;
+
+	static void TraceMissingWaterSurface(const char *context, Int level = -1)
+	{
+		if (s_missingWaterSurfaceTraceCount >= 16)
+			return;
+
+		if (level >= 0)
+		{
+			AppendStartupTrace("W3DWater: missing surface in %s level=%d", context, level);
+		}
+		else
+		{
+			AppendStartupTrace("W3DWater: missing surface in %s", context);
+		}
+		++s_missingWaterSurfaceTraceCount;
+	}
+
+	static void SafePrimeWhiteTexture(TextureClass *texture, const char *context)
+	{
+		if (!texture)
+			return;
+
+		if (!texture->Is_Initialized())
+			texture->Init();
+
+		SurfaceClass *surface = texture->Get_Surface_Level();
+		if (!surface)
+		{
+			TraceMissingWaterSurface(context);
+			return;
+		}
+
+		surface->DrawPixel(0, 0, 0xffffffff);
+		REF_PTR_RELEASE(surface);
+	}
+}
+
 
 #ifdef _INTERNAL
 // for occasional debugging...
@@ -465,6 +505,16 @@ HRESULT WaterRenderObjClass::initBumpMap(LPDIRECT3DTEXTURE8 *pTex, TextureClass 
 	for (Int level=0; level < numLevels; level++)
 	{
 		surf=pBumpSource->Get_Surface_Level(level);
+		if (!surf)
+		{
+			TraceMissingWaterSurface("initBumpMap mip source", level);
+			if (pTex[0])
+			{
+				pTex[0]->Release();
+				pTex[0] = NULL;
+			}
+			return S_OK;
+		}
 		surf->Get_Description(d3dsd);
 		pSrc=(unsigned char *)surf->Lock((int *)&dwSrcPitch);
 
@@ -542,6 +592,11 @@ HRESULT WaterRenderObjClass::initBumpMap(LPDIRECT3DTEXTURE8 *pTex, TextureClass 
 
 #else
 	surf=pBumpSource->Get_Surface_Level();
+	if (!surf)
+	{
+		TraceMissingWaterSurface("initBumpMap source");
+		return S_OK;
+	}
 	surf->Get_Description(d3dsd);
 	pSrc=(unsigned char *)surf->Lock((int *)&dwSrcPitch);
 
@@ -980,10 +1035,8 @@ void WaterRenderObjClass::ReAcquireResources(void)
 	if (m_waterSparklesTexture && !m_waterSparklesTexture->Is_Initialized())
 		m_waterSparklesTexture->Init();
 	if (m_whiteTexture && !m_whiteTexture->Is_Initialized())
-	{	m_whiteTexture->Init();
-		SurfaceClass *surface=m_whiteTexture->Get_Surface_Level();
-		surface->DrawPixel(0,0,0xffffffff);
-		REF_PTR_RELEASE(surface);
+	{
+		SafePrimeWhiteTexture(m_whiteTexture, "ReAcquireResources white texture");
 	}
 }
 
@@ -1127,9 +1180,7 @@ Int WaterRenderObjClass::init(Real waterLevel, Real dx, Real dy, SceneClass *par
 
 	//For some reason setting a NULL texture does not result in 0xffffffff for pixel shaders so using explicit "white" texture.
 	m_whiteTexture=MSGNEW("TextureClass") TextureClass(1,1,WW3D_FORMAT_A4R4G4B4,MIP_LEVELS_1);
-	SurfaceClass *surface=m_whiteTexture->Get_Surface_Level();
-	surface->DrawPixel(0,0,0xffffffff);
-	REF_PTR_RELEASE(surface);
+	SafePrimeWhiteTexture(m_whiteTexture, "WaterRenderObjClass::init white texture");
 
 	m_waterNoiseTexture=WW3DAssetManager::Get_Instance()->Get_Texture("Noise0000.tga");
 	m_riverAlphaEdge=WW3DAssetManager::Get_Instance()->Get_Texture("TWAlphaEdge.tga");
@@ -3001,10 +3052,8 @@ void WaterRenderObjClass::setupFlatWaterShader(void)
 		{	//Assume no shroud, so stage 3 will be "NULL" texture but using actual white because
 			//pixel shader on GF4 generates random colors with SetTexture(3,NULL).
 			if (!m_whiteTexture->Is_Initialized())
-			{	m_whiteTexture->Init();
-				SurfaceClass *surface=m_whiteTexture->Get_Surface_Level();
-				surface->DrawPixel(0,0,0xffffffff);
-				REF_PTR_RELEASE(surface);
+			{
+				SafePrimeWhiteTexture(m_whiteTexture, "Render white texture");
 			}
 			DX8Wrapper::_Get_D3D_Device8()->SetTexture(3,m_whiteTexture->Peek_D3D_Texture());	
 		}
@@ -3533,5 +3582,3 @@ void WaterRenderObjClass::loadPostProcess( void )
 {
 
 }  // end loadPostProcess
-
-

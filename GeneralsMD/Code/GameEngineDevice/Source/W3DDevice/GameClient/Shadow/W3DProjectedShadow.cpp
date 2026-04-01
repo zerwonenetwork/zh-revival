@@ -59,6 +59,8 @@
 #include "W3DDevice/GameClient/W3DShadow.h"
 #include "W3DDevice/GameClient/HeightMap.h"
 
+extern void AppendStartupTrace(const char *format, ...);
+
 #ifdef _INTERNAL
 // for occasional debugging...
 //#pragma optimize("", off)
@@ -2185,6 +2187,16 @@ void W3DProjectedShadow::updateTexture(Vector3 &lightPos)
 		//Need to copy generated texture into permanent texture.
 		SurfaceClass *oldSurface=m_shadowTexture[0]->getTexture()->Get_Surface_Level();
 		SurfaceClass *newSurface=TheW3DProjectedShadowManager->getRenderTarget()->Get_Surface_Level();
+		if (!oldSurface || !newSurface)
+		{
+			AppendStartupTrace(
+				"W3DProjectedShadow::Update missing shadow surface old=%p new=%p",
+				oldSurface,
+				newSurface);
+			REF_PTR_RELEASE(newSurface);
+			REF_PTR_RELEASE(oldSurface);
+			return;
+		}
 		
 		//Copy shadow from temporary video-memory surface into a permanent texture
 		oldSurface->Copy(0,0,0,0,DEFAULT_RENDER_TARGET_WIDTH,DEFAULT_RENDER_TARGET_HEIGHT,newSurface);

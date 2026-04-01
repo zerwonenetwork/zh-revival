@@ -71,6 +71,8 @@
 #include "Common/GlobalData.h"
 #include "Common/GameCommon.h"
 
+extern void AppendStartupTrace(const char *format, ...);
+
 #ifdef _INTERNAL
 // for occasional debugging...
 //#pragma optimize("", off)
@@ -679,6 +681,11 @@ TextureClass * W3DAssetManager::Recolor_Texture_One_Time(TextureClass *texture, 
 	DEBUG_ASSERTCRASH( psize == 2 || psize == 4, ("Can't Recolor Texture %s", name) );
 
 	oldsurf=texture->Get_Surface_Level();
+	if (!oldsurf)
+	{
+		AppendStartupTrace("W3DAssetManager::Recolor_Texture_One_Time missing surface name=%s", name ? name : "<null>");
+		return NULL;
+	}
 
 	newsurf=NEW_REF(SurfaceClass,(desc.Width,desc.Height,desc.Format));
 	newsurf->Copy(0,0,0,0,desc.Width,desc.Height,oldsurf);
@@ -1659,6 +1666,11 @@ TextureClass * W3DAssetManager::Recolor_Texture_One_Time(TextureClass *texture, 
 	// if texture is monochrome and no value shifting
 	// return NULL	
 	smallsurf=texture->Get_Surface_Level((TextureClass::MipCountType)texture->Get_Mip_Level_Count()-1);
+	if (!smallsurf)
+	{
+		AppendStartupTrace("W3DAssetManager::Hue_Shift missing small surface name=%s", name ? name : "<null>");
+		return NULL;
+	}
 	if (hsv_shift.Z==0.0f && smallsurf->Is_Monochrome())
 	{
 		REF_PTR_RELEASE(smallsurf);
@@ -1667,6 +1679,11 @@ TextureClass * W3DAssetManager::Recolor_Texture_One_Time(TextureClass *texture, 
 	REF_PTR_RELEASE(smallsurf);
 
 	oldsurf=texture->Get_Surface_Level();
+	if (!oldsurf)
+	{
+		AppendStartupTrace("W3DAssetManager::Hue_Shift missing surface name=%s", name ? name : "<null>");
+		return NULL;
+	}
 
 	newsurf=NEW_REF(SurfaceClass,(desc.Width,desc.Height,desc.Format));
 	newsurf->Copy(0,0,0,0,desc.Width,desc.Height,oldsurf);
