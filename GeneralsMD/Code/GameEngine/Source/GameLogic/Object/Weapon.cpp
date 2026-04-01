@@ -1462,6 +1462,44 @@ void WeaponTemplate::dealDamageInternal(ObjectID sourceID, ObjectID victimID, co
 
 	Object *source = TheGameLogic->findObjectByID(sourceID);	// might be null...
 	const ObjectID primaryVictimID = victimID;
+	const ObjectID sourceProducerID = source ? source->getProducerID() : INVALID_ID;
+	const ThingTemplate *sourceTemplate = source ? source->getTemplate() : NULL;
+	const Team *sourceTeam = source ? source->getTeam() : NULL;
+	const Bool sourceIsUndetectedDefector = source ? source->getIsUndetectedDefector() : FALSE;
+	const Bool sourceIsProjectile = source ? source->isKindOf(KINDOF_PROJECTILE) : FALSE;
+	ObjectID projectileLauncherID = INVALID_ID;
+	Coord3D sourcePosSnapshot;
+	Bool haveSourcePosSnapshot = FALSE;
+	Vector3 sourceForwardSnapshot;
+	Bool haveSourceForwardSnapshot = FALSE;
+	UnsignedInt sourcePlayerMask = 0;
+
+	if (source != NULL)
+	{
+		sourcePosSnapshot = *source->getPosition();
+		haveSourcePosSnapshot = TRUE;
+		sourceForwardSnapshot = source->getTransformMatrix()->Get_X_Vector();
+		haveSourceForwardSnapshot = TRUE;
+
+		Player *sourcePlayer = source->getControllingPlayer();
+		if (sourcePlayer != NULL)
+		{
+			sourcePlayerMask = sourcePlayer->getPlayerMask();
+		}
+
+		if (sourceIsProjectile)
+		{
+			for (BehaviorModule** u = source->getBehaviorModules(); *u; ++u)
+			{
+				ProjectileUpdateInterface* pui = (*u)->getProjectileUpdateInterface();
+				if (pui != NULL)
+				{
+					projectileLauncherID = pui->projectileGetLauncherID();
+					break;
+				}
+			}
+		}
+	}
 
 	//
 	/** @todo We need to rewrite the historic stuff ... if you fire 5 missiles, and the 5th,
@@ -1612,7 +1650,7 @@ void WeaponTemplate::dealDamageInternal(ObjectID sourceID, ObjectID victimID, co
 				if (curVictim->getID() != primaryVictimID)
 				{
 
-					if( (affects & WEAPON_KILLS_SELF) && source == curVictim )
+					if( (affects & WEAPON_KILLS_SELF) && sourceID == curVictim->getID() )
 					{
 						killSelf = true;
 					}
@@ -1624,7 +1662,7 @@ void WeaponTemplate::dealDamageInternal(ObjectID sourceID, ObjectID victimID, co
 						if( (affects & WEAPON_AFFECTS_SELF) == 0 )
 						{
 							// Remember that source is a missile for some units, and they don't want to injure them'selves' either
-							if( source == curVictim || source->getProducerID() == curVictim->getID() )
+							if( sourceID == curVictim->getID() || sourceProducerID == curVictim->getID() )
 							{
 								//DEBUG_LOG(("skipping damage done to SELF...\n"));
 								continue;
@@ -1636,7 +1674,10 @@ void WeaponTemplate::dealDamageInternal(ObjectID sourceID, ObjectID victimID, co
 							//This means we probably are affecting allies, but don't want to kill nearby members that are the same type as us.
 							//A good example are a group of terrorists blowing themselves up. We don't want to cause a domino effect that kills
 							//all of them.
-							if( source->getTemplate()->isEquivalentTo(curVictim->getTemplate()) && source->getRelationship( curVictim ) == ALLIES )
+							if( sourceTemplate != NULL &&
+									sourceTeam != NULL &&
+									sourceTemplate->isEquivalentTo(curVictim->getTemplate()) &&
+									sourceTeam->getRelationship(curVictim->getTeam()) == ALLIES )
 							{
 								continue;
 							}
@@ -1651,7 +1692,19 @@ void WeaponTemplate::dealDamageInternal(ObjectID sourceID, ObjectID victimID, co
 							The idea here is: if its our ally(/enemies), AND it's not the direct target, AND the weapon doesn't
 							do radius-damage to allies(/enemies)... skip it. 
 						*/
-						Relationship r = curVictim->getRelationship(source);
+						Relationship r = NEUTRAL;
+						if (sourceIsUndetectedDefector)
+						{
+							r = NEUTRAL;
+						}
+						else if (curVictim->getIsUndetectedDefector())
+						{
+							r = ALLIES;
+						}
+						else if (sourceTeam != NULL)
+						{
+							r = sourceTeam->getRelationship(curVictim->getTeam());
+						}
 						Int requiredMask;
 						if (r == ALLIES) 
 							requiredMask = WEAPON_AFFECTS_ALLIES;
@@ -1673,25 +1726,25 @@ void WeaponTemplate::dealDamageInternal(ObjectID sourceID, ObjectID victimID, co
 			damageInfo.in.m_damageType = damageType;
 			damageInfo.in.m_deathType = deathType;
 			damageInfo.in.m_sourceID = sourceID;
-			damageInfo.in.m_sourcePlayerMask = 0;
+			damageInfo.in.m_sourcePlayerMask = sourcePlayerMask;
 			damageInfo.in.m_damageStatusType = damageStatusType;
 			
 			Coord3D damageDirection;
 			damageDirection.zero();
-			if( curVictim && source )
+			if( curVictim && haveSourcePosSnapshot )
 			{
 				damageDirection.set( curVictim->getPosition() );
-				damageDirection.sub( source->getPosition() );
+				damageDirection.sub( &sourcePosSnapshot );
 			}
 
 			Real allowedAngle = getRadiusDamageAngle();
 			if( allowedAngle < PI )
 			{
-				if( curVictim == NULL  ||  source == NULL )
+				if( curVictim == NULL  ||  !haveSourceForwardSnapshot )
 					continue; // We are directional damage, but can't figure out our direction.  Just bail.
 				
 				// People can only be hit in a cone oriented as the firer is oriented
-				Vector3 sourceVector = source->getTransformMatrix()->Get_X_Vector();
+				Vector3 sourceVector = sourceForwardSnapshot;
 				Vector3 damageVector(damageDirection.x, damageDirection.y, damageDirection.z);
 				sourceVector.Normalize();
 				damageVector.Normalize();
@@ -1724,9 +1777,6 @@ void WeaponTemplate::dealDamageInternal(ObjectID sourceID, ObjectID victimID, co
 				damageInfo.in.m_shockWaveTaperOff = m_shockWaveTaperOff;
 			}
 
-      if (source && source->getControllingPlayer()) {
-				damageInfo.in.m_sourcePlayerMask = source->getControllingPlayer()->getPlayerMask();
-			}
 			// note, don't bother with damage multipliers here... 
 			// that's handled internally by the attemptDamage() method.
 			damageInfo.in.m_amount = (curVictimDistSqr <= primaryRadiusSqr) ? primaryDamage : secondaryDamage;
@@ -1748,17 +1798,9 @@ void WeaponTemplate::dealDamageInternal(ObjectID sourceID, ObjectID victimID, co
 
 			// if the damage-dealer is a projectile, designate the damage as done by its launcher, not the projectile.
 			// this is much more useful for the AI...
-			if (source && source->isKindOf(KINDOF_PROJECTILE))
+			if (sourceIsProjectile && projectileLauncherID != INVALID_ID)
 			{
-				for (BehaviorModule** u = source->getBehaviorModules(); *u; ++u)
-				{
-					ProjectileUpdateInterface* pui = (*u)->getProjectileUpdateInterface();
-					if (pui != NULL)
-					{
-						damageInfo.in.m_sourceID = pui->projectileGetLauncherID();
-						break;
-					}
-				}
+				damageInfo.in.m_sourceID = projectileLauncherID;
 			}
 
 			curVictim->attemptDamage(&damageInfo);
