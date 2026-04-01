@@ -286,6 +286,7 @@ Bool W3DShroud::ReAcquireResources(void)
 W3DShroudLevel W3DShroud::getShroudLevel(Int x, Int y)
 {
 	DEBUG_ASSERTCRASH( m_pSrcTexture != NULL, ("Reading empty shroud"));
+	if (!m_srcTextureData) return 255; // 255 = no shroud / fully visible
 
 	if (x < m_numCellsX && y < m_numCellsY)
 	{
@@ -308,7 +309,7 @@ void W3DShroud::setShroudLevel(Int x, Int y, W3DShroudLevel level, Bool textureO
 {
 	DEBUG_ASSERTCRASH( m_pSrcTexture != NULL, ("Writing empty shroud.  Usually means that map failed to load."));
 
-	if (!m_pSrcTexture)
+	if (!m_pSrcTexture || !m_srcTextureData)
 		return;
 
 	if (x < m_numCellsX && y < m_numCellsY)
