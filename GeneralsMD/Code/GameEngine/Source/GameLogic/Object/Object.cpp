@@ -38,6 +38,7 @@
 #include "Common/ModuleFactory.h"
 #include "Common/Player.h"
 #include "Common/PlayerList.h"
+#include "GameClient/Shell.h"
 #include "Common/Radar.h"
 #include "Common/SpecialPower.h"
 #include "Common/Team.h"
@@ -2392,6 +2393,9 @@ void Object::updateTriggerAreaFlags()
 //-------------------------------------------------------------------------------------------------
 void Object::onCollide( Object *other, const Coord3D *loc, const Coord3D *normal )
 {
+	if (TheShell && TheShell->isShellActive())
+		return;
+
 	if (isDestroyed() || isEffectivelyDead())
 		return;
 
