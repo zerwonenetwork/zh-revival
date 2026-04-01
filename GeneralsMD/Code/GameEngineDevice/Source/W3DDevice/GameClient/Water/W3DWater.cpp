@@ -52,6 +52,8 @@
 #include "Common/GameState.h"
 #include "Common/GlobalData.h"
 #include "Common/PerfTimer.h"
+
+extern void AppendStartupTrace(const char *format, ...);
 #include "Common/Xfer.h"
 #include "Common/GameLOD.h"
 
@@ -455,6 +457,10 @@ HRESULT WaterRenderObjClass::initBumpMap(LPDIRECT3DTEXTURE8 *pTex, TextureClass 
 		return S_OK;
 
 	pTex[0]=DX8Wrapper::_Create_DX8_Texture(d3dsd.Width,d3dsd.Height,WW3D_FORMAT_U8V8,MIP_LEVELS_ALL,D3DPOOL_MANAGED,false);
+	if (!pTex[0]) {
+		AppendStartupTrace("W3DWater: bump pTex[0] creation failed; skipping bump copy");
+		return S_OK;
+	}
 
 	for (Int level=0; level < numLevels; level++)
 	{
@@ -541,6 +547,11 @@ HRESULT WaterRenderObjClass::initBumpMap(LPDIRECT3DTEXTURE8 *pTex, TextureClass 
 
     // Create the bumpmap's surface and texture objects
 	m_pBumpTexture[i]=DX8Wrapper::_Create_DX8_Texture(d3dsd.Width,d3dsd.Height,WW3D_FORMAT_U8V8,TextureClass::MIP_LEVELS_1,D3DPOOL_MANAGED,false);
+	if (!m_pBumpTexture[i]) {
+		AppendStartupTrace("W3DWater: m_pBumpTexture[%d] creation failed; skipping bump fill", i);
+		surf->Unlock();
+		continue;
+	}
 
     // Fill the bits of the new texture surface with bits from
     // a private format.

@@ -2653,17 +2653,30 @@ IDirect3DTexture8 * DX8Wrapper::_Create_DX8_Texture
 	// not in a supported texture format.
 	WW3DFormat format=D3DFormat_To_WW3DFormat(surface_desc.Format);
 	texture = _Create_DX8_Texture(surface_desc.Width, surface_desc.Height, format, mip_level_count);
+	if (!texture) {
+		AppendStartupTrace("_Create_DX8_Texture(surface): inner width/height call returned NULL; cannot copy surface");
+		return NULL;
+	}
 
 	// Copy the surface to the texture
 	IDirect3DSurface8 *tex_surface = NULL;
 	texture->GetSurfaceLevel(0, &tex_surface);
-	DX8_ErrorCode(D3DXLoadSurfaceFromSurface(tex_surface, NULL, NULL, surface, NULL, NULL, D3DX_FILTER_BOX, 0));
-	tex_surface->Release();
+	if (tex_surface) {
+		HRESULT loadHr = D3DXLoadSurfaceFromSurface(tex_surface, NULL, NULL, surface, NULL, NULL, D3DX_FILTER_BOX, 0);
+		if (FAILED(loadHr)) {
+			// D3DX surface copy failed (common with DXWrapper proxy); texture will be empty but won't crash
+			AppendStartupTrace("_Create_DX8_Texture(surface): D3DXLoadSurfaceFromSurface failed hr=%08x", (unsigned)loadHr);
+		}
+		tex_surface->Release();
+	}
 
 	// Create mipmaps if needed
 	if (mip_level_count!=MIP_LEVELS_1) 
 	{
-		DX8_ErrorCode(D3DXFilterTexture(texture, NULL, 0, D3DX_FILTER_BOX));
+		HRESULT filterHr = D3DXFilterTexture(texture, NULL, 0, D3DX_FILTER_BOX);
+		if (FAILED(filterHr)) {
+			AppendStartupTrace("_Create_DX8_Texture(surface): D3DXFilterTexture failed hr=%08x; mipmaps skipped", (unsigned)filterHr);
+		}
 	}
 
 	return texture;
