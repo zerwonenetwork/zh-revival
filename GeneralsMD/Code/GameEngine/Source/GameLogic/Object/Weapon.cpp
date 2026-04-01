@@ -135,6 +135,15 @@ static Object* ResolveLiveObjectPtr(Object* obj)
 }
 
 //-------------------------------------------------------------------------------------------------
+static Object* ResolveLiveObjectByID(ObjectID id)
+{
+	if (TheGameLogic == NULL || id == INVALID_ID)
+		return NULL;
+
+	return ResolveLiveObjectPtr(TheGameLogic->findObjectByID(id));
+}
+
+//-------------------------------------------------------------------------------------------------
 static const WeaponTemplate* ResolveUsableWeaponTemplate(const WeaponTemplate* weaponTemplate)
 {
 	if (weaponTemplate == NULL || TheWeaponStore == NULL)
@@ -1460,8 +1469,25 @@ void WeaponTemplate::dealDamageInternal(ObjectID sourceID, ObjectID victimID, co
 	if (victimID == 0 && pos == NULL)	// must have some sort of destination
 		return;
 
-	Object *source = TheGameLogic->findObjectByID(sourceID);	// might be null...
+	Object *source = ResolveLiveObjectByID(sourceID);
 	const ObjectID primaryVictimID = victimID;
+	Object *primaryVictim = ResolveLiveObjectByID(victimID);
+	Coord3D resolvedDamagePos;
+	if (primaryVictim != NULL)
+	{
+		resolvedDamagePos = *primaryVictim->getPosition();
+		pos = &resolvedDamagePos;
+	}
+	else if (pos != NULL)
+	{
+		resolvedDamagePos = *pos;
+		pos = &resolvedDamagePos;
+	}
+	else
+	{
+		return;
+	}
+
 	const ObjectID sourceProducerID = source ? source->getProducerID() : INVALID_ID;
 	const ThingTemplate *sourceTemplate = source ? source->getTemplate() : NULL;
 	const Team *sourceTeam = source ? source->getTeam() : NULL;
@@ -1549,13 +1575,6 @@ void WeaponTemplate::dealDamageInternal(ObjectID sourceID, ObjectID victimID, co
 
 //DEBUG_LOG(("WeaponTemplate::dealDamageInternal: dealing damage %s at frame %d\n",m_name.str(),TheGameLogic->getFrame()));
 
-	// if there's a specific victim, use it's pos (overriding the value passed in)
-	Object *primaryVictim = victimID ? TheGameLogic->findObjectByID(victimID) : NULL;	// might be null...
-	if (primaryVictim)
-	{
-		pos = primaryVictim->getPosition();
-	}
-
 	DamageType damageType = getDamageType();
 	DeathType deathType = getDeathType();
 	ObjectStatusTypes damageStatusType = getDamageStatusType();
@@ -1599,6 +1618,9 @@ void WeaponTemplate::dealDamageInternal(ObjectID sourceID, ObjectID victimID, co
 
 			if( affects & WEAPON_KILLS_SELF )
 			{
+				if (source == NULL)
+					return;
+
 				DamageInfo damageInfo;
 				damageInfo.in.m_damageType = damageType;
 				damageInfo.in.m_deathType = deathType;
@@ -1634,13 +1656,16 @@ void WeaponTemplate::dealDamageInternal(ObjectID sourceID, ObjectID victimID, co
 				continue;
 			}
 
-			curVictim = TheGameLogic->findObjectByID(targetIt->m_victimID);
+			curVictim = ResolveLiveObjectByID(targetIt->m_victimID);
 			if (curVictim == NULL)
 			{
 				continue;
 			}
 
 			curVictimDistSqr = targetIt->m_distSqr;
+			const ThingTemplate *curVictimTemplate = curVictim->getTemplate();
+			const Team *curVictimTeam = curVictim->getTeam();
+			Coord3D curVictimPos = *curVictim->getPosition();
 
 			Bool killSelf = false;
 			if (source != NULL)
@@ -1676,8 +1701,10 @@ void WeaponTemplate::dealDamageInternal(ObjectID sourceID, ObjectID victimID, co
 							//all of them.
 							if( sourceTemplate != NULL &&
 									sourceTeam != NULL &&
-									sourceTemplate->isEquivalentTo(curVictim->getTemplate()) &&
-									sourceTeam->getRelationship(curVictim->getTeam()) == ALLIES )
+									curVictimTemplate != NULL &&
+									curVictimTeam != NULL &&
+									sourceTemplate->isEquivalentTo(curVictimTemplate) &&
+									sourceTeam->getRelationship(curVictimTeam) == ALLIES )
 							{
 								continue;
 							}
@@ -1701,9 +1728,9 @@ void WeaponTemplate::dealDamageInternal(ObjectID sourceID, ObjectID victimID, co
 						{
 							r = ALLIES;
 						}
-						else if (sourceTeam != NULL)
+						else if (sourceTeam != NULL && curVictimTeam != NULL)
 						{
-							r = sourceTeam->getRelationship(curVictim->getTeam());
+							r = sourceTeam->getRelationship(curVictimTeam);
 						}
 						Int requiredMask;
 						if (r == ALLIES) 
@@ -1733,7 +1760,7 @@ void WeaponTemplate::dealDamageInternal(ObjectID sourceID, ObjectID victimID, co
 			damageDirection.zero();
 			if( curVictim && haveSourcePosSnapshot )
 			{
-				damageDirection.set( curVictim->getPosition() );
+				damageDirection.set( &curVictimPos );
 				damageDirection.sub( &sourcePosSnapshot );
 			}
 
