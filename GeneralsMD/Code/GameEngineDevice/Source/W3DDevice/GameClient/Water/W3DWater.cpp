@@ -1445,6 +1445,12 @@ void WaterRenderObjClass::updateRenderTargetTextures(CameraClass *cam)
 //-------------------------------------------------------------------------------------------------
 void WaterRenderObjClass::renderMirror(CameraClass *cam)
 {
+	// Reflection render target may be NULL if the format is unsupported or device has DXWrapper proxy
+	if (!m_pReflectionTexture) {
+		AppendStartupTrace("WaterRenderObjClass::renderMirror: m_pReflectionTexture is NULL; skipping mirror render");
+		return;
+	}
+
 #ifdef EXTENDED_STATS
 	if (DX8Wrapper::stats.m_disableWater) {
 		return;
@@ -1800,6 +1806,12 @@ Bool WaterRenderObjClass::getClippedWaterPlane(CameraClass *cam, AABoxClass *box
 //-------------------------------------------------------------------------------------------------
 void WaterRenderObjClass::drawSea(RenderInfoClass & rinfo)
 {
+	// Reflection texture may be NULL if render target creation failed (e.g. DXWrapper proxy)
+	if (!m_pReflectionTexture) {
+		AppendStartupTrace("WaterRenderObjClass::drawSea: m_pReflectionTexture NULL; skipping shader water draw");
+		return;
+	}
+
 	AABoxClass	seaBox;
 
 	if (!getClippedWaterPlane(&rinfo.Camera,&seaBox))
