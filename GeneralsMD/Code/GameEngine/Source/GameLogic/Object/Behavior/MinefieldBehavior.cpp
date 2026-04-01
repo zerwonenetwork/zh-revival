@@ -46,6 +46,8 @@
 #include "GameLogic/Module/AutoHealBehavior.h"
 #include "GameLogic/Weapon.h"
 
+extern void AppendStartupTrace(const char *format, ...);
+
 #ifdef _INTERNAL
 // for occasional debugging...
 //#pragma optimize("", off)
@@ -54,6 +56,11 @@
 
 // detonation never puts our health below this, since we probably auto-regen
 const Real MIN_HEALTH = 0.1f;
+
+namespace
+{
+	static Int s_minefieldCtorTraceCount = 0;
+}
 
 //-------------------------------------------------------------------------------------------------
 // ------------------------------------------------------------------------------------------------
@@ -124,11 +131,16 @@ MinefieldBehavior::MinefieldBehavior( Thing *thing, const ModuleData* moduleData
 		m_immunes[i].collideTime = 0;
 	}
 
-	// start off awake, and we will calcSleepTime from here on
-	setWakeFrame( getObject(), UPDATE_SLEEP_NONE );
-
-	// mines aren't auto-acquirable
-	getObject()->setStatus( MAKE_OBJECT_STATUS_MASK( OBJECT_STATUS_NO_ATTACK_FROM_AI ) );
+	if (s_minefieldCtorTraceCount < 8)
+	{
+		AppendStartupTrace(
+			"MinefieldBehavior::ctor obj=%p moduleData=%p mines=%u regen=%d deferWakeStatus=1",
+			getObject(),
+			moduleData,
+			m_virtualMinesRemaining,
+			(Int)m_regenerates);
+		++s_minefieldCtorTraceCount;
+	}
 }
 
 //-------------------------------------------------------------------------------------------------
@@ -744,5 +756,24 @@ void MinefieldBehavior::loadPostProcess( void )
 
 	// extend base class
 	UpdateModule::loadPostProcess();
+
+	Object *obj = getObject();
+	if (s_minefieldCtorTraceCount < 16)
+	{
+		AppendStartupTrace(
+			"MinefieldBehavior::loadPostProcess obj=%p shellActive=%d shellMap=%d inShell=%d",
+			obj,
+			(TheShell && TheShell->isShellActive()) ? 1 : 0,
+			(TheGlobalData && TheGlobalData->m_shellMapOn) ? 1 : 0,
+			TheGameLogic->isInShellGame() ? 1 : 0);
+		++s_minefieldCtorTraceCount;
+	}
+
+	if (obj != NULL)
+	{
+		// Defer constructor-time object mutation until the module is fully attached.
+		setWakeFrame(obj, UPDATE_SLEEP_NONE);
+		obj->setStatus(MAKE_OBJECT_STATUS_MASK(OBJECT_STATUS_NO_ATTACK_FROM_AI));
+	}
 
 }  // end loadPostProcess
