@@ -115,6 +115,12 @@ HeightDieUpdate::~HeightDieUpdate( void )
 //-------------------------------------------------------------------------------------------------
 UpdateSleepTime HeightDieUpdate::update( void )
 {
+	Object *me = getObject();
+	if (me == NULL || me->isDestroyed() || me->isEffectivelyDead())
+	{
+		return UPDATE_SLEEP_NONE;
+	}
+
 	UnsignedInt now = TheGameLogic->getFrame();
 	if( m_earliestDeathFrame == UINT_MAX )
 		m_earliestDeathFrame = now + getHeightDieUpdateModuleData()->m_initialDelay;
@@ -124,11 +130,11 @@ UpdateSleepTime HeightDieUpdate::update( void )
 		return UPDATE_SLEEP_NONE;
 
 	// do nothing if we're contained within other objects ... like a transport
-	if( getObject()->getContainedBy() != NULL )
+	if( me->getContainedBy() != NULL )
 	{
 
 		// keep track of our last position even though we're not doing anything yet
-		m_lastPosition = *getObject()->getPosition();
+		m_lastPosition = *me->getPosition();
 
 		// get outta here
 		return UPDATE_SLEEP_NONE;
@@ -139,7 +145,7 @@ UpdateSleepTime HeightDieUpdate::update( void )
 	const HeightDieUpdateModuleData *modData = getHeightDieUpdateModuleData();
 
 	// get our current position
-	const Coord3D *pos = getObject()->getPosition();
+	const Coord3D *pos = me->getPosition();
 
 	Bool directionOK = TRUE;
 	if( m_hasDied == FALSE )
@@ -186,7 +192,7 @@ UpdateSleepTime HeightDieUpdate::update( void )
 			PartitionFilterAcceptByKindOf filter1( MAKE_KINDOF_MASK( KINDOF_STRUCTURE ),KINDOFMASK_NONE );
 			PartitionFilter *filters[] = { &filter1, NULL };
 			Real range = getObject()->getGeometryInfo().getBoundingCircleRadius();
-			ObjectIterator *iter = ThePartitionManager->iterateObjectsInRange( getObject(),
+			ObjectIterator *iter = ThePartitionManager->iterateObjectsInRange( me,
 																																				 range, 
 																																				 FROM_BOUNDINGSPHERE_3D, 
 																																				 filters );
@@ -199,7 +205,7 @@ UpdateSleepTime HeightDieUpdate::update( void )
 			{
 
 				// ignore ourselves
-				if( obj == getObject() )
+				if( obj == me )
 					continue;
 
 				// store the height of the tallest object under us
@@ -233,12 +239,12 @@ UpdateSleepTime HeightDieUpdate::update( void )
 				ground.x = pos->x;
 				ground.y = pos->y;
 				ground.z = terrainHeightAtPos;
-				getObject()->setPosition( &ground );
+				me->setPosition( &ground );
 
 			}
 
 			// kill the object
-			getObject()->kill();
+			me->kill();
 
 			// we have died ... don't do this again
 			m_hasDied = TRUE;
@@ -255,7 +261,7 @@ UpdateSleepTime HeightDieUpdate::update( void )
 	{
 
 		// destroy them
-		TheParticleSystemManager->destroyAttachedSystems( getObject() );
+		TheParticleSystemManager->destroyAttachedSystems( me );
 
 		// don't do this again
 		m_particlesDestroyed = TRUE;

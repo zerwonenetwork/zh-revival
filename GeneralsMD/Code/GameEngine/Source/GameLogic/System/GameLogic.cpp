@@ -3835,7 +3835,13 @@ void GameLogic::update( void )
 		for (std::list<UpdateModulePtr>::const_iterator it = m_normalUpdates.begin(); it != m_normalUpdates.end(); ++it)
 		{
 			UpdateModulePtr u = *it;
-			DisabledMaskType dis = u->friend_getObject()->getDisabledFlags();
+			const Object *updateObject = u ? u->friend_getObject() : NULL;
+			if (updateObject == NULL || updateObject->isDestroyed())
+			{
+				continue;
+			}
+
+			DisabledMaskType dis = updateObject->getDisabledFlags();
 			if (!dis.any() || dis.anyIntersectionWith(u->getDisabledTypesToProcess()))
 			{
 				USE_PERF_TIMER(GameLogic_update_normal)
@@ -3880,6 +3886,14 @@ void GameLogic::update( void )
 				continue;
 			}
 
+			const Object *updateObject = u->friend_getObject();
+			if (updateObject == NULL || updateObject->isDestroyed())
+			{
+				eraseSleepyUpdate(0);
+				++sleepyIterations;
+				continue;
+			}
+
 			// we're done, everyone else is sleeping. 
 			// break from the loop BEFORE we pop this item off.
 			if (u->friend_getNextCallFrame() > now)
@@ -3889,7 +3903,7 @@ void GameLogic::update( void )
 
 			UpdateSleepTime sleepLen = UPDATE_SLEEP_NONE;	// default, if it is disabled.
 
-			DisabledMaskType dis = u->friend_getObject()->getDisabledFlags();
+			DisabledMaskType dis = updateObject->getDisabledFlags();
 			if (!dis.any() || dis.anyIntersectionWith(u->getDisabledTypesToProcess()))
 			{
 				USE_PERF_TIMER(GameLogic_update_sleepy)
