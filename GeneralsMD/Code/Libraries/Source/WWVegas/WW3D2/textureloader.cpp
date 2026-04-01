@@ -63,6 +63,8 @@
 #include "bitmaphandler.h"
 #include "wwprofile.h"
 
+extern void AppendStartupTrace(const char *format, ...);
+
 //#pragma optimize("", off)
 //#pragma MESSAGE("************************************** WARNING, optimization disabled for debugging purposes")
 
@@ -274,6 +276,10 @@ IDirect3DTexture8* Load_Compressed_Texture(
 		(MipCountType)mips
 	);
 
+	if (!d3d_texture) {
+		AppendStartupTrace("TextureLoader: _Create_DX8_Texture returned NULL for %ux%u fmt=%d; skipping surface fill", width, height, (int)dest_format);
+		return NULL;
+	}
 	for (unsigned level=0;level<mips;++level) {
 		IDirect3DSurface8* d3d_surface=NULL;
 		WWASSERT(d3d_texture);
@@ -452,6 +458,10 @@ IDirect3DTexture8* TextureLoader::Load_Thumbnail(const StringClass& filename, co
 		D3DPOOL_SYSTEMMEM);
 #endif
 
+	if (!sysmem_texture) {
+		AppendStartupTrace("TextureLoader Load_Thumbnail: sysmem_texture NULL; skipping");
+		return NULL;
+	}
 	unsigned level=0;
 	D3DLOCKED_RECT locked_rects[12];
 	WWASSERT(sysmem_texture->GetLevelCount()<=12);
@@ -1819,6 +1829,11 @@ bool TextureLoadTaskClass::Begin_Uncompressed_Load(void)
 
 void TextureLoadTaskClass::Lock_Surfaces(void)
 {
+	if (!D3DTexture) {
+		AppendStartupTrace("TextureLoadTaskClass::Lock_Surfaces: D3DTexture is NULL; skipping lock");
+		MipLevelCount = 0;
+		return;
+	}
 	MipLevelCount = D3DTexture->GetLevelCount();
 
 	for (unsigned int i = 0; i < MipLevelCount; ++i) 
@@ -1854,10 +1869,14 @@ void TextureLoadTaskClass::Unlock_Surfaces(void)
 
 #ifndef USE_MANAGED_TEXTURES
 	IDirect3DTexture8* tex = DX8Wrapper::_Create_DX8_Texture(Width, Height, Format, Texture->MipLevelCount,D3DPOOL_DEFAULT);
-	DX8CALL(UpdateTexture(Peek_D3D_Texture(),tex));
-	Peek_D3D_Texture()->Release();
-	D3DTexture=tex;
-	WWDEBUG_SAY(("Created non-managed texture (%s)\n",Texture->Get_Full_Path()));
+	if (tex && Peek_D3D_Texture()) {
+		DX8CALL(UpdateTexture(Peek_D3D_Texture(),tex));
+		Peek_D3D_Texture()->Release();
+		D3DTexture=tex;
+		WWDEBUG_SAY(("Created non-managed texture (%s)\n",Texture->Get_Full_Path()));
+	} else {
+		AppendStartupTrace("TextureLoadTaskClass::Unlock_Surfaces: default pool texture creation failed for %s", Texture->Get_Full_Path());
+	}
 #endif
 
 }

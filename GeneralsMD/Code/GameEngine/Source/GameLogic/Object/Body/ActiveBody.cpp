@@ -44,6 +44,7 @@
 #include "GameClient/Drawable.h"
 #include "GameClient/InGameUI.h"
 #include "GameClient/ParticleSys.h"
+#include "GameClient/Shell.h"
 #include "GameLogic/AI.h"
 #include "GameLogic/AIPathfind.h"
 #include "GameLogic/Armor.h"
@@ -192,6 +193,16 @@ static Object *ResolveLiveObjectPtr(Object *obj)
 #endif
 
 	return live;
+}
+
+//-------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------
+static Bool ShouldSkipShellDamage()
+{
+	return TheGameLogic &&
+		(TheGameLogic->isInShellGame() ||
+		 (TheShell && TheShell->isShellActive()) ||
+		 (TheGlobalData && TheGlobalData->m_shellMapOn));
 }
 
 //-------------------------------------------------------------------------------------------------
@@ -427,9 +438,32 @@ void ActiveBody::attemptDamage( DamageInfo *damageInfo )
 	// initialize these, just in case we bail out early
 	damageInfo->out.m_actualDamageDealt = 0.0f;
 	damageInfo->out.m_actualDamageClipped = 0.0f;
+	damageInfo->out.m_noEffect = false;
+
+	Object* obj = ResolveBoundObjectPtr(getObject());
+	if (!obj)
+		return;
+
+	if (ShouldSkipShellDamage())
+	{
+		static Int s_shellDamageSkipTraceCount = 0;
+		if (s_shellDamageSkipTraceCount < 24)
+		{
+			AppendStartupTrace(
+				"ActiveBody::attemptDamage shell-skip body=%p obj=%p source=%u type=%d amount=%f kill=%d",
+				this,
+				obj,
+				(UnsignedInt)damageInfo->in.m_sourceID,
+				(Int)damageInfo->in.m_damageType,
+				(double)damageInfo->in.m_amount,
+				damageInfo->in.m_kill ? 1 : 0);
+			++s_shellDamageSkipTraceCount;
+		}
+		damageInfo->out.m_noEffect = true;
+		return;
+	}
 
 	// we cannot damage again objects that are already dead
-	Object* obj = ResolveBoundObjectPtr(getObject());
 	if( obj->isEffectivelyDead() )
 		return;
 

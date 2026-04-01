@@ -2499,8 +2499,26 @@ IDirect3DTexture8 * DX8Wrapper::_Create_DX8_Texture
 		}
 
 		DX8_ErrorCode(ret);
-		// Just return the texture, no reduction
-		// allowed for render targets.
+		// D3DXCreateTexture may fail with D3D8-to-D3D9 proxy wrappers (e.g. DXWrapper).
+		// Fall back to direct IDirect3DDevice8::CreateTexture for render targets.
+		if (!texture && DX8Wrapper::_Get_D3D_Device8()) {
+			D3DFORMAT rtFmt = WW3DFormat_To_D3DFormat(format);
+			HRESULT hr = DX8Wrapper::_Get_D3D_Device8()->CreateTexture(
+				width, height, mip_level_count, D3DUSAGE_RENDERTARGET, rtFmt, D3DPOOL_DEFAULT, &texture);
+			if (FAILED(hr) || !texture) {
+				hr = DX8Wrapper::_Get_D3D_Device8()->CreateTexture(
+					width, height, 1, D3DUSAGE_RENDERTARGET, D3DFMT_A8R8G8B8, D3DPOOL_DEFAULT, &texture);
+				if (SUCCEEDED(hr) && texture) {
+					AppendStartupTrace("_Create_DX8_Texture RT: D3DX failed; A8R8G8B8 fallback ok %ux%u", width, height);
+				} else {
+					AppendStartupTrace("_Create_DX8_Texture RT: all methods failed %ux%u hr=%08x", width, height, (unsigned)hr);
+					texture = NULL;
+				}
+			} else {
+				AppendStartupTrace("_Create_DX8_Texture RT: D3DX failed; direct fmt=%d fallback ok %ux%u", (int)rtFmt, width, height);
+			}
+		}
+		// Just return the texture, no reduction allowed for render targets.
 		return texture;
 	}
 
