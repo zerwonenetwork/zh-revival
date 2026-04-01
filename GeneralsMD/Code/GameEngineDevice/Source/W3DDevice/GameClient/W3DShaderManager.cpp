@@ -24,13 +24,6 @@
 
 extern void AppendStartupTrace(const char *format, ...);
 
-// Safe helper: return raw D3D texture pointer or NULL if TextureClass ptr is NULL.
-// Used wherever getShaderTexture()/getShroudTexture() could return NULL when render
-// target creation failed (e.g. DXWrapper D3D8→D3D9 proxy).
-static inline IDirect3DTexture8* SafeD3D(TextureClass *t) {
-	return t ? t->Peek_D3D_Texture() : NULL;
-}
-
 // FILE: W3DShaderManager.cpp ////////////////////////////////////////////////
 //-----------------------------------------------------------------------------
 //                                                                          
@@ -83,6 +76,13 @@ static inline IDirect3DTexture8* SafeD3D(TextureClass *t) {
 #include "dx8caps.h"
 #include "Common/GameLOD.h"
 #include "benchmark.h"
+
+// Safe helper: return raw D3D texture pointer or NULL if TextureClass ptr is NULL.
+// Used wherever getShaderTexture()/getShroudTexture() could return NULL when render
+// target creation failed (e.g. DXWrapper D3D8->D3D9 proxy).
+static inline IDirect3DTexture8* SafeD3D(TextureClass *t) {
+	return t ? t->Peek_D3D_Texture() : NULL;
+}
 
 #ifdef _INTERNAL
 // for occasional debugging...
