@@ -379,6 +379,9 @@ static Bool IsActiveMineClearer(const Object *other)
 //-------------------------------------------------------------------------------------------------
 void MinefieldBehavior::onCollide( Object *other, const Coord3D *loc, const Coord3D *normal )
 {
+	if (TheGameLogic->isInShellGame())
+		return;
+
 	other = ResolveLiveMinefieldCollider(other);
 	if (other == NULL)
 		return;
