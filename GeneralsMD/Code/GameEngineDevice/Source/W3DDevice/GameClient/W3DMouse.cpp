@@ -47,6 +47,8 @@
 #include "mutex.h"
 #include "thread.h"
 
+extern void AppendStartupTrace(const char *format, ...);
+
 #ifdef _INTERNAL
 // for occasional debugging...
 //#pragma optimize("", off)
@@ -198,7 +200,21 @@ Bool W3DMouse::loadD3DCursorTextures(MouseCursor cursor)
 	{	//single animation frame without trailing numbers
 		sprintf(FrameName,"%s.tga",baseName);
 		cursorTextures[cursor][0]=	am->Get_Texture(FrameName);
+		if (cursorTextures[cursor][0] == NULL)
+			return FALSE;
+
 		m_currentD3DSurface[0]=cursorTextures[cursor][0]->Get_Surface_Level();
+		if (m_currentD3DSurface[0] == NULL)
+		{
+			AppendStartupTrace(
+				"W3DMouse::loadD3DCursorTextures missing surface cursor=%d frame='%s' texture=%p d3d=%p",
+				cursor,
+				FrameName,
+				cursorTextures[cursor][0],
+				cursorTextures[cursor][0]->Peek_D3D_Texture());
+			REF_PTR_RELEASE(cursorTextures[cursor][0]);
+			return FALSE;
+		}
 		m_currentFrames = 1;
 	}
 	else
@@ -206,11 +222,25 @@ Bool W3DMouse::loadD3DCursorTextures(MouseCursor cursor)
 	{
 		sprintf(FrameName,"%s%04d.tga",baseName,i);
 		if ((cursorTextures[cursor][i]=am->Get_Texture(FrameName)) != NULL)
-		{	m_currentD3DSurface[m_currentFrames]=cursorTextures[cursor][i]->Get_Surface_Level();
+		{
+			SurfaceClass *surface = cursorTextures[cursor][i]->Get_Surface_Level();
+			if (surface == NULL)
+			{
+				AppendStartupTrace(
+					"W3DMouse::loadD3DCursorTextures missing surface cursor=%d frame='%s' texture=%p d3d=%p",
+					cursor,
+					FrameName,
+					cursorTextures[cursor][i],
+					cursorTextures[cursor][i]->Peek_D3D_Texture());
+				REF_PTR_RELEASE(cursorTextures[cursor][i]);
+				continue;
+			}
+
+			m_currentD3DSurface[m_currentFrames]=surface;
 			m_currentFrames++;
 		}
 	}
-	return TRUE;
+	return m_currentFrames > 0;
 }
 
 void W3DMouse::initD3DAssets(void)

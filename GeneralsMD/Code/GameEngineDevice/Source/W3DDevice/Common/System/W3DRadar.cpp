@@ -55,6 +55,15 @@ extern void AppendStartupTrace( const char *format, ... );
 #include "WW3D2/texture.h"
 #include "WW3D2/dx8caps.h"
 
+static void TraceMissingRadarSurface(const char *context, TextureClass *texture)
+{
+	AppendStartupTrace(
+		"W3DRadar: missing surface in %s texture=%p d3d=%p",
+		context,
+		texture,
+		texture ? texture->Peek_D3D_Texture() : NULL);
+}
+
 #ifdef _INTERNAL
 // for occasional debugging...
 //#pragma optimize("", off)
@@ -628,6 +637,11 @@ void W3DRadar::renderObjectList( const RadarObject *listHead, TextureClass *text
 
 	// get surface for texture to render into
 	SurfaceClass *surface = texture->Get_Surface_Level();
+	if( !surface )
+	{
+		TraceMissingRadarSurface("renderObjectList", texture);
+		return;
+	}
 
 	// loop through all objects and draw
 	ICoord2D radarPoint;
@@ -1425,13 +1439,20 @@ void W3DRadar::draw( Int pixelX, Int pixelY, Int width, Int height )
 	{
 
 		// reset the overlay texture
-		SurfaceClass *surface = m_overlayTexture->Get_Surface_Level();
-		surface->Clear();
-		REF_PTR_RELEASE(surface);
+		SurfaceClass *surface = m_overlayTexture ? m_overlayTexture->Get_Surface_Level() : NULL;
+		if( surface )
+		{
+			surface->Clear();
+			REF_PTR_RELEASE(surface);
 
-		// rebuild the object overlay
-		renderObjectList( getObjectList(), m_overlayTexture );
-		renderObjectList( getLocalObjectList(), m_overlayTexture, TRUE );
+			// rebuild the object overlay
+			renderObjectList( getObjectList(), m_overlayTexture );
+			renderObjectList( getLocalObjectList(), m_overlayTexture, TRUE );
+		}
+		else
+		{
+			TraceMissingRadarSurface("draw overlay clear", m_overlayTexture);
+		}
 		
 	}  // end if
 
