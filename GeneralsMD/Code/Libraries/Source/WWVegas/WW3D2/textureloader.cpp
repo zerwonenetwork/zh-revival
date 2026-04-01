@@ -1829,7 +1829,8 @@ bool TextureLoadTaskClass::Begin_Uncompressed_Load(void)
 
 void TextureLoadTaskClass::Lock_Surfaces(void)
 {
-	if (!D3DTexture) {
+	IDirect3DTexture8 *d3dTexture = Peek_D3D_Texture();
+	if (!D3DTexture || !d3dTexture) {
 		AppendStartupTrace("TextureLoadTaskClass::Lock_Surfaces: D3DTexture is NULL; skipping lock");
 		MipLevelCount = 0;
 		return;
@@ -1839,16 +1840,17 @@ void TextureLoadTaskClass::Lock_Surfaces(void)
 	for (unsigned int i = 0; i < MipLevelCount; ++i) 
 	{
 		D3DLOCKED_RECT locked_rect;
-		DX8_ErrorCode
-		(
-			Peek_D3D_Texture()->LockRect
-			(
+		HRESULT hr = d3dTexture->LockRect(i, &locked_rect, NULL, 0);
+		if (FAILED(hr))
+		{
+			AppendStartupTrace(
+				"TextureLoadTaskClass::Lock_Surfaces: LockRect failed level=%u texture=%p hr=%08x",
 				i,
-				&locked_rect,
-				NULL,
-				0
-			)
-		);
+				d3dTexture,
+				(unsigned)hr);
+			MipLevelCount = i;
+			break;
+		}
 		LockedSurfacePtr[i]		= (unsigned char *)locked_rect.pBits;
 		LockedSurfacePitch[i]	= locked_rect.Pitch;
 	}
@@ -1857,12 +1859,22 @@ void TextureLoadTaskClass::Lock_Surfaces(void)
 
 void TextureLoadTaskClass::Unlock_Surfaces(void)
 {
+	IDirect3DTexture8 *d3dTexture = Peek_D3D_Texture();
 	for (unsigned int i = 0; i < MipLevelCount; ++i) 
 	{
 		if (LockedSurfacePtr[i]) 
 		{
 			WWASSERT(ThreadClass::_Get_Current_Thread_ID() == DX8Wrapper::_Get_Main_Thread_ID());
-			DX8_ErrorCode(Peek_D3D_Texture()->UnlockRect(i));
+			if (d3dTexture)
+			{
+				DX8_ErrorCode(d3dTexture->UnlockRect(i));
+			}
+			else
+			{
+				AppendStartupTrace(
+					"TextureLoadTaskClass::Unlock_Surfaces: missing D3D texture while unlocking level=%u",
+					i);
+			}
 		}
 		LockedSurfacePtr[i] = NULL;
 	}

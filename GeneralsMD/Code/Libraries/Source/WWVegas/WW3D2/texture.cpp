@@ -59,6 +59,36 @@
 #include "texturethumbnail.h"
 #include "wwprofile.h"
 
+extern void AppendStartupTrace(const char *format, ...);
+
+static IDirect3DSurface8 *TryGetTextureSurfaceLevel(IDirect3DTexture8 *texture, unsigned int level, const char *context)
+{
+	if (!texture)
+	{
+		AppendStartupTrace("texture.cpp: %s missing D3D texture level=%u", context, level);
+		return NULL;
+	}
+
+	IDirect3DSurface8 *surface = NULL;
+	HRESULT hr = texture->GetSurfaceLevel(level, &surface);
+	if (FAILED(hr) || !surface)
+	{
+		AppendStartupTrace(
+			"texture.cpp: %s GetSurfaceLevel failed level=%u texture=%p hr=%08x",
+			context,
+			level,
+			texture,
+			(unsigned)hr);
+		if (surface)
+		{
+			surface->Release();
+		}
+		return NULL;
+	}
+
+	return surface;
+}
+
 //#pragma optimize("", off)
 //#pragma MESSAGE("************************************** WARNING, optimization disabled for debugging purposes")
 
@@ -818,8 +848,13 @@ TextureClass::TextureClass(IDirect3DBaseTexture8* d3d_texture)
 	IsReducible=false;
 	
 	Set_D3D_Base_Texture(d3d_texture);
-	IDirect3DSurface8* surface;
-	DX8_ErrorCode(Peek_D3D_Texture()->GetSurfaceLevel(0,&surface));
+	IDirect3DSurface8* surface = TryGetTextureSurfaceLevel(Peek_D3D_Texture(), 0, "TextureClass ctor");
+	if (!surface)
+	{
+		TextureFormat = WW3D_FORMAT_UNKNOWN;
+		LastAccessed = WW3D::Get_Sync_Time();
+		return;
+	}
 	D3DSURFACE_DESC d3d_desc;
 	::ZeroMemory(&d3d_desc, sizeof(D3DSURFACE_DESC));
 	DX8_ErrorCode(surface->GetDesc(&d3d_desc));
@@ -903,14 +938,22 @@ void TextureClass::Apply_New_Surface
 	if (d3d_tex) d3d_tex->Release();
 
 	Poke_Texture(d3d_texture);//TextureLoadTask->Peek_D3D_Texture();
+	if (!d3d_texture)
+	{
+		AppendStartupTrace("texture.cpp: TextureClass::Apply_New_Surface called with NULL d3d_texture");
+		return;
+	}
 	d3d_texture->AddRef();
 
 	if (initialized) Initialized=true;
 	if (disable_auto_invalidation) InactivationTime = 0;
 
 	WWASSERT(d3d_texture);
-	IDirect3DSurface8* surface;
-	DX8_ErrorCode(Peek_D3D_Texture()->GetSurfaceLevel(0,&surface));
+	IDirect3DSurface8* surface = TryGetTextureSurfaceLevel(Peek_D3D_Texture(), 0, "TextureClass::Apply_New_Surface");
+	if (!surface)
+	{
+		return;
+	}
 	D3DSURFACE_DESC d3d_desc;
 	::ZeroMemory(&d3d_desc, sizeof(D3DSURFACE_DESC));
 	DX8_ErrorCode(surface->GetDesc(&d3d_desc));
@@ -992,7 +1035,11 @@ SurfaceClass *TextureClass::Get_Surface_Level(unsigned int level)
 	}
 
 	IDirect3DSurface8 *d3d_surface = NULL;
-	DX8_ErrorCode(Peek_D3D_Texture()->GetSurfaceLevel(level, &d3d_surface));
+	d3d_surface = TryGetTextureSurfaceLevel(Peek_D3D_Texture(), level, "TextureClass::Get_Surface_Level");
+	if (!d3d_surface)
+	{
+		return 0;
+	}
 	SurfaceClass *surface = new SurfaceClass(d3d_surface);
 	d3d_surface->Release();
 
@@ -1025,7 +1072,7 @@ IDirect3DSurface8 *TextureClass::Get_D3D_Surface_Level(unsigned int level)
 	}
 
 	IDirect3DSurface8 *d3d_surface = NULL;
-	DX8_ErrorCode(Peek_D3D_Texture()->GetSurfaceLevel(level, &d3d_surface));
+	d3d_surface = TryGetTextureSurfaceLevel(Peek_D3D_Texture(), level, "TextureClass::Get_D3D_Surface_Level");
 	return d3d_surface;
 }
 
@@ -1284,14 +1331,22 @@ void ZTextureClass::Apply_New_Surface
 	if (d3d_tex) d3d_tex->Release();
 
 	Poke_Texture(d3d_texture);//TextureLoadTask->Peek_D3D_Texture();
+	if (!d3d_texture)
+	{
+		AppendStartupTrace("texture.cpp: ZTextureClass::Apply_New_Surface called with NULL d3d_texture");
+		return;
+	}
 	d3d_texture->AddRef();
 
 	if (initialized) Initialized=true;
 	if (disable_auto_invalidation) InactivationTime = 0;
 
 	WWASSERT(Peek_D3D_Texture());
-	IDirect3DSurface8* surface;
-	DX8_ErrorCode(Peek_D3D_Texture()->GetSurfaceLevel(0,&surface));
+	IDirect3DSurface8* surface = TryGetTextureSurfaceLevel(Peek_D3D_Texture(), 0, "ZTextureClass::Apply_New_Surface");
+	if (!surface)
+	{
+		return;
+	}
 	D3DSURFACE_DESC d3d_desc;
 	::ZeroMemory(&d3d_desc, sizeof(D3DSURFACE_DESC));
 	DX8_ErrorCode(surface->GetDesc(&d3d_desc));
@@ -1317,7 +1372,7 @@ IDirect3DSurface8* ZTextureClass::Get_D3D_Surface_Level(unsigned int level)
 	}
 
 	IDirect3DSurface8 *d3d_surface = NULL;
-	DX8_ErrorCode(Peek_D3D_Texture()->GetSurfaceLevel(level, &d3d_surface));
+	d3d_surface = TryGetTextureSurfaceLevel(Peek_D3D_Texture(), level, "ZTextureClass::Get_D3D_Surface_Level");
 	return d3d_surface;
 }
 

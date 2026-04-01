@@ -157,7 +157,11 @@ int TerrainTextureClass::update(WorldHeightMap *htMap)
 	IDirect3DSurface8 *surface_level;
 	D3DSURFACE_DESC surface_desc;
 	D3DLOCKED_RECT locked_rect;
-	DX8_ErrorCode(Peek_D3D_Texture()->GetSurfaceLevel(0, &surface_level));
+	HRESULT hr = Peek_D3D_Texture()->GetSurfaceLevel(0, &surface_level);
+	if (FAILED(hr) || !surface_level) {
+		AppendStartupTrace("TerrainTextureClass::update GetSurfaceLevel failed hr=%08x", (unsigned)hr);
+		return 0;
+	}
 	DX8_ErrorCode(surface_level->GetDesc(&surface_desc));
 	if (surface_desc.Width < TEXTURE_WIDTH) {
 		return 0;
@@ -436,7 +440,11 @@ Bool TerrainTextureClass::updateFlat(WorldHeightMap *htMap, Int xCell, Int yCell
 	IDirect3DSurface8 *surface_level;
 	D3DSURFACE_DESC surface_desc;
 	D3DLOCKED_RECT locked_rect;
-	DX8_ErrorCode(Peek_D3D_Texture()->GetSurfaceLevel(0, &surface_level));
+	HRESULT hr = Peek_D3D_Texture()->GetSurfaceLevel(0, &surface_level);
+	if (FAILED(hr) || !surface_level) {
+		AppendStartupTrace("TerrainTextureClass::updateFlat GetSurfaceLevel failed hr=%08x", (unsigned)hr);
+		return false;
+	}
 	DX8_ErrorCode(surface_level->GetDesc(&surface_desc));
 	DEBUG_ASSERTCRASH((Int)surface_desc.Width == cellWidth*pixelsPerCell, ("Bitmap too small."));
 	DEBUG_ASSERTCRASH((Int)surface_desc.Height == cellWidth*pixelsPerCell, ("Bitmap too small."));
@@ -832,7 +840,11 @@ int AlphaEdgeTextureClass::update(WorldHeightMap *htMap)
 	IDirect3DSurface8 *surface_level;
 	D3DSURFACE_DESC surface_desc;
 	D3DLOCKED_RECT locked_rect;
-	DX8_ErrorCode(Peek_D3D_Texture()->GetSurfaceLevel(0, &surface_level));
+	HRESULT hr = Peek_D3D_Texture()->GetSurfaceLevel(0, &surface_level);
+	if (FAILED(hr) || !surface_level) {
+		AppendStartupTrace("AlphaEdgeTextureClass::update GetSurfaceLevel failed hr=%08x", (unsigned)hr);
+		return 0;
+	}
 	DX8_ErrorCode(surface_level->LockRect(&locked_rect, NULL, 0));
 	DX8_ErrorCode(surface_level->GetDesc(&surface_desc));
 
