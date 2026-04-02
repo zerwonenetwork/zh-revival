@@ -206,6 +206,7 @@ public:
 	IDirect3DTexture8* Peek_D3D_Texture() const { return (IDirect3DTexture8*)Peek_D3D_Base_Texture(); }
 	IDirect3DVolumeTexture8* Peek_D3D_VolumeTexture() const { return (IDirect3DVolumeTexture8*)Peek_D3D_Base_Texture(); }
 	IDirect3DCubeTexture8* Peek_D3D_CubeTexture() const { return (IDirect3DCubeTexture8*)Peek_D3D_Base_Texture(); }
+	void Set_D3D_Texture_For_Compat(IDirect3DTexture8 *tex) { Poke_Texture((IDirect3DBaseTexture8 *)tex); }
 
 protected:
 

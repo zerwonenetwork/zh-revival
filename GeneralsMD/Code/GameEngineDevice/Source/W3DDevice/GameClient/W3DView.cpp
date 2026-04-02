@@ -1553,7 +1553,7 @@ void W3DView::draw( void )
 			"W3DView::draw first in-game view cam=(%g,%g,%g) pos=(%g,%g) zoom=%g pitch=%g angle=%g viewport=(%g,%g)->(%g,%g) size=%d x %d clip=(%g,%g) filter=%d mode=%d",
 			camPos.X, camPos.Y, camPos.Z,
 			m_pos.x, m_pos.y,
-			m_zoom, m_pitch, m_angle,
+			m_zoom, getPitch(), m_angle,
 			vMin.X, vMin.Y, vMax.X, vMax.Y,
 			getWidth(), getHeight(),
 			nearZ, farZ,

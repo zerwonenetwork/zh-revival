@@ -76,7 +76,7 @@ namespace
 				if (SUCCEEDED(hr) && tex)
 				{
 					AppendStartupTrace("%s: direct CreateTexture fallback ok tex=%p %ux%u", tag, tex, width, height);
-					texture->Poke_Texture(tex);
+					texture->Set_D3D_Texture_For_Compat(tex);
 					tex->Release();
 				}
 				else
