@@ -565,8 +565,23 @@ void W3DShroud::render(CameraClass *cam)
 
 		//Copy the dummy shroud into our game shroud.
 		SurfaceClass *pSurface=DummyTexture->Get_Surface_Level(0);
+		if (!pSurface)
+		{
+			AppendStartupTrace("W3DShroud::render dummy shroud surface missing");
+			REF_PTR_RELEASE(DummyTexture);
+			doInit = 0;
+			return;
+		}
 		Int pitch;
 		Int *dataSrc=(Int *)((char *)pSurface->Lock(&pitch));	//offset to correct row of full sysmem shroud
+		if (!dataSrc)
+		{
+			AppendStartupTrace("W3DShroud::render dummy shroud lock failed");
+			REF_PTR_RELEASE(pSurface);
+			REF_PTR_RELEASE(DummyTexture);
+			doInit = 0;
+			return;
+		}
 		pitch >>= 2;	//4 bytes per pixel so divide byte count by 4.
 		SurfaceClass::SurfaceDescription desc;
 		pSurface->Get_Description(desc);

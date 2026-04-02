@@ -74,10 +74,10 @@ Bitmap2DObjClass::Bitmap2DObjClass
 
 	// load up the surfaces file name
 	TextureClass *tex = WW3DAssetManager::Get_Instance()->Get_Texture(filename, MIP_LEVELS_1);
-	if (!tex->Is_Initialized())	
+	if (tex && !tex->Is_Initialized())	
 		TextureLoader::Request_Foreground_Loading(tex);
 
-	SurfaceClass *surface = tex->Get_Surface_Level(0);
+	SurfaceClass *surface = tex ? tex->Get_Surface_Level(0) : NULL;
 
 	if (!surface) {
 		surface = NEW_REF(SurfaceClass, (32, 32, Get_Valid_Texture_Format(WW3D_FORMAT_R8G8B8,true)));
