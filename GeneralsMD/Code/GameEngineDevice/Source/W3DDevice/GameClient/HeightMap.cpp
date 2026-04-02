@@ -1956,8 +1956,30 @@ void HeightMapRenderObjClass::updateCenter(CameraClass *camera , RefRenderObjLis
 void HeightMapRenderObjClass::Render(RenderInfoClass & rinfo)
 {
 	//USE_PERF_TIMER(Terrain_Render)
+	static Bool s_traceFirstInGameTerrainRender = true;
+
+	if (s_traceFirstInGameTerrainRender && TheGameLogic && !TheGameLogic->isInShellGame())
+	{
+		AppendStartupTrace(
+			"HeightMapRenderObjClass::Render first in-game terrain ib=%p vbTiles=%p stage0=%p/%p stage1=%p/%p stage2=%p/%p stage3=%p/%p hidden=%d disableTextures=%d numTiles=%d x %d",
+			m_indexBuffer,
+			m_vertexBufferTiles,
+			m_stageZeroTexture, m_stageZeroTexture ? m_stageZeroTexture->Peek_D3D_Texture() : NULL,
+			m_stageOneTexture, m_stageOneTexture ? m_stageOneTexture->Peek_D3D_Texture() : NULL,
+			m_stageTwoTexture, m_stageTwoTexture ? m_stageTwoTexture->Peek_D3D_Texture() : NULL,
+			m_stageThreeTexture, m_stageThreeTexture ? m_stageThreeTexture->Peek_D3D_Texture() : NULL,
+			Is_Hidden(),
+			m_disableTextures ? 1 : 0,
+			m_numVBTilesX,
+			m_numVBTilesY);
+	}
 
 	if (!m_indexBuffer || !m_vertexBufferTiles) {
+		if (s_traceFirstInGameTerrainRender && TheGameLogic && !TheGameLogic->isInShellGame())
+		{
+			AppendStartupTrace("HeightMapRenderObjClass::Render first in-game terrain early return missing buffers ib=%p vbTiles=%p", m_indexBuffer, m_vertexBufferTiles);
+			s_traceFirstInGameTerrainRender = false;
+		}
 		return;
 	}
 	
@@ -2002,7 +2024,14 @@ void HeightMapRenderObjClass::Render(RenderInfoClass & rinfo)
 	DX8Wrapper::Set_Light_Environment(rinfo.light_environment);
 
 	// Force shaders to update.
-	if (!m_stageTwoTexture) return;	// textures not yet initialized; skip render
+	if (!m_stageTwoTexture) {
+		if (s_traceFirstInGameTerrainRender && TheGameLogic && !TheGameLogic->isInShellGame())
+		{
+			AppendStartupTrace("HeightMapRenderObjClass::Render first in-game terrain early return missing stageTwo texture");
+			s_traceFirstInGameTerrainRender = false;
+		}
+		return;	// textures not yet initialized; skip render
+	}
 	RestoreTerrainCompatTexture(m_stageTwoTexture);
 	DX8Wrapper::Set_Texture(0,NULL);
 	DX8Wrapper::Set_Texture(1,NULL);
@@ -2267,6 +2296,12 @@ void HeightMapRenderObjClass::Render(RenderInfoClass & rinfo)
 	RestoreTerrainCompatTexture(m_stageTwoTexture);
 	ShaderClass::Invalidate();
 	DX8Wrapper::Set_Material(NULL);
+
+	if (s_traceFirstInGameTerrainRender && TheGameLogic && !TheGameLogic->isInShellGame())
+	{
+		AppendStartupTrace("HeightMapRenderObjClass::Render first in-game terrain render completed");
+		s_traceFirstInGameTerrainRender = false;
+	}
 
 }
 

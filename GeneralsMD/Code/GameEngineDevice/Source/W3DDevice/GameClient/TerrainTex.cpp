@@ -58,6 +58,37 @@ extern void AppendStartupTrace(const char *format, ...);
 
 namespace
 {
+	void FillProceduralTerrainTexture(TextureClass *texture, UnsignedInt argb);
+
+	void EnsureProceduralTerrainTexture(TextureClass *texture, UnsignedInt width, UnsignedInt height, UnsignedInt argb, const char *tag)
+	{
+		if (texture == NULL) {
+			return;
+		}
+
+		if (texture->Peek_D3D_Texture() == NULL)
+		{
+			IDirect3DDevice8 *dev = DX8Wrapper::_Get_D3D_Device8();
+			if (dev)
+			{
+				IDirect3DTexture8 *tex = NULL;
+				HRESULT hr = dev->CreateTexture(width, height, 1, 0, D3DFMT_A8R8G8B8, D3DPOOL_MANAGED, &tex);
+				if (SUCCEEDED(hr) && tex)
+				{
+					AppendStartupTrace("%s: direct CreateTexture fallback ok tex=%p %ux%u", tag, tex, width, height);
+					texture->Poke_Texture(tex);
+					tex->Release();
+				}
+				else
+				{
+					AppendStartupTrace("%s: direct CreateTexture fallback failed hr=%08x", tag, (unsigned)hr);
+				}
+			}
+		}
+
+		FillProceduralTerrainTexture(texture, argb);
+	}
+
 	void FillProceduralTerrainTexture(TextureClass *texture, UnsignedInt argb)
 	{
 		if (texture == NULL) {
@@ -714,7 +745,7 @@ void AlphaTerrainTextureClass::Apply(unsigned int stage)
 LightMapTerrainTextureClass::LightMapTerrainTextureClass(AsciiString name, MipCountType mipLevelCount) :
 TextureClass(4, 4, WW3D_FORMAT_A8R8G8B8, MIP_LEVELS_1)
 { 
-	FillProceduralTerrainTexture(this, 0xFFFFFFFF);
+	EnsureProceduralTerrainTexture(this, 4, 4, 0xFFFFFFFF, "LightMapTerrainTextureClass");
 	Get_Filter().Set_Min_Filter(TextureFilterClass::FILTER_TYPE_BEST);
 	Get_Filter().Set_Mag_Filter(TextureFilterClass::FILTER_TYPE_BEST);
 	Get_Filter().Set_U_Addr_Mode(TextureFilterClass::TEXTURE_ADDRESS_REPEAT);
@@ -986,7 +1017,7 @@ up the "sliding" parameters for the clouds to slide over the terrain. */
 CloudMapTerrainTextureClass::CloudMapTerrainTextureClass(MipCountType mipLevelCount) :
 	TextureClass(4, 4, WW3D_FORMAT_A8R8G8B8, MIP_LEVELS_1)
 { 
-	FillProceduralTerrainTexture(this, 0xFFFFFFFF);
+	EnsureProceduralTerrainTexture(this, 4, 4, 0xFFFFFFFF, "CloudMapTerrainTextureClass");
 	Get_Filter().Set_Mip_Mapping( TextureFilterClass::FILTER_TYPE_FAST );
 	m_xSlidePerSecond = -0.02f;	 
 	m_ySlidePerSecond =  1.50f * m_xSlidePerSecond;

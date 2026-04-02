@@ -102,6 +102,8 @@
 //#pragma MESSAGE("************************************** WARNING, optimization disabled for debugging purposes")
 #endif
 
+extern void AppendStartupTrace(const char *format, ...);
+
 
 
 // 30 fps
@@ -1537,6 +1539,27 @@ void W3DView::draw( void )
 	Bool doExtraRender = false;
 	CustomScenePassModes customScenePassMode  = SCENE_PASS_DEFAULT;
 	Bool preRenderResult = false;
+	static Bool s_traceFirstInGameViewDraw = true;
+
+	if (s_traceFirstInGameViewDraw && TheGameLogic && !TheGameLogic->isInShellGame() && m_3DCamera)
+	{
+		Vector3 camPos = m_3DCamera->Get_Position();
+		Vector2 vMin, vMax;
+		Real nearZ = 0.0f;
+		Real farZ = 0.0f;
+		m_3DCamera->Get_Viewport(vMin, vMax);
+		m_3DCamera->Get_Clip_Planes(nearZ, farZ);
+		AppendStartupTrace(
+			"W3DView::draw first in-game view cam=(%g,%g,%g) pos=(%g,%g) zoom=%g pitch=%g angle=%g viewport=(%g,%g)->(%g,%g) size=%d x %d clip=(%g,%g) filter=%d mode=%d",
+			camPos.X, camPos.Y, camPos.Z,
+			m_pos.x, m_pos.y,
+			m_zoom, m_pitch, m_angle,
+			vMin.X, vMin.Y, vMax.X, vMax.Y,
+			getWidth(), getHeight(),
+			nearZ, farZ,
+			(int)m_viewFilter, (int)m_viewFilterMode);
+		s_traceFirstInGameViewDraw = false;
+	}
 
 	if (m_viewFilterMode && 
 			m_viewFilter > FT_NULL_FILTER && 
@@ -3360,4 +3383,3 @@ void W3DView::Add_Camera_Shake (const Coord3D & position,float radius,float dura
 
 	CameraShakerSystem.Add_Camera_Shake(vpos,radius,duration,power);
 }
-
