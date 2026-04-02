@@ -685,3 +685,142 @@ Operational note:
 - Only local artifact zip leftovers remain untracked:
   - `latest_ci_artifacts_30c68a2.zip`
   - `latest_ci_artifacts_81e076d.zip`
+
+=== 2026-04-01 Codex runtime completion update ===
+Branch: main
+Current HEAD pushed: 88c4074
+Latest green CI run: 23877409405
+
+What changed after the older shell-map notes:
+- `1da7602`
+  - `Weapon.cpp`
+  - added a shell-state early return in `WeaponTemplate::dealDamageInternal()`
+  - this prevented shell-only AoE damage from continuing through the full damage-dispatch path during menu startup
+- `88c4074`
+  - `GlobalData.cpp`
+  - changed the default shell-map flag from `TRUE` to `FALSE`
+  - the existing `-shellmap` command-line option still exists for anyone who explicitly wants the old 3D background back
+
+What I verified locally:
+- Run `23876559911` for `1da7602` was green on all 4 CI jobs.
+- The `1da7602` artifact still crashed on a plain launch, but a direct launch with `-noshellmap` stayed alive and stable for 3+ minutes.
+- That proved the remaining startup blocker was the shell map itself, not core game init, menu logic, or the no-shell-map path.
+
+- Run `23877409405` for `88c4074` is green on all 4 CI jobs.
+- I downloaded the Windows artifact for `88c4074`, installed it over `Generals.exe`, and launched it with no command-line flags.
+- The process stayed alive and stable for 3+ minutes with:
+  - no new `Application Error` event
+  - no new `Windows Error Reporting` event
+  - no new crash dump
+- `zh-startup-trace.log` completed the first 5 traced update passes cleanly and then stopped growing only because there are no later trace points, not because the process exited.
+
+Current practical result:
+- The game now starts cleanly on this test machine with the default startup path.
+- The shell map is disabled by default to avoid the long chain of shell-only terrain/render/combat crashes.
+- This is a rendering/menu presentation change only; gameplay/simulation determinism is unaffected.
+
+Recommended next cleanup work (not required for startup):
+1. Remove or reduce the temporary runtime tracing once the team is satisfied.
+2. Decide whether to keep the shell map permanently opt-in (`-shellmap`) or revisit it later as a separate rendering task.
+3. Update user-facing docs/release notes to mention that the 3D shell map is now disabled by default for stability.
+
+=== 2026-04-01 Codex late-render completion update ===
+Branch: main
+Current HEAD pushed: 284b113
+Latest green CI run: 23878663780
+
+What changed after the shell-map default-off fix:
+- `284b113`
+  - `W3DAssetManager.cpp`
+    - validates recolor/hue-shift generated textures before caching them
+    - refuses to insert broken wrapper-created textures with missing D3D surfaces
+  - `W3DMouse.cpp`
+    - clears cursor texture/frame slots after failed surface loads and after release
+    - fixes the `m_currentD3DSurface[j]` initialization bug
+    - guards DX8 cursor frame binding so a missing cursor surface cannot turn into a later use-after-free / NULL dereference
+  - `W3DWater.cpp`
+    - binds remaining late water textures through a safe helper that degrades to `NULL`
+  - `texture.cpp`
+    - hardens cube/volume texture constructor surface acquisition against missing wrapper-created surfaces
+
+What I verified locally:
+- CI run `23878663780` is green on all 4 jobs.
+- I downloaded the Windows artifact for `284b113`, installed it over `Generals.exe`, and tested the artifact build directly.
+- Timed runtime repro:
+  - stayed alive and responding for 240 seconds
+  - working set stabilized around ~198 MB
+  - no new `Application Error`
+  - no new `Windows Error Reporting`
+- Live window sanity check:
+  - window handle remained valid
+  - title changed from temporary `zh-revival` to `Command & Conquer (TM) Generals Zero Hour`
+  - process was responding from the 10-second mark onward
+
+Current practical result:
+- The artifact build on `main` now starts and stays up on this test machine without the previous late render crash.
+- The old later crash at `Generals.exe + 0x002c8df8` did not reproduce after the `284b113` batch fix.
+
+Recommended next cleanup work (not required to keep the game opening):
+1. Remove or reduce the temporary startup/runtime trace spam.
+2. Document that shell map is disabled by default and only opt-in via `-shellmap`.
+3. Decide whether to keep the late render hardening permanently or refactor it later once DXWrapper/D3D8 compatibility is cleaner.
+
+---
+
+=== 2026-04-02 Claude Code — in-game black screen investigation ===
+
+STATUS: HANDED OFF TO CODEX — black 3D viewport in skirmish/in-game, menus/HUD/minimap work fine.
+
+## What was confirmed working
+- Shell map (main menu background terrain): renders correctly
+- In-game HUD (money counter, command bar, minimap): renders correctly
+- D3D device resets: FIXED — `m_windowed=1` default in GlobalData.cpp (commit 4e3b05d) eliminates the WM_ACTIVATEAPP → Reset_D3D_Device → WW3D::Set_Render_Device chain during map load. DXWrapper log confirmed no `ResetT` call on second test.
+- Startup: game launches, menus work, loading screen works, transitions to in-game
+
+## What is broken
+- The main 3D viewport in skirmish is completely black
+- The HUD and minimap render correctly on top of the black viewport
+- Even with the shroud texture forced to all-white (0xFFFF), terrain stays black
+
+## Root cause: NOT the shroud texture
+Commit ab33b97 added a diagnostic: first render frame fills the entire shroud dst texture with 0xFFFF (pure white = no fog). Terrain still black. This definitively rules out the shroud system as the cause.
+
+The lock+memcpy approach in W3DShroud.cpp (commit 9e23866) is correct for future use but doesn't fix the black screen. The POOL_MANAGED dst texture CAN be locked (lock trace shows pDst non-NULL, dstPitch=valid in ab33b97 trace). The ab33b97 diagnostic code is still active in main — should be REVERTED once the real fix is in.
+
+## What we know about the render pipeline
+- `W3DDisplay::draw()` calls `drawViews()` for in-game frames (m_loadScreenRender == FALSE)
+- `drawViews()` iterates `m_viewList` and calls `v->drawView()` on each view
+- `W3DView::drawView()` is the actual 3D scene renderer (file: W3DView.cpp, line ~1527)
+- The view list is populated — TheTacticalView exists (HUD references it)
+- ChipsetType = 12 (DC_GENERIC_PIXEL_SHADER_1_4) — pixel shader terrain path is active
+- All terrain VBs created and locked successfully (confirmed in startup trace)
+- Terrain textures created via D3DX fallback path (fmt=26 = A8R8G8B8 — many fallbacks in trace)
+- No device reset between VB creation and in-game rendering
+- W3DShroud::ReAcquireResources: dstTex=0B0571B4 (non-NULL, POOL_MANAGED)
+
+## Most likely cause
+`W3DView::drawView()` is being called but the 3D terrain draw calls are NOT producing visible output. Possible reasons:
+1. **Camera is wrong** — camera position/target outside the map, or view frustum culls terrain
+2. **Render object not in scene** — TheTerrainRenderObject might not be added to the W3D scene graph for the in-game map (added for shell map but reset on new map load without re-adding)
+3. **Vertex buffer lost** — VBs created but POOL_DEFAULT VBs were released by a device reset that happened AFTER our trace ends, OR VBs created in wrong pool that gets wiped
+4. **Z-test failure** — all terrain pixels fail depth test due to wrong near/far clip or inverted depth
+5. **Shader error** — chipset 12 pixel shader path produces no output (shader missing or failing to compile/link)
+
+## Key files to investigate next
+- `GeneralsMD/Code/GameEngineDevice/Source/W3DDevice/GameClient/W3DView.cpp` line ~1527 — `W3DView::drawView()` — add trace to see if it's called and what it draws
+- `GeneralsMD/Code/GameEngineDevice/Source/W3DDevice/GameClient/HeightMap.cpp` or `W3DTerrainDraw.cpp` — how the terrain render object is drawn
+- `GeneralsMD/Code/GameEngineDevice/Source/W3DDevice/GameClient/W3DTerrainVisual.cpp` — how TheTerrainRenderObject is set up and added to the scene; check if it's re-added after map load
+- Look for camera initialization during game start (W3DView camera reset on new map)
+
+## Current main branch state (commit ab33b97)
+- ab33b97: DIAGNOSTIC — shroud first-frame white fill + lock trace (MUST REVERT once fix is found)
+- 9e23866: shroud POOL_MANAGED + lock+memcpy (keep — correct approach, doesn't hurt)
+- ec7fc98: merge of shroud POOL_MANAGED fix
+- 4e3b05d: m_windowed=1 default (keep — fixes device reset)
+- All previous crash fixes from 284b113 batch (keep)
+
+## Suggested Codex tasks
+1. Add `AppendStartupTrace` to `W3DView::drawView()` — fire on FIRST call only — log: camera position, view frustum, number of render objects in scene
+2. Check `W3DTerrainVisual` — is `TheTerrainRenderObject` in the scene's render object list during in-game? Look for `Add_Render_Object` / `Remove_Render_Object` around map load
+3. Check the vertex buffer pool: VBs use POOL_DEFAULT. After game start, if any late device reset happens (even from a different trigger), POOL_DEFAULT VBs are wiped. Check for late WM_ACTIVATEAPP or any other Reset_D3D_Device call.
+4. REVERT the ab33b97 diagnostic white-fill once cause is found and real fix is in.
