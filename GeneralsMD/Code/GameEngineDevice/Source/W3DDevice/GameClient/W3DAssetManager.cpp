@@ -73,6 +73,30 @@
 
 extern void AppendStartupTrace(const char *format, ...);
 
+namespace
+{
+	static Bool ValidateGeneratedTexture(TextureClass *texture, const char *context, const char *name)
+	{
+		if (!texture)
+			return FALSE;
+
+		SurfaceClass *surface = texture->Get_Surface_Level();
+		if (!surface)
+		{
+			AppendStartupTrace(
+				"%s generated texture missing surface name=%s texture=%p d3d=%p",
+				context,
+				name ? name : "<null>",
+				texture,
+				texture->Peek_D3D_Texture());
+			return FALSE;
+		}
+
+		REF_PTR_RELEASE(surface);
+		return TRUE;
+	}
+}
+
 #ifdef _INTERNAL
 // for occasional debugging...
 //#pragma optimize("", off)
@@ -697,6 +721,13 @@ TextureClass * W3DAssetManager::Recolor_Texture_One_Time(TextureClass *texture, 
 		Remap_Palette(newsurf,color, false, true );	//texture only contains a palette stored in top row.
 
 	TextureClass * newtex=NEW_REF(TextureClass,(newsurf,(MipCountType)texture->Get_Mip_Level_Count()));
+	if (!ValidateGeneratedTexture(newtex, "W3DAssetManager::Recolor_Texture_One_Time", name))
+	{
+		REF_PTR_RELEASE(newtex);
+		REF_PTR_RELEASE(oldsurf);
+		REF_PTR_RELEASE(newsurf);
+		return NULL;
+	}
 	newtex->Get_Filter().Set_Mag_Filter(texture->Get_Filter().Get_Mag_Filter());
 	newtex->Get_Filter().Set_Min_Filter(texture->Get_Filter().Get_Min_Filter());
 	newtex->Get_Filter().Set_Mip_Mapping(texture->Get_Filter().Get_Mip_Mapping());
@@ -1689,6 +1720,13 @@ TextureClass * W3DAssetManager::Recolor_Texture_One_Time(TextureClass *texture, 
 	newsurf->Copy(0,0,0,0,desc.Width,desc.Height,oldsurf);
 	newsurf->Hue_Shift(hsv_shift);
 	TextureClass * newtex=NEW_REF(TextureClass,(newsurf,(TextureClass::MipCountType)texture->Get_Mip_Level_Count()));
+	if (!ValidateGeneratedTexture(newtex, "W3DAssetManager::Hue_Shift", name))
+	{
+		REF_PTR_RELEASE(newtex);
+		REF_PTR_RELEASE(oldsurf);
+		REF_PTR_RELEASE(newsurf);
+		return NULL;
+	}
 	newtex->Set_Mag_Filter(texture->Get_Mag_Filter());
 	newtex->Set_Min_Filter(texture->Get_Min_Filter());
 	newtex->Set_Mip_Mapping(texture->Get_Mip_Mapping());

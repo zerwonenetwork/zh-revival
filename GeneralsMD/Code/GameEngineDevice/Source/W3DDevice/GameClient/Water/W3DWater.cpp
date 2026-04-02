@@ -105,6 +105,23 @@ namespace
 		surface->DrawPixel(0, 0, 0xffffffff);
 		REF_PTR_RELEASE(surface);
 	}
+
+	static IDirect3DBaseTexture8 *SafeWaterTexture(TextureClass *texture, const char *context)
+	{
+		if (!texture)
+		{
+			TraceMissingWaterSurface(context);
+			return NULL;
+		}
+
+		if (!texture->Is_Initialized())
+			texture->Init();
+
+		IDirect3DBaseTexture8 *baseTexture = texture->Peek_D3D_Base_Texture();
+		if (!baseTexture)
+			TraceMissingWaterSurface(context);
+		return baseTexture;
+	}
 }
 
 
@@ -1971,7 +1988,7 @@ void WaterRenderObjClass::drawSea(RenderInfoClass & rinfo)
 	m_pDev->SetRenderState( D3DRS_DESTBLEND, D3DBLEND_INVSRCALPHA );
 
 	m_pDev->SetRenderState(D3DRS_ALPHABLENDENABLE , TRUE);
-	m_pDev->SetTexture( 1, m_pReflectionTexture->Peek_D3D_Texture());
+	m_pDev->SetTexture(1, SafeWaterTexture(m_pReflectionTexture, "render bump reflection"));
 
 //	m_pDev->SetRenderState(D3DRS_FILLMODE,D3DFILL_WIREFRAME);//LORENZEN
 
@@ -3055,7 +3072,7 @@ void WaterRenderObjClass::setupFlatWaterShader(void)
 			{
 				SafePrimeWhiteTexture(m_whiteTexture, "Render white texture");
 			}
-			DX8Wrapper::_Get_D3D_Device8()->SetTexture(3,m_whiteTexture->Peek_D3D_Texture());	
+			DX8Wrapper::_Get_D3D_Device8()->SetTexture(3, SafeWaterTexture(m_whiteTexture, "flat water white texture"));	
 		}
 	}
 
@@ -3070,12 +3087,12 @@ void WaterRenderObjClass::setupFlatWaterShader(void)
 		if (!m_waterSparklesTexture->Is_Initialized())
 			m_waterSparklesTexture->Init();
 
-		DX8Wrapper::_Get_D3D_Device8()->SetTexture(1,m_waterSparklesTexture->Peek_D3D_Texture());	
+		DX8Wrapper::_Get_D3D_Device8()->SetTexture(1, SafeWaterTexture(m_waterSparklesTexture, "flat water sparkles"));	
 
 		if (!m_waterNoiseTexture->Is_Initialized())
 			m_waterNoiseTexture->Init();
 
-		DX8Wrapper::_Get_D3D_Device8()->SetTexture(2,m_waterNoiseTexture->Peek_D3D_Texture());	
+		DX8Wrapper::_Get_D3D_Device8()->SetTexture(2, SafeWaterTexture(m_waterNoiseTexture, "flat water noise"));	
 
 		DX8Wrapper::Set_DX8_Texture_Stage_State(1,  D3DTSS_ADDRESSU, D3DTADDRESS_WRAP);
 		DX8Wrapper::Set_DX8_Texture_Stage_State(1,  D3DTSS_ADDRESSV, D3DTADDRESS_WRAP);

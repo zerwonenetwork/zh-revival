@@ -1619,8 +1619,13 @@ CubeTextureClass::CubeTextureClass(IDirect3DBaseTexture8* d3d_texture)
 	IsReducible=false;
 
 	Peek_Texture()->AddRef();
-	IDirect3DSurface8* surface;
-	DX8_ErrorCode(Peek_D3D_Texture()->GetSurfaceLevel(0,&surface));
+	IDirect3DSurface8* surface = TryGetTextureSurfaceLevel(Peek_D3D_Texture(), 0, "CubeTextureClass ctor");
+	if (!surface)
+	{
+		TextureFormat = WW3D_FORMAT_UNKNOWN;
+		LastAccessed = WW3D::Get_Sync_Time();
+		return;
+	}
 	D3DSURFACE_DESC d3d_desc;
 	::ZeroMemory(&d3d_desc, sizeof(D3DSURFACE_DESC));
 	DX8_ErrorCode(surface->GetDesc(&d3d_desc));
@@ -1638,6 +1643,7 @@ CubeTextureClass::CubeTextureClass(IDirect3DBaseTexture8* d3d_texture)
 		break;
 	default: break;
 	}
+	surface->Release();
 
 	LastAccessed=WW3D::Get_Sync_Time();
 }
@@ -1904,8 +1910,13 @@ CubeTextureClass::CubeTextureClass(IDirect3DBaseTexture8* d3d_texture)
 	IsReducible=false;
 
 	Peek_Texture()->AddRef();
-	IDirect3DSurface8* surface;
-	DX8_ErrorCode(Peek_D3D_Texture()->GetSurfaceLevel(0,&surface));
+	IDirect3DSurface8* surface = TryGetTextureSurfaceLevel(Peek_D3D_Texture(), 0, "CubeTextureClass ctor");
+	if (!surface)
+	{
+		TextureFormat = WW3D_FORMAT_UNKNOWN;
+		LastAccessed = WW3D::Get_Sync_Time();
+		return;
+	}
 	D3DSURFACE_DESC d3d_desc;
 	::ZeroMemory(&d3d_desc, sizeof(D3DSURFACE_DESC));
 	DX8_ErrorCode(surface->GetDesc(&d3d_desc));
@@ -1923,6 +1934,7 @@ CubeTextureClass::CubeTextureClass(IDirect3DBaseTexture8* d3d_texture)
 		break;
 	default: break;
 	}
+	surface->Release();
 
 	LastAccessed=WW3D::Get_Sync_Time();
 }
