@@ -139,8 +139,14 @@ WW3DFormat D3DFormatToWW3DFormatConversionArray[HIGHEST_SUPPORTED_D3DFORMAT + 1]
 WW3DFormat D3DFormatToWW3DFormatConversionArray[HIGHEST_SUPPORTED_D3DFORMAT + 1];
 WW3DZFormat D3DFormatToWW3DZFormatConversionArray[HIGHEST_SUPPORTED_D3DZFORMAT + 1];
 
+static bool Is_Valid_WW3D_Format(WW3DFormat format)
+{
+	int raw_format = (int)format;
+	return raw_format >= 0 && raw_format < (int)WW3D_FORMAT_COUNT;
+}
+
 D3DFORMAT WW3DFormat_To_D3DFormat(WW3DFormat ww3d_format) {
-	if (ww3d_format >= WW3D_FORMAT_COUNT) {
+	if (!Is_Valid_WW3D_Format(ww3d_format)) {
 		return D3DFMT_UNKNOWN;
 	} else {
 		return WW3DFormatToD3DFormatConversionArray[(unsigned int)ww3d_format];
