@@ -706,26 +706,52 @@ void W3DShroud::render(CameraClass *cam)
 	{
 		//USE_PERF_TIMER(shroudCopy)
 		// Copy shroud data from system-memory source to the managed destination texture via CPU lock.
-		// _Copy_DX8_Rects (CopyRects → UpdateSurface) silently fails under D3D8→D3D9 wrappers
-		// when the source pool is SCRATCH; direct lock+memcpy is always reliable.
+		static Bool s_firstRender = TRUE;
 		Int dstPitch = 0;
 		UnsignedShort *pDst = (UnsignedShort *)pDestSurface->Lock(&dstPitch);
+		if (s_firstRender)
+		{
+			AppendStartupTrace("W3DShroud::render first frame: pDst=%p dstPitch=%d visX=%d-%d visY=%d-%d srcPitch=%d",
+				(void*)pDst, dstPitch, visStartX, visEndX, visStartY, visEndY, m_srcTexturePitch);
+		}
 		if (pDst && dstPitch > 0)
 		{
 			const Int dstPitchWords = dstPitch >> 1;
 			const Int srcPitchWords = m_srcTexturePitch >> 1;
 			const Int copyWidthBytes = (visEndX - visStartX) * 2;
-			for (Int row = visStartY; row < visEndY; row++)
+			if (s_firstRender)
 			{
-				const UnsignedShort *srcRow = (const UnsignedShort *)m_srcTextureData
-				                              + row * srcPitchWords + visStartX;
-				UnsignedShort *dstRow = pDst
-				                        + (row - visStartY + dstPoint.y) * dstPitchWords
-				                        + dstPoint.x;
-				memcpy(dstRow, srcRow, copyWidthBytes);
+				// First frame: fill dst entirely WHITE (0xFFFF = fully revealed) to test
+				// whether the terrain shows correctly when the shroud texture is white.
+				// If terrain becomes visible, the shroud data copy path needs fixing.
+				// If terrain stays black, the issue is elsewhere (shader / VB / camera).
+				for (Int fy = 0; fy < m_dstTextureHeight; fy++)
+				{
+					UnsignedShort *frow = pDst + fy * dstPitchWords;
+					for (Int fx = 0; fx < m_dstTextureWidth; fx++)
+						frow[fx] = 0xFFFF;
+				}
+				AppendStartupTrace("W3DShroud::render first frame: filled dst WHITE 0xFFFF for terrain visibility test");
+			}
+			else
+			{
+				for (Int row = visStartY; row < visEndY; row++)
+				{
+					const UnsignedShort *srcRow = (const UnsignedShort *)m_srcTextureData
+					                              + row * srcPitchWords + visStartX;
+					UnsignedShort *dstRow = pDst
+					                        + (row - visStartY + dstPoint.y) * dstPitchWords
+					                        + dstPoint.x;
+					memcpy(dstRow, srcRow, copyWidthBytes);
+				}
 			}
 			pDestSurface->Unlock();
 		}
+		else if (s_firstRender)
+		{
+			AppendStartupTrace("W3DShroud::render first frame: Lock FAILED (pDst NULL or pitch 0) - shroud copy skipped");
+		}
+		s_firstRender = FALSE;
 	}
 
 	REF_PTR_RELEASE (pDestSurface);
