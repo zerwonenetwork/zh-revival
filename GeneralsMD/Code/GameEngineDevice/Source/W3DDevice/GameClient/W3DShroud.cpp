@@ -255,14 +255,15 @@ Bool W3DShroud::ReAcquireResources(void)
 
 		DEBUG_ASSERTCRASH( m_pDstTexture == NULL, ("ReAcquire of existing shroud texture"));
 	
-		// Create destination texture (stored in video memory).
-		// Since we control the video memory copy, we can do partial updates more efficiently. Or do shift blits.
+		// Create destination texture (shroud lookup sampled by terrain shader).
+		// Use POOL_MANAGED so we can lock and write via CPU directly — POOL_DEFAULT CopyRects
+		// fails silently under D3D8→D3D9 wrappers (DXWrapper / d3d8to9).
 #if defined(_DEBUG) || defined(_INTERNAL)
 		if (TheGlobalData && TheGlobalData->m_fogOfWarOn)
-			m_pDstTexture = MSGNEW("TextureClass") TextureClass(m_dstTextureWidth,m_dstTextureHeight,WW3D_FORMAT_A4R4G4B4,MIP_LEVELS_1, TextureClass::POOL_DEFAULT);
+			m_pDstTexture = MSGNEW("TextureClass") TextureClass(m_dstTextureWidth,m_dstTextureHeight,WW3D_FORMAT_A4R4G4B4,MIP_LEVELS_1, TextureClass::POOL_MANAGED);
 		else
 #endif
-			m_pDstTexture = MSGNEW("TextureClass") TextureClass(m_dstTextureWidth,m_dstTextureHeight,WW3D_FORMAT_R5G6B5,MIP_LEVELS_1, TextureClass::POOL_DEFAULT);
+			m_pDstTexture = MSGNEW("TextureClass") TextureClass(m_dstTextureWidth,m_dstTextureHeight,WW3D_FORMAT_R5G6B5,MIP_LEVELS_1, TextureClass::POOL_MANAGED);
 		AppendStartupTrace("W3DShroud::ReAcquireResources after texture alloc dstTex=%p", m_pDstTexture);
 
 		DEBUG_ASSERTCRASH( m_pDstTexture != NULL, ("Failed ReAcquire of shroud texture"));
@@ -472,59 +473,21 @@ void W3DShroud::fillBorderShroudData(W3DShroudLevel level, SurfaceClass* pDestSu
 		pixel=( ((bluepixel&0xf8) >> 3) | ((greenpixel&0xfc)<<3) | ((redpixel&0xf8)<<8));
 	}
 
-	//Skip to unused texels within the shroud data
-	UnsignedShort *ptr=(UnsignedShort *)m_srcTextureData + m_numCellsY*(m_srcTexturePitch >> 1);
-
-	//Fill unused texels with border color
-	for (x=0; x<m_numCellsX; x++)
-			ptr[x]=pixel;
-
-	//Fill destination texture with border color
-
-	RECT	srcRect;
-
-	//create a rectangle enclosing bottom row of unused pixels long enough
-	//to cover destination width.
-	srcRect.left=0;
-	srcRect.top=m_numCellsY;
-	srcRect.right= m_numCellsX;
-	srcRect.bottom= m_numCellsY+1;
-
-	POINT	dstPoint={0,0};
-
-	Int numFullCopies = m_dstTextureWidth/srcRect.right;
-	Int numExtraPixels = m_dstTextureWidth%srcRect.right;
-
-	for (y=0; y<m_dstTextureHeight; y++)
+	// Fill destination texture with border color directly via CPU lock.
+	// (Previously tiled via _Copy_DX8_Rects which silently fails under D3D8→D3D9 wrappers.)
+	Int dstPitch = 0;
+	UnsignedShort *pDst = (UnsignedShort *)pDestSurface->Lock(&dstPitch);
+	if (pDst && dstPitch > 0)
 	{
-		dstPoint.y=y;
-		dstPoint.x=0;
-
-		for (x=0; x<numFullCopies; x++)
-		{	
-			dstPoint.x = x * srcRect.right;	//advance to next set of pixel in row.
-
-			DX8Wrapper::_Copy_DX8_Rects(
-				m_pSrcTexture,
-				&srcRect,
-				1,
-				pDestSurface->Peek_D3D_Surface(),
-				&dstPoint);
+		Int dstPitchWords = dstPitch >> 1;
+		for (y = 0; y < m_dstTextureHeight; y++)
+		{
+			UnsignedShort *row = pDst + y * dstPitchWords;
+			for (x = 0; x < m_dstTextureWidth; x++)
+				row[x] = pixel;
 		}
-		if (numExtraPixels)
-		{	Int oldVal=srcRect.right;
-			dstPoint.x = numFullCopies * oldVal;
-			srcRect.right = numExtraPixels;
-			DX8Wrapper::_Copy_DX8_Rects(
-				m_pSrcTexture,
-				&srcRect,
-				1,
-				pDestSurface->Peek_D3D_Surface(),
-				&dstPoint);
-			srcRect.right = oldVal;
-		}
+		pDestSurface->Unlock();
 	}
-	
 }
 
 /**Set the shroud color within the border area of the map*/
@@ -551,7 +514,7 @@ void W3DShroud::render(CameraClass *cam)
 		return; //nothing to update from.  Must be in reset state.
 
 	if (!m_pDstTexture)
-		return; // destination texture creation failed (e.g. POOL_DEFAULT on DXWrapper); shroud disabled
+		return; // destination texture creation failed; shroud disabled
 
 	if (DX8Wrapper::_Get_D3D_Device8() && (DX8Wrapper::_Get_D3D_Device8()->TestCooperativeLevel()) != D3D_OK)
 		return;	//device not ready to render anything
@@ -742,12 +705,27 @@ void W3DShroud::render(CameraClass *cam)
 
 	{
 		//USE_PERF_TIMER(shroudCopy)
-		DX8Wrapper::_Copy_DX8_Rects(
-				m_pSrcTexture,
-				&srcRect,
-				1,
-				pDestSurface->Peek_D3D_Surface(),
-				&dstPoint);
+		// Copy shroud data from system-memory source to the managed destination texture via CPU lock.
+		// _Copy_DX8_Rects (CopyRects → UpdateSurface) silently fails under D3D8→D3D9 wrappers
+		// when the source pool is SCRATCH; direct lock+memcpy is always reliable.
+		Int dstPitch = 0;
+		UnsignedShort *pDst = (UnsignedShort *)pDestSurface->Lock(&dstPitch);
+		if (pDst && dstPitch > 0)
+		{
+			const Int dstPitchWords = dstPitch >> 1;
+			const Int srcPitchWords = m_srcTexturePitch >> 1;
+			const Int copyWidthBytes = (visEndX - visStartX) * 2;
+			for (Int row = visStartY; row < visEndY; row++)
+			{
+				const UnsignedShort *srcRow = (const UnsignedShort *)m_srcTextureData
+				                              + row * srcPitchWords + visStartX;
+				UnsignedShort *dstRow = pDst
+				                        + (row - visStartY + dstPoint.y) * dstPitchWords
+				                        + dstPoint.x;
+				memcpy(dstRow, srcRow, copyWidthBytes);
+			}
+			pDestSurface->Unlock();
+		}
 	}
 
 	REF_PTR_RELEASE (pDestSurface);
