@@ -88,6 +88,8 @@ enum
 #include "WW3D2/meshmdl.h"
 #include "d3dx8tex.h"
 
+extern void AppendStartupTrace(const char *format, ...);
+
 #ifdef _INTERNAL
 // for occasional debugging...
 //#pragma optimize("", off)
@@ -131,6 +133,10 @@ W3DTreeBuffer::W3DTreeTextureClass::W3DTreeTextureClass(unsigned width, unsigned
 //=============================================================================
 int W3DTreeBuffer::W3DTreeTextureClass::update(W3DTreeBuffer *buffer)
 {
+	if (!Peek_D3D_Texture()) {
+		AppendStartupTrace("W3DTreeTextureClass::update: D3D texture is NULL; skipping tree texture fill");
+		return 0;
+	}
 
 	//Set to clamp.
 	Get_Filter().Set_U_Addr_Mode(TextureFilterClass::TEXTURE_ADDRESS_CLAMP);
@@ -139,7 +145,11 @@ int W3DTreeBuffer::W3DTreeTextureClass::update(W3DTreeBuffer *buffer)
 	IDirect3DSurface8 *surface_level;
 	D3DSURFACE_DESC surface_desc;
 	D3DLOCKED_RECT locked_rect;
-	DX8_ErrorCode(Peek_D3D_Texture()->GetSurfaceLevel(0, &surface_level));
+	HRESULT hr = Peek_D3D_Texture()->GetSurfaceLevel(0, &surface_level);
+	if (FAILED(hr) || !surface_level) {
+		AppendStartupTrace("W3DTreeTextureClass::update GetSurfaceLevel failed hr=%08x", (unsigned)hr);
+		return 0;
+	}
 	DX8_ErrorCode(surface_level->GetDesc(&surface_desc));
 
 	DX8_ErrorCode(surface_level->LockRect(&locked_rect, NULL, 0));

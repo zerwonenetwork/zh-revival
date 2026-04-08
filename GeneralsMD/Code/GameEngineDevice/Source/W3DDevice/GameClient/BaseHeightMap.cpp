@@ -42,6 +42,8 @@
 //
 //-----------------------------------------------------------------------------
 
+extern void AppendStartupTrace(const char *format, ...);
+
 //-----------------------------------------------------------------------------
 //         Includes                                                      
 //-----------------------------------------------------------------------------
@@ -64,6 +66,7 @@
 #include "GameClient/View.h"
 #include "GameClient/Water.h"
 
+#include "GameLogic/GameLogic.h"
 #include "GameLogic/AIPathfind.h"
 #include "GameLogic/TerrainLogic.h"
 #include "W3DDevice/GameClient/TerrainTex.h"
@@ -76,6 +79,11 @@
 #include "W3DDevice/GameClient/W3DRoadBuffer.h"
 #include "W3DDevice/GameClient/W3DBridgeBuffer.h"
 #include "W3DDevice/GameClient/W3DWaypointBuffer.h"
+
+static Bool UseShellTerrainStaticCompatibilityPath()
+{
+	return TheGameLogic && TheGameLogic->isInShellGame();
+}
 #include "W3DDevice/GameClient/W3DCustomEdging.h"
 #include "W3DDevice/GameClient/WorldHeightMap.h"
 #include "W3DDevice/GameClient/W3DShaderManager.h"
@@ -255,6 +263,7 @@ BaseHeightMapRenderObjClass::~BaseHeightMapRenderObjClass(void)
 //=============================================================================
 BaseHeightMapRenderObjClass::BaseHeightMapRenderObjClass(void)
 {
+	AppendStartupTrace("BaseHeightMapRenderObjClass::ctor start");
 	m_x=0;
 	m_y=0;
 	m_needFullUpdate = false;
@@ -289,23 +298,34 @@ BaseHeightMapRenderObjClass::BaseHeightMapRenderObjClass(void)
 	m_disableTextures = false;
 	TheTerrainRenderObject = this;
 	m_treeBuffer = NULL; 
+	AppendStartupTrace("BaseHeightMapRenderObjClass::ctor before W3DTreeBuffer");
 
 	m_treeBuffer = NEW W3DTreeBuffer;
+	AppendStartupTrace("BaseHeightMapRenderObjClass::ctor after W3DTreeBuffer ptr=%p", m_treeBuffer);
 
 	m_propBuffer = NULL; 
+	AppendStartupTrace("BaseHeightMapRenderObjClass::ctor before W3DPropBuffer");
 
 	m_propBuffer = NEW W3DPropBuffer;
+	AppendStartupTrace("BaseHeightMapRenderObjClass::ctor after W3DPropBuffer ptr=%p", m_propBuffer);
 
 
 	m_bibBuffer = NULL;
+	AppendStartupTrace("BaseHeightMapRenderObjClass::ctor before W3DBibBuffer");
 	m_bibBuffer = NEW W3DBibBuffer;
+	AppendStartupTrace("BaseHeightMapRenderObjClass::ctor after W3DBibBuffer ptr=%p", m_bibBuffer);
 	m_curImpassableSlope = 45.0f;	// default to 45 degrees.
 	m_bridgeBuffer = NULL;
+	AppendStartupTrace("BaseHeightMapRenderObjClass::ctor before W3DBridgeBuffer");
 	m_bridgeBuffer = NEW W3DBridgeBuffer;
-	m_waypointBuffer = NEW W3DWaypointBuffer;
+	AppendStartupTrace("BaseHeightMapRenderObjClass::ctor after W3DBridgeBuffer ptr=%p", m_bridgeBuffer);
+	AppendStartupTrace("BaseHeightMapRenderObjClass::ctor waypoint rendering disabled");
+	m_waypointBuffer = NULL;
 #ifdef DO_ROADS
 	m_roadBuffer = NULL;
+	AppendStartupTrace("BaseHeightMapRenderObjClass::ctor before W3DRoadBuffer");
 	m_roadBuffer = NEW W3DRoadBuffer;
+	AppendStartupTrace("BaseHeightMapRenderObjClass::ctor after W3DRoadBuffer ptr=%p", m_roadBuffer);
 #endif
 #ifdef DO_SCORCH
 	m_vertexScorch = NULL;
@@ -315,13 +335,21 @@ BaseHeightMapRenderObjClass::BaseHeightMapRenderObjClass(void)
 #endif
 #if defined(_DEBUG) || defined(_INTERNAL)
 	if (TheGlobalData->m_shroudOn)
+	{
+		AppendStartupTrace("BaseHeightMapRenderObjClass::ctor before W3DShroud");
 		m_shroud = NEW W3DShroud;
+		AppendStartupTrace("BaseHeightMapRenderObjClass::ctor after W3DShroud ptr=%p", m_shroud);
+	}
 	else
 		m_shroud = NULL;
 #else
+	AppendStartupTrace("BaseHeightMapRenderObjClass::ctor before W3DShroud");
 	m_shroud = NEW W3DShroud;
+	AppendStartupTrace("BaseHeightMapRenderObjClass::ctor after W3DShroud ptr=%p", m_shroud);
 #endif
+	AppendStartupTrace("BaseHeightMapRenderObjClass::ctor before DX8Wrapper::SetCleanupHook");
 	DX8Wrapper::SetCleanupHook(this);
+	AppendStartupTrace("BaseHeightMapRenderObjClass::ctor complete");
 }
 
 void BaseHeightMapRenderObjClass::setTextureLOD(Int lod)
@@ -1652,6 +1680,10 @@ void BaseHeightMapRenderObjClass::updateShorelineTile(Int i, Int j, Int border, 
 water.*/
 void BaseHeightMapRenderObjClass::updateShorelineTiles(Int minX, Int minY, Int maxX, Int maxY, WorldHeightMap *pMap)
 {
+	// Water rendering is disabled during startup; both globals will be NULL.
+	if (!TheWaterRenderObj || !TheWaterTransparency)
+		return;
+
 	Int border = pMap->getBorderSizeInline();
 
 	//Clamp region to valid terrain tiles
@@ -1743,6 +1775,8 @@ void BaseHeightMapRenderObjClass::initDestAlphaLUT(void)
 {
 	if (!m_destAlphaTexture)
 		return;
+	if (!TheWaterTransparency)
+		return;
 
 	SurfaceClass *surf=m_destAlphaTexture->Get_Surface_Level();
 
@@ -1784,13 +1818,20 @@ shaders, and materials.*/
 //=============================================================================
 Int BaseHeightMapRenderObjClass::initHeightData(Int x, Int y, WorldHeightMap *pMap, RefRenderObjListIterator *pLightsIteratork, Bool updateExtraPassTiles)
 {	
+	AppendStartupTrace("BaseHeightMapRenderObjClass::initHeightData start x=%d y=%d updateExtra=%d", x, y, updateExtraPassTiles ? 1 : 0);
 
 	REF_PTR_SET(m_map, pMap);	//update our heightmap pointer in case it changed since last call.
 
 	if (m_shroud)
+	{
+		AppendStartupTrace("BaseHeightMapRenderObjClass::initHeightData before m_shroud->init");
 		m_shroud->init(m_map,TheGlobalData->m_partitionCellSize,TheGlobalData->m_partitionCellSize);
+		AppendStartupTrace("BaseHeightMapRenderObjClass::initHeightData after m_shroud->init");
+	}
 #ifdef DO_ROADS
+	AppendStartupTrace("BaseHeightMapRenderObjClass::initHeightData before m_roadBuffer->setMap");
 	m_roadBuffer->setMap(m_map);
+	AppendStartupTrace("BaseHeightMapRenderObjClass::initHeightData after m_roadBuffer->setMap");
 #endif
 	HeightSampleType *data = NULL;
 	if (pMap) {
@@ -1808,6 +1849,7 @@ Int BaseHeightMapRenderObjClass::initHeightData(Int x, Int y, WorldHeightMap *pM
 
 	if (updateExtraPassTiles)
 	{
+		AppendStartupTrace("BaseHeightMapRenderObjClass::initHeightData before extra-pass preprocessing");
 		m_numShoreLineTiles = 0;
 		//Do some preprocessing on map to extract useful data
 		if (pMap)
@@ -1832,9 +1874,10 @@ Int BaseHeightMapRenderObjClass::initHeightData(Int x, Int y, WorldHeightMap *pM
 
 			//Find all shoreline tiles so they can get extra alpha blend
 			updateShorelineTiles(0,0,m_mapDX-1,m_mapDY-1,pMap);
-			if (TheWaterTransparency->m_minWaterOpacity != m_currentMinWaterOpacity)
+			if (TheWaterTransparency && TheWaterTransparency->m_minWaterOpacity != m_currentMinWaterOpacity)
 				initDestAlphaLUT();
 		}
+		AppendStartupTrace("BaseHeightMapRenderObjClass::initHeightData after extra-pass preprocessing");
 	}
 
 	Set_Force_Visible(TRUE);	//terrain is always visible.
@@ -1850,22 +1893,35 @@ Int BaseHeightMapRenderObjClass::initHeightData(Int x, Int y, WorldHeightMap *pM
 	}
 	if (data && needToAllocate)
 	{	//requested heightmap different from old one.
+		AppendStartupTrace("BaseHeightMapRenderObjClass::initHeightData before freeMapResources");
 		//allocate a new one.
 		freeMapResources();	//free old data and ib/vb
+		AppendStartupTrace("BaseHeightMapRenderObjClass::initHeightData after freeMapResources");
 		REF_PTR_SET(m_map,pMap);	//update our heightmap pointer in case it changed since last call.
+		AppendStartupTrace("BaseHeightMapRenderObjClass::initHeightData before CloudMapTerrainTextureClass");
 		m_stageTwoTexture=NEW CloudMapTerrainTextureClass;
+		AppendStartupTrace("BaseHeightMapRenderObjClass::initHeightData after CloudMapTerrainTextureClass");
+		AppendStartupTrace("BaseHeightMapRenderObjClass::initHeightData before LightMapTerrainTextureClass");
 		m_stageThreeTexture=NEW LightMapTerrainTextureClass(m_macroTextureName);
+		AppendStartupTrace("BaseHeightMapRenderObjClass::initHeightData after LightMapTerrainTextureClass");
+		AppendStartupTrace("BaseHeightMapRenderObjClass::initHeightData before destAlphaTexture alloc");
 		m_destAlphaTexture=MSGNEW("TextureClass") TextureClass(256,1,WW3D_FORMAT_A8R8G8B8,MIP_LEVELS_1);
+		AppendStartupTrace("BaseHeightMapRenderObjClass::initHeightData after destAlphaTexture alloc");
+		AppendStartupTrace("BaseHeightMapRenderObjClass::initHeightData after terrain textures alloc");
 		initDestAlphaLUT();
+		AppendStartupTrace("BaseHeightMapRenderObjClass::initHeightData after initDestAlphaLUT");
 #ifdef DO_SCORCH
 		allocateScorchBuffers();
+		AppendStartupTrace("BaseHeightMapRenderObjClass::initHeightData after allocateScorchBuffers");
 #endif
 
 		m_vertexMaterialClass=VertexMaterialClass::Get_Preset(VertexMaterialClass::PRELIT_DIFFUSE);
 
 		m_shaderClass = detailOpaqueShader;	//		ShaderClass::_PresetOpaqueShader;
+		AppendStartupTrace("BaseHeightMapRenderObjClass::initHeightData after shader/material setup");
 	}
 
+	AppendStartupTrace("BaseHeightMapRenderObjClass::initHeightData complete");
 	return 0;
 }
 
@@ -1889,19 +1945,12 @@ void BaseHeightMapRenderObjClass::freeScorchBuffers(void)
 //=============================================================================
 void BaseHeightMapRenderObjClass::allocateScorchBuffers(void)
 {
-	m_vertexScorch=NEW_REF(DX8VertexBufferClass,(DX8_FVF_XYZDUV1,MAX_SCORCH_VERTEX,DX8VertexBufferClass::USAGE_DEFAULT));
-	m_indexScorch=NEW_REF(DX8IndexBufferClass,(MAX_SCORCH_INDEX));
-	m_scorchTexture=NEW ScorchTextureClass;
+	m_vertexScorch = NULL;
+	m_indexScorch = NULL;
+	m_scorchTexture = NULL;
 	m_scorchesInBuffer = 0; // If we just allocated the buffers, we got no scorches in the buffer.
 	m_curNumScorchVertices=0;
 	m_curNumScorchIndices=0;
-#ifdef _DEBUG
-	Vector3 loc(4*MAP_XY_FACTOR,4*MAP_XY_FACTOR,0);
-	addScorch(loc, 1*MAP_XY_FACTOR, SCORCH_1);
-	loc.Y += 10*MAP_XY_FACTOR;
-	loc.X += 5*MAP_XY_FACTOR;
-	addScorch(loc, 3*MAP_XY_FACTOR, SCORCH_1);
-#endif
 
 }
 
@@ -2367,7 +2416,13 @@ void BaseHeightMapRenderObjClass::staticLightingChanged( void )
 	m_scorchesInBuffer = 0; // If we just allocated the buffers, we got no scorches in the buffer.
 	m_curNumScorchVertices=0;
 	m_curNumScorchIndices=0;
-	m_roadBuffer->updateLighting();
+	if (UseShellTerrainStaticCompatibilityPath()) {
+		m_needFullUpdate = false;
+		return;
+	}
+	if (m_roadBuffer) {
+		m_roadBuffer->updateLighting();
+	}
 
 }
 
@@ -2424,12 +2479,16 @@ void BaseHeightMapRenderObjClass::updateCenter(CameraClass *camera , RefRenderOb
 	}
 #endif
 	if (m_needFullUpdate) {
-		m_bridgeBuffer->doFullUpdate();
-		m_bridgeBuffer->updateCenter(camera, pLightsIterator);
+		if (m_bridgeBuffer) {
+			m_bridgeBuffer->doFullUpdate();
+			m_bridgeBuffer->updateCenter(camera, pLightsIterator);
+		}
 		m_updating = false;
 		return;
 	}
-	m_bridgeBuffer->updateCenter(camera, pLightsIterator);
+	if (m_bridgeBuffer) {
+		m_bridgeBuffer->updateCenter(camera, pLightsIterator);
+	}
 	m_updating = false;
 }
 
@@ -2457,7 +2516,7 @@ void BaseHeightMapRenderObjClass::renderShoreLines(CameraClass *pCamera)
 
 	m_numVisibleShoreLineTiles=0;
 
-	if (!TheGlobalData->m_showSoftWaterEdge || TheWaterTransparency->m_transparentWaterDepth==0 || m_numShoreLineTiles == 0)
+	if (!TheGlobalData->m_showSoftWaterEdge || !TheWaterTransparency || TheWaterTransparency->m_transparentWaterDepth==0 || m_numShoreLineTiles == 0)
 		return;
 
 	//Check if video card is capable of using this effect
@@ -2625,7 +2684,7 @@ void BaseHeightMapRenderObjClass::renderShoreLinesSorted(CameraClass *pCamera)
 {
 	m_numVisibleShoreLineTiles=0;
 
-	if (!TheGlobalData->m_showSoftWaterEdge || TheWaterTransparency->m_transparentWaterDepth==0 || m_numShoreLineTiles == 0)
+	if (!TheGlobalData->m_showSoftWaterEdge || !TheWaterTransparency || TheWaterTransparency->m_transparentWaterDepth==0 || m_numShoreLineTiles == 0)
 		return;
 
 	//Check if video card is capable of using this effect

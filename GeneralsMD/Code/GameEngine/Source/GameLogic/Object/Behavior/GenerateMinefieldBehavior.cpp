@@ -43,6 +43,7 @@
 #include "GameClient/Drawable.h"
 #include "GameClient/FXList.h"
 #include "GameClient/InGameUI.h"
+#include "GameClient/Shell.h"
 #include "GameLogic/GameLogic.h"
 #include "GameLogic/Module/BodyModule.h"
 #include "GameLogic/Module/GenerateMinefieldBehavior.h"
@@ -59,6 +60,21 @@
 //#pragma optimize("", off)
 //#pragma MESSAGE("************************************** WARNING, optimization disabled for debugging purposes")
 #endif
+
+extern void AppendStartupTrace(const char *format, ...);
+
+namespace
+{
+	static Int s_shellMinefieldSkipTraceCount = 0;
+
+	static Bool ShouldSkipMinefieldGenerationForShell()
+	{
+		return TheGameLogic &&
+			(TheGameLogic->isInShellGame() ||
+			 (TheShell && TheShell->isShellActive()) ||
+			 (TheGlobalData && TheGlobalData->m_shellMapOn));
+	}
+}
 
 //-------------------------------------------------------------------------------------------------
 GenerateMinefieldBehaviorModuleData::GenerateMinefieldBehaviorModuleData()
@@ -194,6 +210,20 @@ static void offsetBySmallRandomAmount(Coord3D& pt, Real maxAmt)
 //-------------------------------------------------------------------------------------------------
 Object* GenerateMinefieldBehavior::placeMineAt(const Coord3D& pt, const ThingTemplate* mineTemplate, Team* team, const Object* producer)
 {
+	if (ShouldSkipMinefieldGenerationForShell())
+	{
+		if (s_shellMinefieldSkipTraceCount < 8)
+		{
+			AppendStartupTrace(
+				"GenerateMinefieldBehavior::placeMineAt shell-skip x=%0.2f y=%0.2f producer=%p",
+				pt.x,
+				pt.y,
+				producer);
+			++s_shellMinefieldSkipTraceCount;
+		}
+		return NULL;
+	}
+
 	Coord3D tmp = pt;
 	tmp.z = 99999.0f;
 	PathfindLayerEnum layer = TheTerrainLogic->getHighestLayerForDestination(&tmp);
@@ -379,6 +409,22 @@ void GenerateMinefieldBehavior::placeMines()
 {
 	if (m_generated)
 		return;
+
+	if (ShouldSkipMinefieldGenerationForShell())
+	{
+		m_generated = true;
+		if (s_shellMinefieldSkipTraceCount < 8)
+		{
+			AppendStartupTrace(
+				"GenerateMinefieldBehavior::placeMines shell-skip obj=%p shellActive=%d shellMap=%d inShell=%d",
+				getObject(),
+				(TheShell && TheShell->isShellActive()) ? 1 : 0,
+				(TheGlobalData && TheGlobalData->m_shellMapOn) ? 1 : 0,
+				TheGameLogic->isInShellGame() ? 1 : 0);
+			++s_shellMinefieldSkipTraceCount;
+		}
+		return;
+	}
 
 	m_generated = true;
 

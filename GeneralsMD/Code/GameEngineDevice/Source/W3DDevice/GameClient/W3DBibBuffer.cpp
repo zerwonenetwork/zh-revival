@@ -42,6 +42,8 @@
 //
 //-----------------------------------------------------------------------------
 
+extern void AppendStartupTrace(const char *format, ...);
+
 //-----------------------------------------------------------------------------
 //         Includes                                                      
 //-----------------------------------------------------------------------------
@@ -226,6 +228,7 @@ for the bibs. */
 //=============================================================================
 W3DBibBuffer::W3DBibBuffer(void)
 {
+	AppendStartupTrace("W3DBibBuffer::ctor start");
 	m_initialized = false;
 	m_vertexBib = NULL;
 	m_indexBib = NULL;
@@ -235,15 +238,14 @@ W3DBibBuffer::W3DBibBuffer(void)
 	clearAllBibs();
 	m_indexBibSize = INITIAL_BIB_INDEX;
 	m_vertexBibSize = INITIAL_BIB_VERTEX;
+	AppendStartupTrace("W3DBibBuffer::ctor before allocateBibBuffers");
 	allocateBibBuffers();
+	AppendStartupTrace("W3DBibBuffer::ctor after allocateBibBuffers vertex=%p index=%p", m_vertexBib, m_indexBib);
 
-	m_bibTexture = NEW_REF(TextureClass, ("TBBib.tga"));
-	m_highlightBibTexture = NEW_REF(TextureClass, ("TBRedBib.tga"));
-	m_bibTexture->Get_Filter().Set_U_Addr_Mode(TextureFilterClass::TEXTURE_ADDRESS_CLAMP);
-	m_bibTexture->Get_Filter().Set_V_Addr_Mode(TextureFilterClass::TEXTURE_ADDRESS_CLAMP);
-	m_highlightBibTexture->Get_Filter().Set_U_Addr_Mode(TextureFilterClass::TEXTURE_ADDRESS_CLAMP);
-	m_highlightBibTexture->Get_Filter().Set_V_Addr_Mode(TextureFilterClass::TEXTURE_ADDRESS_CLAMP);
-	m_initialized = true;
+	AppendStartupTrace("W3DBibBuffer::ctor bib rendering disabled");
+	freeBibBuffers();
+	REF_PTR_RELEASE(m_bibTexture);
+	REF_PTR_RELEASE(m_highlightBibTexture);
 }
 
 
@@ -265,8 +267,12 @@ void W3DBibBuffer::freeBibBuffers(void)
 //=============================================================================
 void W3DBibBuffer::allocateBibBuffers(void)
 {
+	AppendStartupTrace("W3DBibBuffer::allocateBibBuffers before vertex buffer");
 	m_vertexBib=NEW_REF(DX8VertexBufferClass,(DX8_FVF_XYZDUV1,m_vertexBibSize+4,DX8VertexBufferClass::USAGE_DYNAMIC));
+	AppendStartupTrace("W3DBibBuffer::allocateBibBuffers after vertex buffer ptr=%p", m_vertexBib);
+	AppendStartupTrace("W3DBibBuffer::allocateBibBuffers before index buffer");
 	m_indexBib=NEW_REF(DX8IndexBufferClass,(m_indexBibSize+4, DX8IndexBufferClass::USAGE_DYNAMIC));
+	AppendStartupTrace("W3DBibBuffer::allocateBibBuffers after index buffer ptr=%p", m_indexBib);
 	m_curNumBibVertices=0;
 	m_curNumBibIndices=0;
 }
@@ -423,6 +429,9 @@ void W3DBibBuffer::removeBibDrawable(DrawableID id)
 //=============================================================================
 void W3DBibBuffer::renderBibs()
 {
+	if (!m_initialized || !m_bibTexture || !m_highlightBibTexture) {
+		return;
+	}
 
 	loadBibsInVertexAndIndexBuffers();
 

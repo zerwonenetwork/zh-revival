@@ -103,7 +103,7 @@ if(MSVC)
     # /MP   — parallel compilation
     # /EHsc — C++ exceptions (replaces legacy /GX)
     # /Zi   — full PDB for all configs
-    add_compile_options(/W3 /MP /EHsc /Zi)
+    add_compile_options(/W3 /MP /EHsc /Zi /Zc:threadSafeInit-)
 
     # Suppress warnings that are noise from 25-year-old C++ at /W3 on modern MSVC.
     # These will be revisited in P5-07 (full memory safety audit).

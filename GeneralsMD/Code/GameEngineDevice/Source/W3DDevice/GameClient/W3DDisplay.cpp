@@ -33,6 +33,8 @@
 
 static void drawFramerateBar(void);
 
+extern void AppendStartupTrace(const char *format, ...);
+
 // SYSTEM INCLUDES ////////////////////////////////////////////////////////////
 #include <stdlib.h>
 #include <windows.h>
@@ -114,6 +116,31 @@ static void drawFramerateBar(void);
 //#pragma optimize("", off)
 //#pragma MESSAGE("************************************** WARNING, optimization disabled for debugging purposes")
 #endif
+
+static Bool TryInitW3DShaderManager(void)
+{
+#if defined(_MSC_VER) && !defined(__clang__)
+	__try
+	{
+		W3DShaderManager::init();
+		return TRUE;
+	}
+	__except(EXCEPTION_EXECUTE_HANDLER)
+	{
+		return FALSE;
+	}
+#else
+	try
+	{
+		W3DShaderManager::init();
+		return TRUE;
+	}
+	catch (...)
+	{
+		return FALSE;
+	}
+#endif
+}
 
 // DEFINE AND ENUMS ///////////////////////////////////////////////////////////
 #define W3D_DISPLAY_DEFAULT_BIT_DEPTH 32
@@ -678,21 +705,29 @@ void W3DDisplay::init( void )
 
 	}  // end if
 	// Override the W3D File system
+	AppendStartupTrace("W3DDisplay::init start");
 	TheW3DFileSystem = NEW W3DFileSystem;
+	AppendStartupTrace("W3DDisplay::init after W3DFileSystem");
 
 	// init the Westwood math library
 	WWMath::Init();
+	AppendStartupTrace("W3DDisplay::init after WWMath::Init");
 
 	// create our 3D interface scene
 	m_3DInterfaceScene = NEW_REF( RTS3DInterfaceScene, () );
+	AppendStartupTrace("W3DDisplay::init after m_3DInterfaceScene NEW_REF");
 	m_3DInterfaceScene->Set_Ambient_Light( Vector3( 1, 1, 1 ) );
+	AppendStartupTrace("W3DDisplay::init after m_3DInterfaceScene->Set_Ambient_Light");
 
 	// create our 2D scene
 	m_2DScene = NEW_REF( RTS2DScene, () );
+	AppendStartupTrace("W3DDisplay::init after m_2DScene NEW_REF");
 	m_2DScene->Set_Ambient_Light( Vector3( 1, 1, 1 ) );
+	AppendStartupTrace("W3DDisplay::init after m_2DScene->Set_Ambient_Light");
 
 	// create our 3D scene
 	m_3DScene =NEW_REF( RTS3DScene, () );
+	AppendStartupTrace("W3DDisplay::init after m_3DScene NEW_REF");
 #if defined(_DEBUG) || defined(_INTERNAL)
 	if( TheGlobalData->m_wireframe )
 		m_3DScene->Set_Polygon_Mode( SceneClass::LINE );
@@ -728,18 +763,22 @@ void W3DDisplay::init( void )
 #endif
 
 	// create a new asset manager
-	m_assetManager = NEW W3DAssetManager;	
+	m_assetManager = NEW W3DAssetManager;
+	AppendStartupTrace("W3DDisplay::init after W3DAssetManager NEW");
 	m_assetManager->Register_Prototype_Loader(&_ParticleEmitterLoader );
 	m_assetManager->Register_Prototype_Loader(&_AggregateLoader);
 	m_assetManager->Set_WW3D_Load_On_Demand( true );
+	AppendStartupTrace("W3DDisplay::init after assetManager setup");
 
 
 	if (TheGlobalData->m_incrementalAGPBuf)
 	{
 		SortingRendererClass::SetMinVertexBufferSize(1);
 	}
+	AppendStartupTrace("W3DDisplay::init before WW3D::Init");
 	if (WW3D::Init( ApplicationHWnd ) != WW3D_ERROR_OK)
 		throw ERROR_INVALID_D3D;	//failed to initialize.  User probably doesn't have DX 8.1
+	AppendStartupTrace("W3DDisplay::init after WW3D::Init");
 
 	WW3D::Set_Prelit_Mode( WW3D::PRELIT_MODE_LIGHTMAP_MULTI_PASS );
 	WW3D::Set_Collision_Box_Display_Mask(0x00);	///<set to 0xff to make collision boxes visible
@@ -748,6 +787,7 @@ void W3DDisplay::init( void )
 	WW3D::Set_Screen_UV_Bias( TRUE );  ///< this makes text look good :)
 	WW3D::Set_Texture_Bitdepth(32);
 			
+	AppendStartupTrace("W3DDisplay::init before Set_Render_Device");
 	setWindowed( TheGlobalData->m_windowed );
 
 	// create a 2D renderer helper
@@ -804,10 +844,18 @@ void W3DDisplay::init( void )
 	if (TheGlobalData->m_displayGamma != 1.0f)
 		setGamma(TheGlobalData->m_displayGamma,0.0f,1.0f,FALSE);
 
+	AppendStartupTrace("W3DDisplay::init after Set_Render_Device");
 	initAssets();
+	AppendStartupTrace("W3DDisplay::init after initAssets");
 	init2DScene();
+	AppendStartupTrace("W3DDisplay::init after init2DScene");
 	init3DScene();
-	W3DShaderManager::init();
+	AppendStartupTrace("W3DDisplay::init after init3DScene");
+	AppendStartupTrace("W3DDisplay::init before W3DShaderManager::init");
+	if (TryInitW3DShaderManager())
+		AppendStartupTrace("W3DDisplay::init after W3DShaderManager::init");
+	else
+		AppendStartupTrace("W3DDisplay::init shader manager crashed; continuing with custom shaders disabled");
 
 	// Create and initialize the debug display
 	m_nativeDebugDisplay = NEW W3DDebugDisplay();
@@ -1673,6 +1721,7 @@ void W3DDisplay::draw( void )
 {
 	//USE_PERF_TIMER(W3DDisplay_draw)
 	static UnsignedInt syncTime = 0;
+	static Bool s_traceFirstDraw = TRUE;
 
 	extern HWND ApplicationHWnd;
 	if (ApplicationHWnd && ::IsIconic(ApplicationHWnd)) {
@@ -1770,6 +1819,8 @@ AGAIN:
 
 	/// @todo: I'm assuming the first view is our main 3D view.
 	W3DView *primaryW3DView=(W3DView *)getFirstView();
+	if (!primaryW3DView)
+		return; // View not yet registered; nothing to draw.
 	if (!freezeTime && TheScriptEngine->isTimeFast())
 	{
 		primaryW3DView->updateCameraMovements();  // Update camera motion effects.
@@ -1853,7 +1904,17 @@ AGAIN:
 		{	//Checking if we have the device before updating views because the heightmap crashes otherwise while
 			//trying to refresh the visible terrain geometry.
 //			if(TheGlobalData->m_loadScreenRender != TRUE)
+			if (s_traceFirstDraw)
+			{
+				AppendStartupTrace("W3DDisplay::draw first pass before updateViews");
+			}
 				updateViews();
+			if (s_traceFirstDraw)
+			{
+				AppendStartupTrace("W3DDisplay::draw first pass after updateViews");
+				AppendStartupTrace("W3DDisplay::draw first pass before TheParticleSystemManager->update");
+			}
+		if (TheParticleSystemManager)
      		TheParticleSystemManager->update();//LORENZEN AND WILCZYNSKI MOVED THIS FROM ITS NATIVE POSITION, ABOVE
                                            //FOR THE PURPOSE OF LETTING THE PARTICLE SYSTEM LOOK UP THE RENDER OBJECT"S
                                            //TRANSFORM MATRIX, WHILE IT IS STILL VALID (HAVING DONE ITS CLIENT TRANSFORMS
@@ -1862,15 +1923,39 @@ AGAIN:
                                            //MOVE WITH THE CLIENT TRANSFORMS, NOW.
                                            //REVOLUTIONARY!
                                            //-LORENZEN
+			if (s_traceFirstDraw)
+			{
+				AppendStartupTrace("W3DDisplay::draw first pass after TheParticleSystemManager->update");
+			}
 
 
 			if (TheWaterRenderObj && TheGlobalData->m_waterType == 2)
+			{
+				if (s_traceFirstDraw)
+				{
+					AppendStartupTrace("W3DDisplay::draw first pass before water render-target update");
+				}
 				TheWaterRenderObj->updateRenderTargetTextures(primaryW3DView->get3DCamera());	//do a render into each texture
+				if (s_traceFirstDraw)
+				{
+					AppendStartupTrace("W3DDisplay::draw first pass after water render-target update");
+				}
+			}
 
 			//Can't render into textures while rendering to screen so these textures need to be updated
 			//before we enter main rendering loop.
 			if (TheW3DProjectedShadowManager)
+			{
+				if (s_traceFirstDraw)
+				{
+					AppendStartupTrace("W3DDisplay::draw first pass before projected shadow update");
+				}
 				TheW3DProjectedShadowManager->updateRenderTargetTextures();
+				if (s_traceFirstDraw)
+				{
+					AppendStartupTrace("W3DDisplay::draw first pass after projected shadow update");
+				}
+			}
 		}
 
 		Debug_Statistics::End_Statistics();	//record number of polygons rendered in RenderTargetTextures.
@@ -1888,8 +1973,16 @@ AGAIN:
 		{
 			//USE_PERF_TIMER(BigAssRenderLoop)
 			static Bool couldRender = true;
-			if ((TheGlobalData->m_breakTheMovie == FALSE) && (TheGlobalData->m_disableRender == false) && WW3D::Begin_Render( true, true, Vector3( 0.0f, 0.0f, 0.0f ), TheWaterTransparency->m_minWaterOpacity ) == WW3D_ERROR_OK)		
+			if (s_traceFirstDraw)
 			{
+				AppendStartupTrace("W3DDisplay::draw first pass before WW3D::Begin_Render");
+			}
+			if ((TheGlobalData->m_breakTheMovie == FALSE) && (TheGlobalData->m_disableRender == false) && WW3D::Begin_Render( true, true, Vector3( 0.0f, 0.0f, 0.0f ), TheWaterTransparency ? TheWaterTransparency->m_minWaterOpacity : 1.0f ) == WW3D_ERROR_OK)		
+			{
+				if (s_traceFirstDraw)
+				{
+					AppendStartupTrace("W3DDisplay::draw first pass after WW3D::Begin_Render");
+				}
 				
 				if(TheGlobalData->m_loadScreenRender == TRUE)
 				{	
@@ -1905,20 +1998,51 @@ AGAIN:
 					Debug_Statistics::Record_DX8_Polys_And_Vertices(numRenderTargetPolygons,numRenderTargetVertices,ShaderClass::_PresetOpaqueShader);
 
 				// draw all views of the world
+				if (s_traceFirstDraw)
+				{
+					AppendStartupTrace("W3DDisplay::draw first pass before drawViews");
+				}
 				drawViews();
+				if (s_traceFirstDraw)
+				{
+					AppendStartupTrace("W3DDisplay::draw first pass after drawViews");
+					AppendStartupTrace("W3DDisplay::draw first pass before TheInGameUI->DRAW");
+				}
 
 				// draw the user interface
 				TheInGameUI->DRAW();
+				if (s_traceFirstDraw)
+				{
+					AppendStartupTrace("W3DDisplay::draw first pass after TheInGameUI->DRAW");
+				}
 
 				// end of video example code
 
 				// draw the mouse
 				if( TheMouse )
+				{
+					if (s_traceFirstDraw)
+					{
+						AppendStartupTrace("W3DDisplay::draw first pass before TheMouse->DRAW");
+					}
 					TheMouse->DRAW();
+					if (s_traceFirstDraw)
+					{
+						AppendStartupTrace("W3DDisplay::draw first pass after TheMouse->DRAW");
+					}
+				}
 
 				if ( m_videoStream && m_videoBuffer )
 				{
+					if (s_traceFirstDraw)
+					{
+						AppendStartupTrace("W3DDisplay::draw first pass before drawVideoBuffer stream=%p buffer=%p", m_videoStream, m_videoBuffer);
+					}
 					drawVideoBuffer( m_videoBuffer, 0, 0, getWidth(), getHeight() );
+					if (s_traceFirstDraw)
+					{
+						AppendStartupTrace("W3DDisplay::draw first pass after drawVideoBuffer");
+					}
 				}
 				if( m_copyrightDisplayString )
 				{
@@ -1929,7 +2053,15 @@ AGAIN:
 					m_copyrightDisplayString->draw(x, y, GameMakeColor(0,0,0,255), GameMakeColor(0,0,0,0),0,0);
 				}
 				// render letter box before debug display so debug info isn't hidden
+				if (s_traceFirstDraw)
+				{
+					AppendStartupTrace("W3DDisplay::draw first pass before renderLetterBox");
+				}
 				renderLetterBox(now);
+				if (s_traceFirstDraw)
+				{
+					AppendStartupTrace("W3DDisplay::draw first pass after renderLetterBox");
+				}
 
 				// display cinematicText over the black
 				if( m_cinematicText != AsciiString::TheEmptyString && m_cinematicTextFrames != 0)
@@ -1986,7 +2118,16 @@ AGAIN:
 				TheGraphDraw->clear();
 #endif
 				// render is all done!
+				if (s_traceFirstDraw)
+				{
+					AppendStartupTrace("W3DDisplay::draw first pass before WW3D::End_Render");
+				}
 				WW3D::End_Render();	
+				if (s_traceFirstDraw)
+				{
+					AppendStartupTrace("W3DDisplay::draw first pass after WW3D::End_Render");
+					s_traceFirstDraw = FALSE;
+				}
 			}
 			else
 			{
@@ -3023,6 +3164,10 @@ void W3DDisplay::takeScreenShot(void)
 
 	IDirect3DSurface8 *fb;
 	fb=DX8Wrapper::_Get_DX8_Front_Buffer();
+	if (!fb) {
+		AppendStartupTrace("W3DDisplay screenshot: _Get_DX8_Front_Buffer returned NULL; screenshot skipped");
+		return;
+	}
 	D3DSURFACE_DESC desc;
 	fb->GetDesc(&desc);
 

@@ -69,6 +69,7 @@
 #include "GameClient/View.h"
 #include "GameClient/Water.h"
 
+#include "GameLogic/GameLogic.h"
 #include "GameLogic/AIPathfind.h"
 #include "GameLogic/TerrainLogic.h"
 #include "W3DDevice/GameClient/TerrainTex.h"
@@ -94,7 +95,21 @@
 #include "W3DDevice/GameClient/W3DCustomScene.h"
 
 #include "Common/PerfTimer.h"
-#include "Common/UnitTimings.h" //Contains the DO_UNIT_TIMINGS define jba.		 
+#include "Common/UnitTimings.h" //Contains the DO_UNIT_TIMINGS define jba.
+
+extern void AppendStartupTrace(const char *format, ...);
+
+static Bool UseShellTerrainCompatibilityPath(void)
+{
+	return TheGameLogic && TheGameLogic->isInShellGame();
+}
+
+static void RestoreTerrainCompatTexture(CloudMapTerrainTextureClass *texture)
+{
+	if (texture) {
+		texture->restore();
+	}
+}
 
 #ifdef _INTERNAL
 // for occasional debugging...
@@ -140,13 +155,13 @@ void HeightMapRenderObjClass::freeIndexVertexBuffers(void)
 	if (m_vertexBufferTiles) {
 		for (int i=0; i<m_numVertexBufferTiles; i++)
 			REF_PTR_RELEASE(m_vertexBufferTiles[i]);
-		delete m_vertexBufferTiles;
+		delete [] m_vertexBufferTiles;
 		m_vertexBufferTiles = NULL;
 	}
 	if (m_vertexBufferBackup) {
 		for (int i=0; i<m_numVertexBufferTiles; i++)
-			delete m_vertexBufferBackup[i];
-		delete m_vertexBufferBackup;
+			delete [] m_vertexBufferBackup[i];
+		delete [] m_vertexBufferBackup;
 		m_vertexBufferBackup = NULL;
 	}
 	m_numVertexBufferTiles = 0;
@@ -325,20 +340,41 @@ Int HeightMapRenderObjClass::updateVB(DX8VertexBufferClass	*pVB, char *data, Int
 		cellOffset = 2;
 	}
 
+	AppendStartupTrace("updateVB enter pVB=%p data=%p x0=%d y0=%d x1=%d y1=%d originX=%d originY=%d", pVB, data, x0, y0, x1, y1, originX, originY);
 	REF_PTR_SET(m_map, pMap);	//update our heightmap pointer in case it changed since last call.
-	if (m_vertexBufferTiles && pMap)
+	AppendStartupTrace("updateVB after REF_PTR_SET m_map");
+	if (m_vertexBufferTiles && pMap && pVB)
 	{
+		if (x0 < originX) {
+			x0 = originX;
+		}
+		if (y0 < originY) {
+			y0 = originY;
+		}
+		if (x1 > originX + VERTEX_BUFFER_TILE_LENGTH) {
+			x1 = originX + VERTEX_BUFFER_TILE_LENGTH;
+		}
+		if (y1 > originY + VERTEX_BUFFER_TILE_LENGTH) {
+			y1 = originY + VERTEX_BUFFER_TILE_LENGTH;
+		}
+		if (x1 <= x0 || y1 <= y0) {
+			return 0;
+		}
 #ifdef _DEBUG
 		assert(x0 >= originX && y0 >= originY && x1>x0 && y1>y0 && x1<=originX+VERTEX_BUFFER_TILE_LENGTH && y1<=originY+VERTEX_BUFFER_TILE_LENGTH);
-#endif 
+#endif
 
 		DX8VertexBufferClass::WriteLockClass lockVtxBuffer(pVB);
 		VERTEX_FORMAT *vbHardware = (VERTEX_FORMAT*)lockVtxBuffer.Get_Vertex_Array();
+		AppendStartupTrace("updateVB after VB lock vbHardware=%p", vbHardware);
+		if (!vbHardware) return -1;	// VB lock failed (device lost?); skip tile
 		VERTEX_FORMAT *vBase = (VERTEX_FORMAT*)data;
+		AppendStartupTrace("updateVB after vBase=%p", vBase);
+		if (!vBase) return -1;	// backup buffer is NULL; skip tile
 		// Note that we are building the vertex buffer data in the memory buffer, data.
-		// At the bottom, we will copy the final vertex data for one cell into the 
-		// hardware vertex buffer. 
-		
+		// At the bottom, we will copy the final vertex data for one cell into the
+		// hardware vertex buffer.
+
 		for (j=y0; j<y1; j++)
 		{
 			VERTEX_FORMAT *vb = vBase;
@@ -589,8 +625,9 @@ Int HeightMapRenderObjClass::updateVBForLight(DX8VertexBufferClass	*pVB, char *d
 
 		DX8VertexBufferClass::WriteLockClass lockVtxBuffer(pVB);
 		VERTEX_FORMAT *vBase = (VERTEX_FORMAT*)lockVtxBuffer.Get_Vertex_Array();
+		if (!vBase) return -1;	// VB lock failed; skip tile
 		VERTEX_FORMAT *vb;
-		
+
 		for (j=y0; j<y1; j++)
 		{
 			if (HALF_RES_MESH) {
@@ -736,8 +773,9 @@ Int HeightMapRenderObjClass::updateVBForLightOptimized(DX8VertexBufferClass	*pVB
 
 		DX8VertexBufferClass::WriteLockClass lockVtxBuffer(pVB);
 		VERTEX_FORMAT *vBase = (VERTEX_FORMAT*)lockVtxBuffer.Get_Vertex_Array();
+		if (!vBase) return -1;	// VB lock failed; skip tile
 		VERTEX_FORMAT *vb;
-		
+
 		//
 		// (gth) the optimization in this function is to take advantage of verts in the same
 		// x,y position who have already computed their lighting.  To do this, we need to set up
@@ -1016,7 +1054,7 @@ void HeightMapRenderObjClass::doPartialUpdate(const IRegion2D &partialRange, Wor
 The vertex coordinates and texture coordinates, as well as static lighting are updated.
 */
 Int HeightMapRenderObjClass::updateBlock(Int x0, Int y0, Int x1, Int y1,  WorldHeightMap *pMap, RefRenderObjListIterator *pLightsIterator)
-{	
+{
 #ifdef _DEBUG
 	DEBUG_ASSERTCRASH(x0>=0,  ("HeightMapRenderObjClass::UpdateBlock parameters extend beyond left edge."));
 	DEBUG_ASSERTCRASH(y0>=0,  ("HeightMapRenderObjClass::UpdateBlock parameters extend beyond bottom edge."));
@@ -1025,15 +1063,24 @@ Int HeightMapRenderObjClass::updateBlock(Int x0, Int y0, Int x1, Int y1,  WorldH
 	DEBUG_ASSERTCRASH(x0<=x1, ("HeightMapRenderObjClass::UpdateBlock parameters have inside-out rectangle (on X)."));
 	DEBUG_ASSERTCRASH(y0<=y1, ("HeightMapRenderObjClass::UpdateBlock parameters have inside-out rectangle (on Y)."));
 #endif
+	AppendStartupTrace("updateBlock start x0=%d y0=%d x1=%d y1=%d pMap=%p", x0, y0, x1, y1, pMap);
+	if (!m_vertexBufferTiles || !m_vertexBufferBackup || m_numVBTilesX <= 0 || m_numVBTilesY <= 0) {
+		AppendStartupTrace("updateBlock skip: vertex buffers not ready tiles=%p backup=%p numX=%d numY=%d", m_vertexBufferTiles, m_vertexBufferBackup, m_numVBTilesX, m_numVBTilesY);
+		return -1;
+	}
 	Invalidate_Cached_Bounding_Volumes();
+	AppendStartupTrace("updateBlock after Invalidate_Cached_Bounding_Volumes");
 	if (pMap) {
 		REF_PTR_SET(m_stageZeroTexture, pMap->getTerrainTexture());
+		AppendStartupTrace("updateBlock after stageZero tex=%p", m_stageZeroTexture);
 		REF_PTR_SET(m_stageOneTexture, pMap->getAlphaTerrainTexture());
+		AppendStartupTrace("updateBlock after stageOne tex=%p", m_stageOneTexture);
 	}
 
 	Int i,j;
 	DX8VertexBufferClass	**pVB;
 	Int originX,originY;
+	AppendStartupTrace("updateBlock entering tile loops numX=%d numY=%d", m_numVBTilesX, m_numVBTilesY);
 	//step through each vertex buffer that needs updating
 	for (j=0; j<m_numVBTilesY; j++)
 	{
@@ -1047,7 +1094,7 @@ Int HeightMapRenderObjClass::updateBlock(Int x0, Int y0, Int x1, Int y1,  WorldH
 			continue;
 		}
 		for (i=0; i<m_numVBTilesX; i++)
-		{	
+		{
 			originX=i*VERTEX_BUFFER_TILE_LENGTH;	//location of this VB on the large full-size heightmap
 			Int xMin, xMax;
 			xMin = originX;
@@ -1057,9 +1104,17 @@ Int HeightMapRenderObjClass::updateBlock(Int x0, Int y0, Int x1, Int y1,  WorldH
 			if (xMin >= xMax) {
 				continue;
 			}
-			pVB=m_vertexBufferTiles+j*m_numVBTilesX+i;	//point to correct row/column of vertex buffers 
+			pVB=m_vertexBufferTiles+j*m_numVBTilesX+i;	//point to correct row/column of vertex buffers
 			char **pData = m_vertexBufferBackup+j*m_numVBTilesX+i;
-			updateVB(*pVB, *pData, xMin, yMin, xMax, yMax, originX, originY, pMap, pLightsIterator);
+			DX8VertexBufferClass *vbTile = (pVB != NULL) ? *pVB : NULL;
+			char *backupTile = (pData != NULL) ? *pData : NULL;
+			if (!vbTile || !backupTile) {
+				AppendStartupTrace("updateBlock skip invalid tile j=%d i=%d vb=%p data=%p", j, i, vbTile, backupTile);
+				continue;
+			}
+			AppendStartupTrace("updateBlock before updateVB tile j=%d i=%d vb=%p data=%p xMin=%d yMin=%d xMax=%d yMax=%d", j, i, vbTile, backupTile, xMin, yMin, xMax, yMax);
+			updateVB(vbTile, backupTile, xMin, yMin, xMax, yMax, originX, originY, pMap, pLightsIterator);
+			AppendStartupTrace("updateBlock after updateVB tile j=%d i=%d", j, i);
 		}
 	}
 
@@ -1265,8 +1320,10 @@ Also allocates all rendering resources such as vertex buffers, index buffers,
 shaders, and materials.*/
 //=============================================================================
 Int HeightMapRenderObjClass::initHeightData(Int x, Int y, WorldHeightMap *pMap, RefRenderObjListIterator *pLightsIterator, Bool updateExtraPassTiles)
-{	
+{
+	AppendStartupTrace("HeightMapRenderObjClass::initHeightData start x=%d y=%d updateExtra=%d", x, y, updateExtraPassTiles ? 1 : 0);
 	BaseHeightMapRenderObjClass::initHeightData(x, y, pMap, pLightsIterator, updateExtraPassTiles);
+	AppendStartupTrace("HeightMapRenderObjClass::initHeightData after base class");
 	Int i,j;
 //	Int	vertsPerRow=x*2-2;
 //	Int	vertsPerColumn=y*2-2;
@@ -1316,6 +1373,7 @@ Int HeightMapRenderObjClass::initHeightData(Int x, Int y, WorldHeightMap *pMap, 
 		}
 	}
 
+	AppendStartupTrace("HeightMapRenderObjClass::initHeightData after extra-blend tiles data=%p needAlloc check", data);
 	m_originX = 0;
 	m_originY = 0;
 	m_needFullUpdate = true;
@@ -1326,16 +1384,21 @@ Int HeightMapRenderObjClass::initHeightData(Int x, Int y, WorldHeightMap *pMap, 
 	if (m_stageOneTexture == NULL) {
 		needToAllocate = true;
 	}
+	AppendStartupTrace("HeightMapRenderObjClass::initHeightData needToAllocate=%d data=%p stageOne=%p", needToAllocate ? 1 : 0, data, m_stageOneTexture);
 	if (data && needToAllocate)
 	{	//requested heightmap different from old one.
+		AppendStartupTrace("HeightMapRenderObjClass::initHeightData before freeIndexVertexBuffers");
 		freeIndexVertexBuffers();
+		AppendStartupTrace("HeightMapRenderObjClass::initHeightData before indexBuffer alloc");
 		//Create static index buffers.  These will index the vertex buffers holding the map.
 		m_indexBuffer=NEW_REF(DX8IndexBufferClass,(VERTEX_BUFFER_TILE_LENGTH*VERTEX_BUFFER_TILE_LENGTH*2*3));
+		AppendStartupTrace("HeightMapRenderObjClass::initHeightData after indexBuffer alloc ib=%p", m_indexBuffer);
 
 		// Fill up the IB
 		DX8IndexBufferClass::WriteLockClass lockIdxBuffer(m_indexBuffer);
 		UnsignedShort *ib=lockIdxBuffer.Get_Index_Array();
-			
+		if (!ib) return 0;	// IB lock failed; skip fill but don't crash
+
 		for (j=0; j<(VERTEX_BUFFER_TILE_LENGTH*VERTEX_BUFFER_TILE_LENGTH*4); j+=VERTEX_BUFFER_TILE_LENGTH*4)
 		{
 			for (i=j; i<(j+VERTEX_BUFFER_TILE_LENGTH*4); i+=4)	//4 vertices per 2x2 block
@@ -1372,24 +1435,28 @@ Int HeightMapRenderObjClass::initHeightData(Int x, Int y, WorldHeightMap *pMap, 
 		m_numVertexBufferTiles=m_numVBTilesX*m_numVBTilesY;
 		m_x=x;
 		m_y=y;
-		m_vertexBufferTiles = NEW DX8VertexBufferClass*[m_numVertexBufferTiles];
-		m_vertexBufferBackup = NEW char *[m_numVertexBufferTiles];
+		m_vertexBufferTiles = NEW DX8VertexBufferClass*[m_numVertexBufferTiles]();
+		m_vertexBufferBackup = NEW char *[m_numVertexBufferTiles]();
 
 		Int numVertex = VERTEX_BUFFER_TILE_LENGTH*2*VERTEX_BUFFER_TILE_LENGTH*2;
 
+		AppendStartupTrace("HeightMapRenderObjClass::initHeightData before VB alloc loop numTiles=%d numVertex=%d", m_numVertexBufferTiles, numVertex);
 		for (i=0; i<m_numVertexBufferTiles; i++) {
-#ifdef USE_NORMALS	 
+#ifdef USE_NORMALS
 			m_vertexBufferTiles[i]=NEW_REF(DX8VertexBufferClass,(DX8_FVF_XYZNUV2,numVertex,DX8VertexBufferClass::USAGE_DEFAULT));
 #else
 			m_vertexBufferTiles[i]=NEW_REF(DX8VertexBufferClass,(DX8_VERTEX_FORMAT,numVertex,DX8VertexBufferClass::USAGE_DEFAULT));
 #endif
 			m_vertexBufferBackup[i] = NEW char[numVertex*sizeof(VERTEX_FORMAT)];
-		} 
+		}
+		AppendStartupTrace("HeightMapRenderObjClass::initHeightData after VB alloc loop");
 
 		//go with a preset material for now.
 	}
 
+	AppendStartupTrace("HeightMapRenderObjClass::initHeightData before updateBlock vbTiles=%p vbBackup=%p", m_vertexBufferTiles, m_vertexBufferBackup);
 	updateBlock(0,0,x-1,y-1,pMap,pLightsIterator);
+	AppendStartupTrace("HeightMapRenderObjClass::initHeightData after updateBlock");
 
 	return 0;
 }
@@ -1403,6 +1470,14 @@ Int HeightMapRenderObjClass::initHeightData(Int x, Int y, WorldHeightMap *pMap, 
 void HeightMapRenderObjClass::On_Frame_Update(void)
 {	
 	BaseHeightMapRenderObjClass::On_Frame_Update();
+	static Bool s_loggedShellTerrainLightSkip = FALSE;
+	if (UseShellTerrainCompatibilityPath()) {
+		if (!s_loggedShellTerrainLightSkip) {
+			AppendStartupTrace("HeightMapRenderObjClass::On_Frame_Update shell terrain compatibility skip");
+			s_loggedShellTerrainLightSkip = TRUE;
+		}
+		return;
+	}
 	Int i,j,k;
 	DX8VertexBufferClass	**pVB;
 	Int originX,originY;
@@ -1412,6 +1487,9 @@ void HeightMapRenderObjClass::On_Frame_Update(void)
 
 	RefRenderObjListIterator pDynamicLightsIterator(pMyScene->getDynamicLights());
 	if (m_map == NULL) {
+		return;
+	}
+	if (m_vertexBufferTiles == NULL || m_vertexBufferBackup == NULL) {
 		return;
 	}
 
@@ -1575,6 +1653,9 @@ void HeightMapRenderObjClass::On_Frame_Update(void)
 				}
 				pVB=m_vertexBufferTiles+j*m_numVBTilesX+i;	//point to correct row/column of vertex buffers 
 				char **pData = m_vertexBufferBackup+j*m_numVBTilesX+i;
+				if (!pVB || !*pVB || !pData || !*pData) {
+					continue;
+				}
 				updateVBForLight(*pVB, *pData, xMin, yMin, xMax, yMax, originX,originY, enabledLights, numDynaLights);
 			}
 		}
@@ -1692,6 +1773,15 @@ void HeightMapRenderObjClass::updateCenter(CameraClass *camera , RefRenderObjLis
 	if (m_updating) {
 		return;
 	}
+	static Bool s_loggedShellTerrainCenterSkip = FALSE;
+	if (UseShellTerrainCompatibilityPath()) {
+		if (!s_loggedShellTerrainCenterSkip) {
+			AppendStartupTrace("HeightMapRenderObjClass::updateCenter shell terrain compatibility skip");
+			s_loggedShellTerrainCenterSkip = TRUE;
+		}
+		m_needFullUpdate = false;
+		return;
+	}
 	if (m_vertexBufferTiles ==NULL)
 		return;		//did not initialize resources yet.
 
@@ -1712,10 +1802,6 @@ void HeightMapRenderObjClass::updateCenter(CameraClass *camera , RefRenderObjLis
 		return; // no need to center. 
 	}
 
-	Int cellOffset = 1;
-	if (HALF_RES_MESH) {
-		cellOffset = 2;
-	}
 	// determine the ray corresponding to the camera and distance to projection plane
 	Matrix3D camera_matrix = camera->Get_Transform();
 	
@@ -1825,81 +1911,36 @@ void HeightMapRenderObjClass::updateCenter(CameraClass *camera , RefRenderObjLis
 			newOrgX &= 0xFFFFFFFE;
 			newOrgY &= 0xFFFFFFFE;
 		}
+		if (newOrgX < 0) {
+			newOrgX = 0;
+		}
+		if (newOrgY < 0) {
+			newOrgY = 0;
+		}
+		Int maxDrawOrgX = m_map->getXExtent() - m_x;
+		Int maxDrawOrgY = m_map->getYExtent() - m_y;
+		if (maxDrawOrgX < 0) {
+			maxDrawOrgX = 0;
+		}
+		if (maxDrawOrgY < 0) {
+			maxDrawOrgY = 0;
+		}
+		if (newOrgX > maxDrawOrgX) {
+			newOrgX = maxDrawOrgX;
+		}
+		if (newOrgY > maxDrawOrgY) {
+			newOrgY = maxDrawOrgY;
+		}
 		Int deltaX = newOrgX - m_map->getDrawOrgX();
 		Int deltaY = newOrgY - m_map->getDrawOrgY();
-		if (IABS(deltaX) > m_x/2 || IABS(deltaY)>m_x/2) {
-			m_map->setDrawOrg(newOrgX, newOrgY);
-			m_originY = 0;
-			m_originX = 0;
-			updateBlock(0, 0, m_x-1, m_y-1, m_map, pLightsIterator); 
-			m_updating = false;
-			return;
-		}
 
-		if (abs(deltaX)>CENTER_LIMIT || abs(deltaY)>CENTER_LIMIT) {
-			if (abs(deltaY) >= CENTER_LIMIT) {
-				if (m_map->setDrawOrg(m_map->getDrawOrgX(), newOrgY)) {
-					Int minY = 0;
-					Int maxY = 0;
-					deltaY -= newOrgY - m_map->getDrawOrgY(); 
-					m_originY += deltaY;
-					if (m_originY >= m_y-1) m_originY -= m_y-1;
-					if (deltaY<0) {
-						minY = m_originY;
-						maxY = m_originY-deltaY;
-					} else {
-						minY = m_originY - deltaY;
-						maxY = m_originY;
-					}
-					minY-=cellOffset;
-					if (m_originY < 0) m_originY += m_y-1;
-					if (minY<0) {
-						minY += m_y-1;
-						if (minY<0) minY = 0;
-						updateBlock(0, minY, m_x-1, m_y-1, m_map, pLightsIterator);
-						updateBlock(0, 0, m_x-1, maxY, m_map, pLightsIterator);
-					} else {
-						updateBlock(0, minY, m_x-1, maxY, m_map, pLightsIterator);
-					}
-				}
-				// It is much more efficient to update a cople of columns one frame, and then
-				// a couple of rows.  So if we aren't "jumping" to a new view, and have done X
-				// recently, return.
-				if (abs(deltaX) < BIG_JUMP && !m_doXNextTime) {
-					m_updating = false;
-					m_doXNextTime = true;
-					return;	// Only do the y this frame.  Do x next frame.  jba.
-				}
-			}
-			if (abs(deltaX) > CENTER_LIMIT) {
+		if (IABS(deltaX) > m_x/2 || IABS(deltaY)>m_x/2 || abs(deltaX)>CENTER_LIMIT || abs(deltaY)>CENTER_LIMIT) {
+			if (m_map->setDrawOrg(newOrgX, newOrgY)) {
+				m_originY = 0;
+				m_originX = 0;
 				m_doXNextTime = false;
-				newOrgX = m_map->getDrawOrgX() + deltaX;
-				if (m_map->setDrawOrg(newOrgX, m_map->getDrawOrgY())) {
-					Int minX = 0;
-					Int maxX = 0;
-					deltaX -= newOrgX - m_map->getDrawOrgX(); 
-					m_originX += deltaX;
-					if (m_originX >= m_x-1) m_originX -= m_x-1;
-					if (deltaX<0) {
-						minX = m_originX;
-						maxX = m_originX-deltaX;
-					} else {
-						minX = m_originX - deltaX;
-						maxX = m_originX;
-					}
-					minX-=cellOffset;
-					maxX+=cellOffset;
-					if (m_originX < 0) m_originX += m_x-1;
-					if (minX<0) {
-						minX += m_x-1;
-						if (minX<0) minX = 0;
-						updateBlock(minX,0,m_x-1, m_y-1, m_map, pLightsIterator);
-						updateBlock(0,0,maxX, m_y-1, m_map, pLightsIterator);
-					} else {
-						updateBlock(minX,0,maxX, m_y-1, m_map, pLightsIterator);
-					}
-				}
-			} 
+				updateBlock(0, 0, m_x-1, m_y-1, m_map, pLightsIterator);
+			}
 		}
 	}
 	m_updating = false;
@@ -1915,6 +1956,32 @@ void HeightMapRenderObjClass::updateCenter(CameraClass *camera , RefRenderObjLis
 void HeightMapRenderObjClass::Render(RenderInfoClass & rinfo)
 {
 	//USE_PERF_TIMER(Terrain_Render)
+	static Bool s_traceFirstInGameTerrainRender = true;
+
+	if (s_traceFirstInGameTerrainRender && TheGameLogic && !TheGameLogic->isInShellGame())
+	{
+		AppendStartupTrace(
+			"HeightMapRenderObjClass::Render first in-game terrain ib=%p vbTiles=%p stage0=%p/%p stage1=%p/%p stage2=%p/%p stage3=%p/%p hidden=%d disableTextures=%d numTiles=%d x %d",
+			m_indexBuffer,
+			m_vertexBufferTiles,
+			m_stageZeroTexture, m_stageZeroTexture ? m_stageZeroTexture->Peek_D3D_Texture() : NULL,
+			m_stageOneTexture, m_stageOneTexture ? m_stageOneTexture->Peek_D3D_Texture() : NULL,
+			m_stageTwoTexture, m_stageTwoTexture ? m_stageTwoTexture->Peek_D3D_Texture() : NULL,
+			m_stageThreeTexture, m_stageThreeTexture ? m_stageThreeTexture->Peek_D3D_Texture() : NULL,
+			Is_Hidden(),
+			m_disableTextures ? 1 : 0,
+			m_numVBTilesX,
+			m_numVBTilesY);
+	}
+
+	if (!m_indexBuffer || !m_vertexBufferTiles) {
+		if (s_traceFirstInGameTerrainRender && TheGameLogic && !TheGameLogic->isInShellGame())
+		{
+			AppendStartupTrace("HeightMapRenderObjClass::Render first in-game terrain early return missing buffers ib=%p vbTiles=%p", m_indexBuffer, m_vertexBufferTiles);
+			s_traceFirstInGameTerrainRender = false;
+		}
+		return;
+	}
 	
 	Int i,j,devicePasses;
 	W3DShaderManager::ShaderTypes st;
@@ -1957,7 +2024,15 @@ void HeightMapRenderObjClass::Render(RenderInfoClass & rinfo)
 	DX8Wrapper::Set_Light_Environment(rinfo.light_environment);
 
 	// Force shaders to update.
-	m_stageTwoTexture->restore();
+	if (!m_stageTwoTexture) {
+		if (s_traceFirstInGameTerrainRender && TheGameLogic && !TheGameLogic->isInShellGame())
+		{
+			AppendStartupTrace("HeightMapRenderObjClass::Render first in-game terrain early return missing stageTwo texture");
+			s_traceFirstInGameTerrainRender = false;
+		}
+		return;	// textures not yet initialized; skip render
+	}
+	RestoreTerrainCompatTexture(m_stageTwoTexture);
 	DX8Wrapper::Set_Texture(0,NULL);
 	DX8Wrapper::Set_Texture(1,NULL);
 	ShaderClass::Invalidate();
@@ -2074,11 +2149,15 @@ void HeightMapRenderObjClass::Render(RenderInfoClass & rinfo)
 				count++;
 				Int numPolys = VERTEX_BUFFER_TILE_LENGTH*VERTEX_BUFFER_TILE_LENGTH*2;
 				Int numVertex = (VERTEX_BUFFER_TILE_LENGTH*2)*(VERTEX_BUFFER_TILE_LENGTH*2);
+				DX8VertexBufferClass *vbTile = m_vertexBufferTiles[j*m_numVBTilesX+i];
+				if (!vbTile) {
+					continue;
+				}
 				if (HALF_RES_MESH) {
 					numPolys /= 4;
 					numVertex /= 4;
 				}
-				DX8Wrapper::Set_Vertex_Buffer(m_vertexBufferTiles[j*m_numVBTilesX+i]);
+				DX8Wrapper::Set_Vertex_Buffer(vbTile);
 #ifdef PRE_TRANSFORM_VERTEX
 				if (m_xformedVertexBuffer && pass==0) {
 					// Note - m_xformedVertexBuffer should only be used for non T&L hardware.  jba.
@@ -2108,6 +2187,24 @@ void HeightMapRenderObjClass::Render(RenderInfoClass & rinfo)
 		if (pass)	//shader was applied at least once?
  			W3DShaderManager::resetShader(st);
 
+		const Bool useShellTerrainCompat = UseShellTerrainCompatibilityPath();
+		static Bool s_loggedShellTerrainCompat = FALSE;
+		if (useShellTerrainCompat)
+		{
+			if (!s_loggedShellTerrainCompat)
+			{
+				AppendStartupTrace("HeightMapRenderObjClass::Render shell terrain compatibility path enabled");
+				s_loggedShellTerrainCompat = TRUE;
+			}
+
+			DX8Wrapper::Set_Texture(0,NULL);
+			DX8Wrapper::Set_Texture(1,NULL);
+			RestoreTerrainCompatTexture(m_stageTwoTexture);
+			ShaderClass::Invalidate();
+			DX8Wrapper::Set_Material(NULL);
+			return;
+		}
+
 		//Draw feathered shorelines
 		renderShoreLines(&rinfo.Camera);
 
@@ -2123,17 +2220,17 @@ void HeightMapRenderObjClass::Render(RenderInfoClass & rinfo)
 		// Draw edging just before last pass.
 		DX8Wrapper::Set_Texture(0,NULL);
 		DX8Wrapper::Set_Texture(1,NULL);
-		m_stageTwoTexture->restore();
+		RestoreTerrainCompatTexture(m_stageTwoTexture);
 		m_customEdging->drawEdging(m_map, xCoordMin, xCoordMax, yCoordMin, yCoordMax, 
 			m_stageZeroTexture, doCloud?m_stageTwoTexture:NULL, TheGlobalData->m_useLightMap?m_stageThreeTexture:NULL);
 	#endif
 	#ifdef DO_ROADS
 		DX8Wrapper::Set_Texture(0,NULL);
 		DX8Wrapper::Set_Texture(1,NULL);
-		m_stageTwoTexture->restore();
+		RestoreTerrainCompatTexture(m_stageTwoTexture);
 
 		ShaderClass::Invalidate();
-		if (!ShaderClass::Is_Backface_Culling_Inverted()) {
+		if (m_roadBuffer && !ShaderClass::Is_Backface_Culling_Inverted()) {
 			DX8Wrapper::Set_Material(m_vertexMaterialClass);
 			if (Scene) {
 				RTS3DScene *pMyScene = (RTS3DScene *)Scene;
@@ -2149,7 +2246,7 @@ void HeightMapRenderObjClass::Render(RenderInfoClass & rinfo)
 	#ifdef DO_SCORCH
 		DX8Wrapper::Set_Texture(0,NULL);
 		DX8Wrapper::Set_Texture(1,NULL);
-		m_stageTwoTexture->restore();
+		RestoreTerrainCompatTexture(m_stageTwoTexture);
 
 		ShaderClass::Invalidate();
 		if (!ShaderClass::Is_Backface_Culling_Inverted()) {
@@ -2158,11 +2255,13 @@ void HeightMapRenderObjClass::Render(RenderInfoClass & rinfo)
 	#endif
 		DX8Wrapper::Set_Texture(0,NULL);
 		DX8Wrapper::Set_Texture(1,NULL);
-		m_stageTwoTexture->restore();
+		RestoreTerrainCompatTexture(m_stageTwoTexture);
 		ShaderClass::Invalidate();
 		DX8Wrapper::Apply_Render_State_Changes();
 
-		m_bridgeBuffer->drawBridges(&rinfo.Camera, m_disableTextures, doCloud?m_stageTwoTexture:NULL);
+		if (m_bridgeBuffer) {
+			m_bridgeBuffer->drawBridges(&rinfo.Camera, m_disableTextures, doCloud?m_stageTwoTexture:NULL);
+		}
 
 		if (TheTerrainTracksRenderObjClassSystem)
 			TheTerrainTracksRenderObjClassSystem->flush();
@@ -2178,19 +2277,31 @@ void HeightMapRenderObjClass::Render(RenderInfoClass & rinfo)
 		DX8Wrapper::Apply_Render_State_Changes();
 	}
 	else
+	{
+		if (m_bridgeBuffer) {
 			m_bridgeBuffer->drawBridges(&rinfo.Camera, m_disableTextures, m_stageTwoTexture);
+		}
+	}
 
   if ( m_waypointBuffer ) 
 	  m_waypointBuffer->drawWaypoints(rinfo);
 
-	m_bibBuffer->renderBibs();
+	if (m_bibBuffer) {
+		m_bibBuffer->renderBibs();
+	}
 
 	// We do some custom blending, so tell the shader class to reset everything.
 	DX8Wrapper::Set_Texture(0,NULL);
 	DX8Wrapper::Set_Texture(1,NULL);
-	m_stageTwoTexture->restore();
+	RestoreTerrainCompatTexture(m_stageTwoTexture);
 	ShaderClass::Invalidate();
 	DX8Wrapper::Set_Material(NULL);
+
+	if (s_traceFirstInGameTerrainRender && TheGameLogic && !TheGameLogic->isInShellGame())
+	{
+		AppendStartupTrace("HeightMapRenderObjClass::Render first in-game terrain render completed");
+		s_traceFirstInGameTerrainRender = false;
+	}
 
 }
 
@@ -2199,6 +2310,10 @@ void HeightMapRenderObjClass::Render(RenderInfoClass & rinfo)
 ///Performs additional terrain rendering pass, blending in the black shroud texture.
 void HeightMapRenderObjClass::renderTerrainPass(CameraClass *pCamera)
 {
+	if (!m_indexBuffer || !m_vertexBufferTiles) {
+		return;
+	}
+
 	DX8Wrapper::Set_Transform(D3DTS_WORLD,Matrix3D(1));
 
 	//Apply the shader and material
@@ -2212,11 +2327,15 @@ void HeightMapRenderObjClass::renderTerrainPass(CameraClass *pCamera)
 			count++;
 			Int numPolys = VERTEX_BUFFER_TILE_LENGTH*VERTEX_BUFFER_TILE_LENGTH*2;
 			Int numVertex = (VERTEX_BUFFER_TILE_LENGTH*2)*(VERTEX_BUFFER_TILE_LENGTH*2);
+			DX8VertexBufferClass *vbTile = m_vertexBufferTiles[j*m_numVBTilesX+i];
+			if (!vbTile) {
+				continue;
+			}
 			if (HALF_RES_MESH) {
 				numPolys /= 4;
 				numVertex /= 4;
 			}
-			DX8Wrapper::Set_Vertex_Buffer(m_vertexBufferTiles[j*m_numVBTilesX+i]);
+			DX8Wrapper::Set_Vertex_Buffer(vbTile);
 #ifdef PRE_TRANSFORM_VERTEX
 			if (m_xformedVertexBuffer && pass==0) {
 				// Note - m_xformedVertexBuffer should only be used for non T&L hardware.  jba.

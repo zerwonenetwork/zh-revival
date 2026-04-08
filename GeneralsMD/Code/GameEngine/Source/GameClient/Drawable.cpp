@@ -4770,6 +4770,8 @@ ClientUpdateModule* Drawable::findClientUpdateModule( NameKeyType key )
 			{
 				return *clientModules;
 			}
+
+			++clientModules;
 		}
 	}
 	return NULL;
@@ -5647,4 +5649,3 @@ void TintEnvelope::loadPostProcess( void )
 {
 
 }  // end loadPostProcess
-

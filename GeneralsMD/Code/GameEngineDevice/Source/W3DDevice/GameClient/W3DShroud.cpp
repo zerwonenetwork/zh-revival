@@ -27,6 +27,8 @@
 // Desc:      Code to support rendering of shrouded units/terrain.
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+extern void AppendStartupTrace(const char *format, ...);
+
 #include "Lib/BaseType.h"
 #include "camera.h"
 #include "simplevec.h"
@@ -75,6 +77,7 @@
 //-----------------------------------------------------------------------------
 W3DShroud::W3DShroud(void)
 {
+	AppendStartupTrace("W3DShroud::ctor start");
 	m_finalFogData=NULL;
 	m_currentFogData=NULL;
 	m_pSrcTexture=NULL;
@@ -91,6 +94,7 @@ W3DShroud::W3DShroud(void)
 	m_numCellsX=0;
 	m_numCellsY=0;
 	m_shroudFilter=TextureFilterClass::FILTER_TYPE_DEFAULT;
+	AppendStartupTrace("W3DShroud::ctor complete");
 }
 
 //-----------------------------------------------------------------------------
@@ -114,6 +118,7 @@ W3DShroud::~W3DShroud(void)
 */
 void W3DShroud::init(WorldHeightMap *pMap, Real worldCellSizeX, Real worldCellSizeY)
 {
+	AppendStartupTrace("W3DShroud::init start map=%p cellX=%f cellY=%f", pMap, worldCellSizeX, worldCellSizeY);
 	DEBUG_ASSERTCRASH( m_pSrcTexture == NULL, ("ReAcquire of existing shroud textures"));
 	DEBUG_ASSERTCRASH( pMap != NULL, ("Shroud init with NULL WorldHeightMap"));
 
@@ -141,6 +146,7 @@ void W3DShroud::init(WorldHeightMap *pMap, Real worldCellSizeX, Real worldCellSi
 		dstTextureHeight += 2;	//enlarge by 2 pixels so we can have border color all the way around.
 		TextureLoader::Validate_Texture_Size((unsigned int &)dstTextureWidth,(unsigned int &)dstTextureHeight, depth);
 	}
+	AppendStartupTrace("W3DShroud::init dimensions cells=%d x %d dst=%d x %d", m_numCellsX, m_numCellsY, dstTextureWidth, dstTextureHeight);
 
 
 	UnsignedInt srcWidth,srcHeight;
@@ -151,6 +157,7 @@ void W3DShroud::init(WorldHeightMap *pMap, Real worldCellSizeX, Real worldCellSi
   //memory texture to a known value because you can't lock it - only copy into it.
 	srcHeight=m_numCellsY;
 	srcHeight += 1;
+	AppendStartupTrace("W3DShroud::init source texture=%u x %u", srcWidth, srcHeight);
 
 #ifdef DO_FOG_INTERPOLATION
 	m_finalFogData = new W3DShroudLevel[srcWidth*srcHeight];
@@ -166,14 +173,20 @@ void W3DShroud::init(WorldHeightMap *pMap, Real worldCellSizeX, Real worldCellSi
 	else
 #endif
 		m_pSrcTexture = DX8Wrapper::_Create_DX8_Surface(srcWidth,srcHeight, WW3D_FORMAT_R5G6B5);
+	AppendStartupTrace("W3DShroud::init after _Create_DX8_Surface src=%p", m_pSrcTexture);
 
 	DEBUG_ASSERTCRASH( m_pSrcTexture != NULL, ("Failed to Allocate Shroud Src Surface"));
+	if (!m_pSrcTexture) {
+		AppendStartupTrace("W3DShroud::init: m_pSrcTexture is NULL; shroud disabled");
+		return;
+	}
 
 	D3DLOCKED_RECT rect;
 
 	//Get a pointer to source surface pixels.
 	HRESULT res = m_pSrcTexture->LockRect(&rect,NULL,D3DLOCK_NO_DIRTY_UPDATE);
 	m_pSrcTexture->UnlockRect();
+	AppendStartupTrace("W3DShroud::init after LockRect hr=0x%08x pitch=%ld bits=%p", (unsigned int)res, (long)rect.Pitch, rect.pBits);
 
 	DEBUG_ASSERTCRASH( res == D3D_OK, ("Failed to lock shroud src surface"));
 	res = 0;// just to avoid compiler warnings
@@ -182,7 +195,9 @@ void W3DShroud::init(WorldHeightMap *pMap, Real worldCellSizeX, Real worldCellSi
 	m_srcTexturePitch=rect.Pitch;
 
 	//clear entire texture to black
-	memset(m_srcTextureData,0,m_srcTexturePitch*srcHeight);
+	if (m_srcTextureData) {
+		memset(m_srcTextureData,0,m_srcTexturePitch*srcHeight);
+	}
 
 #if defined(_DEBUG) || defined(_INTERNAL)
 	if (TheGlobalData && TheGlobalData->m_fogOfWarOn)
@@ -195,12 +210,15 @@ void W3DShroud::init(WorldHeightMap *pMap, Real worldCellSizeX, Real worldCellSi
 	if (!m_pDstTexture )
 	{	m_dstTextureWidth = dstTextureWidth;
 		m_dstTextureHeight = dstTextureHeight;
+		AppendStartupTrace("W3DShroud::init before ReAcquireResources dst=%d x %d", m_dstTextureWidth, m_dstTextureHeight);
 		ReAcquireResources();	//allocate video memory surface
+		AppendStartupTrace("W3DShroud::init after ReAcquireResources dstTex=%p", m_pDstTexture);
 	}
 
 	//Force a refresh of shroud data since we just created a new source texture.
 	if (ThePartitionManager)
 		ThePartitionManager->refreshShroudForLocalPlayer();
+	AppendStartupTrace("W3DShroud::init complete");
 }
 
 //-----------------------------------------------------------------------------
@@ -231,19 +249,22 @@ void W3DShroud::ReleaseResources(void)
 ///Restore resources that are lost on D3D device reset.
 Bool W3DShroud::ReAcquireResources(void)
 {
+		AppendStartupTrace("W3DShroud::ReAcquireResources start dst=%d x %d", m_dstTextureWidth, m_dstTextureHeight);
 		if (!m_dstTextureWidth)
 			return TRUE;	//nothing to reaquire since shroud was never initialized with valid data
 
 		DEBUG_ASSERTCRASH( m_pDstTexture == NULL, ("ReAcquire of existing shroud texture"));
 	
-		// Create destination texture (stored in video memory).
-		// Since we control the video memory copy, we can do partial updates more efficiently. Or do shift blits.
+		// Create destination texture (shroud lookup sampled by terrain shader).
+		// Use POOL_MANAGED so we can lock and write via CPU directly — POOL_DEFAULT CopyRects
+		// fails silently under D3D8→D3D9 wrappers (DXWrapper / d3d8to9).
 #if defined(_DEBUG) || defined(_INTERNAL)
 		if (TheGlobalData && TheGlobalData->m_fogOfWarOn)
-			m_pDstTexture = MSGNEW("TextureClass") TextureClass(m_dstTextureWidth,m_dstTextureHeight,WW3D_FORMAT_A4R4G4B4,MIP_LEVELS_1, TextureClass::POOL_DEFAULT);
+			m_pDstTexture = MSGNEW("TextureClass") TextureClass(m_dstTextureWidth,m_dstTextureHeight,WW3D_FORMAT_A4R4G4B4,MIP_LEVELS_1, TextureClass::POOL_MANAGED);
 		else
 #endif
-			m_pDstTexture = MSGNEW("TextureClass") TextureClass(m_dstTextureWidth,m_dstTextureHeight,WW3D_FORMAT_R5G6B5,MIP_LEVELS_1, TextureClass::POOL_DEFAULT);
+			m_pDstTexture = MSGNEW("TextureClass") TextureClass(m_dstTextureWidth,m_dstTextureHeight,WW3D_FORMAT_R5G6B5,MIP_LEVELS_1, TextureClass::POOL_MANAGED);
+		AppendStartupTrace("W3DShroud::ReAcquireResources after texture alloc dstTex=%p", m_pDstTexture);
 
 		DEBUG_ASSERTCRASH( m_pDstTexture != NULL, ("Failed ReAcquire of shroud texture"));
 
@@ -257,6 +278,7 @@ Bool W3DShroud::ReAcquireResources(void)
 		m_pDstTexture->Get_Filter().Set_V_Addr_Mode(TextureFilterClass::TEXTURE_ADDRESS_CLAMP);
 		m_pDstTexture->Get_Filter().Set_Mip_Mapping(TextureFilterClass::FILTER_TYPE_NONE);
 		m_clearDstTexture = TRUE;	//force clearing of destination texture first time it's used.
+		AppendStartupTrace("W3DShroud::ReAcquireResources complete");
 
 		return TRUE;
 }
@@ -265,6 +287,7 @@ Bool W3DShroud::ReAcquireResources(void)
 W3DShroudLevel W3DShroud::getShroudLevel(Int x, Int y)
 {
 	DEBUG_ASSERTCRASH( m_pSrcTexture != NULL, ("Reading empty shroud"));
+	if (!m_srcTextureData) return 255; // 255 = no shroud / fully visible
 
 	if (x < m_numCellsX && y < m_numCellsY)
 	{
@@ -287,7 +310,7 @@ void W3DShroud::setShroudLevel(Int x, Int y, W3DShroudLevel level, Bool textureO
 {
 	DEBUG_ASSERTCRASH( m_pSrcTexture != NULL, ("Writing empty shroud.  Usually means that map failed to load."));
 
-	if (!m_pSrcTexture)
+	if (!m_pSrcTexture || !m_srcTextureData)
 		return;
 
 	if (x < m_numCellsX && y < m_numCellsY)
@@ -450,59 +473,21 @@ void W3DShroud::fillBorderShroudData(W3DShroudLevel level, SurfaceClass* pDestSu
 		pixel=( ((bluepixel&0xf8) >> 3) | ((greenpixel&0xfc)<<3) | ((redpixel&0xf8)<<8));
 	}
 
-	//Skip to unused texels within the shroud data
-	UnsignedShort *ptr=(UnsignedShort *)m_srcTextureData + m_numCellsY*(m_srcTexturePitch >> 1);
-
-	//Fill unused texels with border color
-	for (x=0; x<m_numCellsX; x++)
-			ptr[x]=pixel;
-
-	//Fill destination texture with border color
-
-	RECT	srcRect;
-
-	//create a rectangle enclosing bottom row of unused pixels long enough
-	//to cover destination width.
-	srcRect.left=0;
-	srcRect.top=m_numCellsY;
-	srcRect.right= m_numCellsX;
-	srcRect.bottom= m_numCellsY+1;
-
-	POINT	dstPoint={0,0};
-
-	Int numFullCopies = m_dstTextureWidth/srcRect.right;
-	Int numExtraPixels = m_dstTextureWidth%srcRect.right;
-
-	for (y=0; y<m_dstTextureHeight; y++)
+	// Fill destination texture with border color directly via CPU lock.
+	// (Previously tiled via _Copy_DX8_Rects which silently fails under D3D8→D3D9 wrappers.)
+	Int dstPitch = 0;
+	UnsignedShort *pDst = (UnsignedShort *)pDestSurface->Lock(&dstPitch);
+	if (pDst && dstPitch > 0)
 	{
-		dstPoint.y=y;
-		dstPoint.x=0;
-
-		for (x=0; x<numFullCopies; x++)
-		{	
-			dstPoint.x = x * srcRect.right;	//advance to next set of pixel in row.
-
-			DX8Wrapper::_Copy_DX8_Rects(
-				m_pSrcTexture,
-				&srcRect,
-				1,
-				pDestSurface->Peek_D3D_Surface(),
-				&dstPoint);
+		Int dstPitchWords = dstPitch >> 1;
+		for (y = 0; y < m_dstTextureHeight; y++)
+		{
+			UnsignedShort *row = pDst + y * dstPitchWords;
+			for (x = 0; x < m_dstTextureWidth; x++)
+				row[x] = pixel;
 		}
-		if (numExtraPixels)
-		{	Int oldVal=srcRect.right;
-			dstPoint.x = numFullCopies * oldVal;
-			srcRect.right = numExtraPixels;
-			DX8Wrapper::_Copy_DX8_Rects(
-				m_pSrcTexture,
-				&srcRect,
-				1,
-				pDestSurface->Peek_D3D_Surface(),
-				&dstPoint);
-			srcRect.right = oldVal;
-		}
+		pDestSurface->Unlock();
 	}
-	
 }
 
 /**Set the shroud color within the border area of the map*/
@@ -527,6 +512,9 @@ void W3DShroud::render(CameraClass *cam)
 {
 	if (!m_pSrcTexture)
 		return; //nothing to update from.  Must be in reset state.
+
+	if (!m_pDstTexture)
+		return; // destination texture creation failed; shroud disabled
 
 	if (DX8Wrapper::_Get_D3D_Device8() && (DX8Wrapper::_Get_D3D_Device8()->TestCooperativeLevel()) != D3D_OK)
 		return;	//device not ready to render anything
@@ -577,8 +565,23 @@ void W3DShroud::render(CameraClass *cam)
 
 		//Copy the dummy shroud into our game shroud.
 		SurfaceClass *pSurface=DummyTexture->Get_Surface_Level(0);
+		if (!pSurface)
+		{
+			AppendStartupTrace("W3DShroud::render dummy shroud surface missing");
+			REF_PTR_RELEASE(DummyTexture);
+			doInit = 0;
+			return;
+		}
 		Int pitch;
 		Int *dataSrc=(Int *)((char *)pSurface->Lock(&pitch));	//offset to correct row of full sysmem shroud
+		if (!dataSrc)
+		{
+			AppendStartupTrace("W3DShroud::render dummy shroud lock failed");
+			REF_PTR_RELEASE(pSurface);
+			REF_PTR_RELEASE(DummyTexture);
+			doInit = 0;
+			return;
+		}
 		pitch >>= 2;	//4 bytes per pixel so divide byte count by 4.
 		SurfaceClass::SurfaceDescription desc;
 		pSurface->Get_Description(desc);
@@ -689,6 +692,10 @@ void W3DShroud::render(CameraClass *cam)
 	{
 		pDestSurface=m_pDstTexture->Get_Surface_Level(0);
 	}
+	if (!pDestSurface) {
+		AppendStartupTrace("W3DShroud::render: Get_Surface_Level returned NULL (D3D texture missing); skipping shroud copy");
+		return;
+	}
 
 	RECT	srcRect;
 	POINT	dstPoint={1,1};	//first row/column is reserved for border.
@@ -713,12 +720,53 @@ void W3DShroud::render(CameraClass *cam)
 
 	{
 		//USE_PERF_TIMER(shroudCopy)
-		DX8Wrapper::_Copy_DX8_Rects(
-				m_pSrcTexture,
-				&srcRect,
-				1,
-				pDestSurface->Peek_D3D_Surface(),
-				&dstPoint);
+		// Copy shroud data from system-memory source to the managed destination texture via CPU lock.
+		static Bool s_firstRender = TRUE;
+		Int dstPitch = 0;
+		UnsignedShort *pDst = (UnsignedShort *)pDestSurface->Lock(&dstPitch);
+		if (s_firstRender)
+		{
+			AppendStartupTrace("W3DShroud::render first frame: pDst=%p dstPitch=%d visX=%d-%d visY=%d-%d srcPitch=%d",
+				(void*)pDst, dstPitch, visStartX, visEndX, visStartY, visEndY, m_srcTexturePitch);
+		}
+		if (pDst && dstPitch > 0)
+		{
+			const Int dstPitchWords = dstPitch >> 1;
+			const Int srcPitchWords = m_srcTexturePitch >> 1;
+			const Int copyWidthBytes = (visEndX - visStartX) * 2;
+			if (s_firstRender)
+			{
+				// First frame: fill dst entirely WHITE (0xFFFF = fully revealed) to test
+				// whether the terrain shows correctly when the shroud texture is white.
+				// If terrain becomes visible, the shroud data copy path needs fixing.
+				// If terrain stays black, the issue is elsewhere (shader / VB / camera).
+				for (Int fy = 0; fy < m_dstTextureHeight; fy++)
+				{
+					UnsignedShort *frow = pDst + fy * dstPitchWords;
+					for (Int fx = 0; fx < m_dstTextureWidth; fx++)
+						frow[fx] = 0xFFFF;
+				}
+				AppendStartupTrace("W3DShroud::render first frame: filled dst WHITE 0xFFFF for terrain visibility test");
+			}
+			else
+			{
+				for (Int row = visStartY; row < visEndY; row++)
+				{
+					const UnsignedShort *srcRow = (const UnsignedShort *)m_srcTextureData
+					                              + row * srcPitchWords + visStartX;
+					UnsignedShort *dstRow = pDst
+					                        + (row - visStartY + dstPoint.y) * dstPitchWords
+					                        + dstPoint.x;
+					memcpy(dstRow, srcRow, copyWidthBytes);
+				}
+			}
+			pDestSurface->Unlock();
+		}
+		else if (s_firstRender)
+		{
+			AppendStartupTrace("W3DShroud::render first frame: Lock FAILED (pDst NULL or pitch 0) - shroud copy skipped");
+		}
+		s_firstRender = FALSE;
 	}
 
 	REF_PTR_RELEASE (pDestSurface);

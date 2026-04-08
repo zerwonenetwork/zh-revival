@@ -174,6 +174,7 @@ extern HINSTANCE ApplicationHInstance;  ///< our application instance
 #if defined(_MSC_VER) && !defined(__GNUC__)
 extern CComModule _Module;
 #endif
+extern void AppendStartupTrace( const char *format, ... );
 
 //-------------------------------------------------------------------------------------------------
 static void updateTGAtoDDS();
@@ -260,7 +261,12 @@ void GameEngine::init( int argc, char *argv[] )
 {
 	// Track which subsystem is being initialized so crash messages name the failing subsystem.
 	static char s_initStage[256] = "pre-init";
-#define INIT_STAGE(name) strncpy(s_initStage, (name), sizeof(s_initStage)-1)
+#define INIT_STAGE(name) \
+	do { \
+		strncpy(s_initStage, (name), sizeof(s_initStage)-1); \
+		s_initStage[sizeof(s_initStage)-1] = '\0'; \
+		AppendStartupTrace("GameEngine::init stage=%s", s_initStage); \
+	} while (0)
 
 	try {
 		//create an INI object to use for loading stuff
@@ -312,9 +318,11 @@ void GameEngine::init( int argc, char *argv[] )
 
 		// initialize the random number system
 		InitRandom();
+		AppendStartupTrace("GameEngine::init after InitRandom");
 
 		// Create the low-level file system interface
 		TheFileSystem = createFileSystem();
+		AppendStartupTrace("GameEngine::init after createFileSystem");
 
 		//Kris: Patch 1.01 - November 17, 2003
 		//I was unable to resolve the RTPatch method of deleting a shipped file. English, Chinese, and Korean
@@ -325,6 +333,7 @@ void GameEngine::init( int argc, char *argv[] )
 		// not part of the subsystem list, because it should normally never be reset!
 		TheNameKeyGenerator = MSGNEW("GameEngineSubsystem") NameKeyGenerator;
 		TheNameKeyGenerator->init();
+		AppendStartupTrace("GameEngine::init after TheNameKeyGenerator");
 
 
     	#ifdef DUMP_PERF_STATS///////////////////////////////////////////////////////////////////////////
@@ -338,6 +347,7 @@ void GameEngine::init( int argc, char *argv[] )
 		// not part of the subsystem list, because it should normally never be reset!
 		TheCommandList = MSGNEW("GameEngineSubsystem") CommandList;
 		TheCommandList->init();
+		AppendStartupTrace("GameEngine::init after TheCommandList");
 
     	#ifdef DUMP_PERF_STATS///////////////////////////////////////////////////////////////////////////
 	GetPrecisionTimer(&endTime64);//////////////////////////////////////////////////////////////////
@@ -349,6 +359,7 @@ void GameEngine::init( int argc, char *argv[] )
 
 		XferCRC xferCRC;
 		xferCRC.open("lightCRC");
+		AppendStartupTrace("GameEngine::init after XferCRC open");
 
 
 		INIT_STAGE("TheLocalFileSystem");
@@ -394,10 +405,12 @@ void GameEngine::init( int argc, char *argv[] )
 		
 		// special-case: parse command-line parameters after loading global data
 		parseCommandLine(argc, argv);
+		AppendStartupTrace("GameEngine::init after parseCommandLine");
 
 		// doesn't require resets so just create a single instance here.
 		TheGameLODManager = MSGNEW("GameEngineSubsystem") GameLODManager;
 		TheGameLODManager->init();
+		AppendStartupTrace("GameEngine::init after TheGameLODManager");
 		
 		// after parsing the command line, we may want to perform dds stuff. Do that here.
 		if (TheGlobalData->m_shouldUpdateTGAToDDS) {
@@ -406,10 +419,15 @@ void GameEngine::init( int argc, char *argv[] )
 		}
 
 		// read the water settings from INI (must do prior to initing GameClient, apparently)
+		AppendStartupTrace("GameEngine::init before Water.ini loads");
 		ini.load( AsciiString( "Data\\INI\\Default\\Water.ini" ), INI_LOAD_OVERWRITE, &xferCRC );
+		AppendStartupTrace("GameEngine::init after Default\\Water.ini");
 		ini.load( AsciiString( "Data\\INI\\Water.ini" ), INI_LOAD_OVERWRITE, &xferCRC );
+		AppendStartupTrace("GameEngine::init after Water.ini");
 		ini.load( AsciiString( "Data\\INI\\Default\\Weather.ini" ), INI_LOAD_OVERWRITE, &xferCRC );
+		AppendStartupTrace("GameEngine::init after Default\\Weather.ini");
 		ini.load( AsciiString( "Data\\INI\\Weather.ini" ), INI_LOAD_OVERWRITE, &xferCRC );
+		AppendStartupTrace("GameEngine::init after Weather.ini");
 
 
 
@@ -424,7 +442,9 @@ void GameEngine::init( int argc, char *argv[] )
 #ifdef DEBUG_CRC
 		initSubsystem(TheDeepCRCSanityCheck, "TheDeepCRCSanityCheck", MSGNEW("GameEngineSubystem") DeepCRCSanityCheck, NULL, NULL, NULL, NULL);
 #endif // DEBUG_CRC
+		AppendStartupTrace("GameEngine::init before TheGameText");
 		initSubsystem(TheGameText, "TheGameText", CreateGameTextInterface(), NULL);
+		AppendStartupTrace("GameEngine::init after TheGameText");
 
 	#ifdef DUMP_PERF_STATS///////////////////////////////////////////////////////////////////////////
 	GetPrecisionTimer(&endTime64);//////////////////////////////////////////////////////////////////
@@ -434,19 +454,28 @@ void GameEngine::init( int argc, char *argv[] )
 	#endif/////////////////////////////////////////////////////////////////////////////////////////////
 
 
+		AppendStartupTrace("GameEngine::init before TheScienceStore");
 		initSubsystem(TheScienceStore,"TheScienceStore", MSGNEW("GameEngineSubsystem") ScienceStore(), &xferCRC, "Data\\INI\\Default\\Science.ini", "Data\\INI\\Science.ini");
+		AppendStartupTrace("GameEngine::init after TheScienceStore");
 		initSubsystem(TheMultiplayerSettings,"TheMultiplayerSettings", MSGNEW("GameEngineSubsystem") MultiplayerSettings(), &xferCRC, "Data\\INI\\Default\\Multiplayer.ini", "Data\\INI\\Multiplayer.ini");
+		AppendStartupTrace("GameEngine::init after TheMultiplayerSettings");
 		initSubsystem(TheTerrainTypes,"TheTerrainTypes", MSGNEW("GameEngineSubsystem") TerrainTypeCollection(), &xferCRC, "Data\\INI\\Default\\Terrain.ini", "Data\\INI\\Terrain.ini");
+		AppendStartupTrace("GameEngine::init after TheTerrainTypes");
 		initSubsystem(TheTerrainRoads,"TheTerrainRoads", MSGNEW("GameEngineSubsystem") TerrainRoadCollection(), &xferCRC, "Data\\INI\\Default\\Roads.ini", "Data\\INI\\Roads.ini");
+		AppendStartupTrace("GameEngine::init after TheTerrainRoads");
 		initSubsystem(TheGlobalLanguageData,"TheGlobalLanguageData",MSGNEW("GameEngineSubsystem") GlobalLanguage, NULL); // must be before the game text
+		AppendStartupTrace("GameEngine::init after TheGlobalLanguageData");
 		initSubsystem(TheCDManager,"TheCDManager", CreateCDManager(), NULL);
+		AppendStartupTrace("GameEngine::init after TheCDManager");
 	#ifdef DUMP_PERF_STATS///////////////////////////////////////////////////////////////////////////
 	GetPrecisionTimer(&endTime64);//////////////////////////////////////////////////////////////////
 	sprintf(Buf,"----------------------------------------------------------------------------After TheCDManager = %f seconds \n",((double)(endTime64-startTime64)/(double)(freq64)));
   startTime64 = endTime64;//Reset the clock ////////////////////////////////////////////////////////
 	DEBUG_LOG(("%s", Buf));////////////////////////////////////////////////////////////////////////////
 	#endif/////////////////////////////////////////////////////////////////////////////////////////////
+		AppendStartupTrace("GameEngine::init before TheAudio");
 		initSubsystem(TheAudio,"TheAudio", createAudioManager(), NULL);
+		AppendStartupTrace("GameEngine::init after TheAudio");
 		if (!TheAudio->isMusicAlreadyLoaded())
 		{
 			DEBUG_LOG(("GameEngine::init: continuing without loaded music assets.\n"));
@@ -461,13 +490,21 @@ void GameEngine::init( int argc, char *argv[] )
 
 
 		initSubsystem(TheFunctionLexicon,"TheFunctionLexicon", createFunctionLexicon(), NULL);
+		AppendStartupTrace("GameEngine::init after TheFunctionLexicon");
 		initSubsystem(TheModuleFactory,"TheModuleFactory", createModuleFactory(), NULL);
+		AppendStartupTrace("GameEngine::init after TheModuleFactory");
 		initSubsystem(TheMessageStream,"TheMessageStream", createMessageStream(), NULL);
+		AppendStartupTrace("GameEngine::init after TheMessageStream");
 		initSubsystem(TheSidesList,"TheSidesList", MSGNEW("GameEngineSubsystem") SidesList(), NULL);
+		AppendStartupTrace("GameEngine::init after TheSidesList");
 		initSubsystem(TheCaveSystem,"TheCaveSystem", MSGNEW("GameEngineSubsystem") CaveSystem(), NULL);
+		AppendStartupTrace("GameEngine::init after TheCaveSystem");
 		initSubsystem(TheRankInfoStore,"TheRankInfoStore", MSGNEW("GameEngineSubsystem") RankInfoStore(), &xferCRC, NULL, "Data\\INI\\Rank.ini");
+		AppendStartupTrace("GameEngine::init after TheRankInfoStore");
 		initSubsystem(ThePlayerTemplateStore,"ThePlayerTemplateStore", MSGNEW("GameEngineSubsystem") PlayerTemplateStore(), &xferCRC, "Data\\INI\\Default\\PlayerTemplate.ini", "Data\\INI\\PlayerTemplate.ini");
+		AppendStartupTrace("GameEngine::init after ThePlayerTemplateStore");
 		initSubsystem(TheParticleSystemManager,"TheParticleSystemManager", createParticleSystemManager(), NULL);
+		AppendStartupTrace("GameEngine::init after TheParticleSystemManager");
 
 	#ifdef DUMP_PERF_STATS///////////////////////////////////////////////////////////////////////////
 	GetPrecisionTimer(&endTime64);//////////////////////////////////////////////////////////////////
@@ -478,13 +515,21 @@ void GameEngine::init( int argc, char *argv[] )
     
     
 		initSubsystem(TheFXListStore,"TheFXListStore", MSGNEW("GameEngineSubsystem") FXListStore(), &xferCRC, "Data\\INI\\Default\\FXList.ini", "Data\\INI\\FXList.ini");
+		AppendStartupTrace("GameEngine::init after TheFXListStore");
 		initSubsystem(TheWeaponStore,"TheWeaponStore", MSGNEW("GameEngineSubsystem") WeaponStore(), &xferCRC, NULL, "Data\\INI\\Weapon.ini");
+		AppendStartupTrace("GameEngine::init after TheWeaponStore");
 		initSubsystem(TheObjectCreationListStore,"TheObjectCreationListStore", MSGNEW("GameEngineSubsystem") ObjectCreationListStore(), &xferCRC, "Data\\INI\\Default\\ObjectCreationList.ini", "Data\\INI\\ObjectCreationList.ini");
+		AppendStartupTrace("GameEngine::init after TheObjectCreationListStore");
 		initSubsystem(TheLocomotorStore,"TheLocomotorStore", MSGNEW("GameEngineSubsystem") LocomotorStore(), &xferCRC, NULL, "Data\\INI\\Locomotor.ini");
+		AppendStartupTrace("GameEngine::init after TheLocomotorStore");
 		initSubsystem(TheSpecialPowerStore,"TheSpecialPowerStore", MSGNEW("GameEngineSubsystem") SpecialPowerStore(), &xferCRC, "Data\\INI\\Default\\SpecialPower.ini", "Data\\INI\\SpecialPower.ini");
+		AppendStartupTrace("GameEngine::init after TheSpecialPowerStore");
 		initSubsystem(TheDamageFXStore,"TheDamageFXStore", MSGNEW("GameEngineSubsystem") DamageFXStore(), &xferCRC, NULL, "Data\\INI\\DamageFX.ini");
+		AppendStartupTrace("GameEngine::init after TheDamageFXStore");
 		initSubsystem(TheArmorStore,"TheArmorStore", MSGNEW("GameEngineSubsystem") ArmorStore(), &xferCRC, NULL, "Data\\INI\\Armor.ini");
+		AppendStartupTrace("GameEngine::init after TheArmorStore");
 		initSubsystem(TheBuildAssistant,"TheBuildAssistant", MSGNEW("GameEngineSubsystem") BuildAssistant, NULL);
+		AppendStartupTrace("GameEngine::init after TheBuildAssistant");
 
 
 	#ifdef DUMP_PERF_STATS///////////////////////////////////////////////////////////////////////////
@@ -496,7 +541,9 @@ void GameEngine::init( int argc, char *argv[] )
 
 
 
+		AppendStartupTrace("GameEngine::init before TheThingFactory");
 		initSubsystem(TheThingFactory,"TheThingFactory", createThingFactory(), &xferCRC, "Data\\INI\\Default\\Object.ini", NULL, "Data\\INI\\Object");
+		AppendStartupTrace("GameEngine::init after TheThingFactory");
 
 	#ifdef DUMP_PERF_STATS///////////////////////////////////////////////////////////////////////////
 	GetPrecisionTimer(&endTime64);//////////////////////////////////////////////////////////////////
@@ -507,7 +554,10 @@ void GameEngine::init( int argc, char *argv[] )
     
     
 		initSubsystem(TheUpgradeCenter,"TheUpgradeCenter", MSGNEW("GameEngineSubsystem") UpgradeCenter, &xferCRC, "Data\\INI\\Default\\Upgrade.ini", "Data\\INI\\Upgrade.ini");
+		AppendStartupTrace("GameEngine::init after TheUpgradeCenter");
+		AppendStartupTrace("GameEngine::init before TheGameClient");
 		initSubsystem(TheGameClient,"TheGameClient", createGameClient(), NULL);
+		AppendStartupTrace("GameEngine::init after TheGameClient");
 
 
 	#ifdef DUMP_PERF_STATS///////////////////////////////////////////////////////////////////////////
@@ -519,13 +569,21 @@ void GameEngine::init( int argc, char *argv[] )
 
 	
 		initSubsystem(TheAI,"TheAI", MSGNEW("GameEngineSubsystem") AI(), &xferCRC,  "Data\\INI\\Default\\AIData.ini", "Data\\INI\\AIData.ini");
+		AppendStartupTrace("GameEngine::init after TheAI");
 		initSubsystem(TheGameLogic,"TheGameLogic", createGameLogic(), NULL);
+		AppendStartupTrace("GameEngine::init after TheGameLogic");
 		initSubsystem(TheTeamFactory,"TheTeamFactory", MSGNEW("GameEngineSubsystem") TeamFactory(), NULL);
+		AppendStartupTrace("GameEngine::init after TheTeamFactory");
 		initSubsystem(TheCrateSystem,"TheCrateSystem", MSGNEW("GameEngineSubsystem") CrateSystem(), &xferCRC, "Data\\INI\\Default\\Crate.ini", "Data\\INI\\Crate.ini");
+		AppendStartupTrace("GameEngine::init after TheCrateSystem");
 		initSubsystem(ThePlayerList,"ThePlayerList", MSGNEW("GameEngineSubsystem") PlayerList(), NULL);
+		AppendStartupTrace("GameEngine::init after ThePlayerList");
 		initSubsystem(TheRecorder,"TheRecorder", createRecorder(), NULL);
+		AppendStartupTrace("GameEngine::init after TheRecorder");
 		initSubsystem(TheRadar,"TheRadar", createRadar(), NULL);
+		AppendStartupTrace("GameEngine::init after TheRadar");
 		initSubsystem(TheVictoryConditions,"TheVictoryConditions", createVictoryConditions(), NULL);
+		AppendStartupTrace("GameEngine::init after TheVictoryConditions");
 
 
 
@@ -540,6 +598,7 @@ void GameEngine::init( int argc, char *argv[] )
 		AsciiString fname;
 		fname.format("Data\\%s\\CommandMap.ini", GetRegistryLanguage().str());
 		initSubsystem(TheMetaMap,"TheMetaMap", MSGNEW("GameEngineSubsystem") MetaMap(), NULL, fname.str(), "Data\\INI\\CommandMap.ini");
+		AppendStartupTrace("GameEngine::init after TheMetaMap");
 
 #if defined(_DEBUG) || defined(_INTERNAL)
 		ini.load("Data\\INI\\CommandMapDebug.ini", INI_LOAD_MULTIFILE, NULL);
@@ -551,12 +610,16 @@ void GameEngine::init( int argc, char *argv[] )
 
 
 		initSubsystem(TheActionManager,"TheActionManager", MSGNEW("GameEngineSubsystem") ActionManager(), NULL);
+		AppendStartupTrace("GameEngine::init after TheActionManager");
 		//initSubsystem((CComObject<WebBrowser> *)TheWebBrowser,"(CComObject<WebBrowser> *)TheWebBrowser", (CComObject<WebBrowser> *)createWebBrowser(), NULL);
 		initSubsystem(TheGameStateMap,"TheGameStateMap", MSGNEW("GameEngineSubsystem") GameStateMap, NULL, NULL, NULL );
+		AppendStartupTrace("GameEngine::init after TheGameStateMap");
 		initSubsystem(TheGameState,"TheGameState", MSGNEW("GameEngineSubsystem") GameState, NULL, NULL, NULL );
+		AppendStartupTrace("GameEngine::init after TheGameState");
 
 		// Create the interface for sending game results
 		initSubsystem(TheGameResultsQueue,"TheGameResultsQueue", GameResultsInterface::createNewGameResultsInterface(), NULL, NULL, NULL, NULL);
+		AppendStartupTrace("GameEngine::init after TheGameResultsQueue");
 
 
 	#ifdef DUMP_PERF_STATS///////////////////////////////////////////////////////////////////////////
@@ -572,8 +635,10 @@ void GameEngine::init( int argc, char *argv[] )
 		DEBUG_LOG(("INI CRC is 0x%8.8X\n", TheGlobalData->m_iniCRC));
 
 		TheSubsystemList->postProcessLoadAll();
+		AppendStartupTrace("GameEngine::init after postProcessLoadAll");
 
 		setFramesPerSecondLimit(TheGlobalData->m_framesPerSecondLimit);
+		AppendStartupTrace("GameEngine::init after setFramesPerSecondLimit");
 
 		TheAudio->setOn(TheGlobalData->m_audioOn && TheGlobalData->m_musicOn, AudioAffect_Music);
 		TheAudio->setOn(TheGlobalData->m_audioOn && TheGlobalData->m_soundsOn, AudioAffect_Sound);
@@ -622,6 +687,7 @@ void GameEngine::init( int argc, char *argv[] )
 		// initialize the MapCache
 		TheMapCache = MSGNEW("GameEngineSubsystem") MapCache;
 		TheMapCache->updateCache();
+		AppendStartupTrace("GameEngine::init after TheMapCache->updateCache");
 
 
 	#ifdef DUMP_PERF_STATS///////////////////////////////////////////////////////////////////////////
@@ -685,6 +751,7 @@ void GameEngine::init( int argc, char *argv[] )
 
 		if(!TheGlobalData->m_playIntro)
 			TheWritableGlobalData->m_afterIntro = TRUE;
+		AppendStartupTrace("GameEngine::init end of try");
 
 		//initDisabledMasks();
 		
@@ -757,13 +824,24 @@ void GameEngine::init( int argc, char *argv[] )
 
 	if(!TheGlobalData->m_playIntro)
 		TheWritableGlobalData->m_afterIntro = TRUE;
+	AppendStartupTrace("GameEngine::init post-try after afterIntro");
 
+	AppendStartupTrace("GameEngine::init post-try before initKindOfMasks");
 	initKindOfMasks();
+	AppendStartupTrace("GameEngine::init post-try after initKindOfMasks");
+	AppendStartupTrace("GameEngine::init post-try before initDisabledMasks");
 	initDisabledMasks();
+	AppendStartupTrace("GameEngine::init post-try after initDisabledMasks");
+	AppendStartupTrace("GameEngine::init post-try before initDamageTypeFlags");
 	initDamageTypeFlags();
+	AppendStartupTrace("GameEngine::init post-try after initDamageTypeFlags");
 
+	AppendStartupTrace("GameEngine::init post-try before TheSubsystemList->resetAll");
 	TheSubsystemList->resetAll();
+	AppendStartupTrace("GameEngine::init post-try after TheSubsystemList->resetAll");
+	AppendStartupTrace("GameEngine::init post-try before HideControlBar");
 	HideControlBar();
+	AppendStartupTrace("GameEngine::init post-try after HideControlBar");
 }  // end init
 
 /** -----------------------------------------------------------------------------------------------
@@ -808,6 +886,12 @@ DECLARE_PERF_TIMER(GameEngine_update)
  */
 void GameEngine::update( void )
 { 
+	static Int s_updateTraceCount = 0;
+	const Bool traceUpdatePass = (s_updateTraceCount < 5);
+	const Int tracePassIndex = s_updateTraceCount + 1;
+	if (traceUpdatePass) {
+		AppendStartupTrace("GameEngine::update pass %d start", tracePassIndex);
+	}
 	USE_PERF_TIMER(GameEngine_update)
 	{
 
@@ -817,28 +901,89 @@ void GameEngine::update( void )
 			VERIFY_CRC
 
 			TheRadar->UPDATE();
+			if (traceUpdatePass) {
+				AppendStartupTrace("GameEngine::update pass %d after TheRadar->UPDATE", tracePassIndex);
+			}
 
 			/// @todo Move audio init, update, etc, into GameClient update
 			
 			TheAudio->UPDATE();
+			if (traceUpdatePass) {
+				AppendStartupTrace("GameEngine::update pass %d after TheAudio->UPDATE", tracePassIndex);
+			}
 			TheGameClient->UPDATE();
+			if (traceUpdatePass) {
+				AppendStartupTrace("GameEngine::update pass %d after TheGameClient->UPDATE", tracePassIndex);
+			}
 			TheMessageStream->propagateMessages();
+			if (traceUpdatePass) {
+				AppendStartupTrace("GameEngine::update pass %d after TheMessageStream->propagateMessages", tracePassIndex);
+			}
 
 			if (TheNetwork != NULL)
 			{
 				TheNetwork->UPDATE();
+				if (traceUpdatePass) {
+					AppendStartupTrace("GameEngine::update pass %d after TheNetwork->UPDATE", tracePassIndex);
+				}
 			}
 			 
 			TheCDManager->UPDATE();
+			if (traceUpdatePass) {
+				AppendStartupTrace("GameEngine::update pass %d after TheCDManager->UPDATE", tracePassIndex);
+			}
 		}
 
 
-		if ((TheNetwork == NULL && !TheGameLogic->isGamePaused()) || (TheNetwork && TheNetwork->isFrameDataReady()))
+		Bool allowLogicUpdate = FALSE;
+		if (traceUpdatePass) {
+			AppendStartupTrace("GameEngine::update pass %d before logic update gate", tracePassIndex);
+		}
+		if (TheNetwork == NULL)
 		{
+			Bool paused = TheGameLogic->isGamePaused();
+			if (traceUpdatePass) {
+				AppendStartupTrace(
+					"GameEngine::update pass %d logic gate network=NULL paused=%d",
+					tracePassIndex,
+					paused ? 1 : 0
+				);
+			}
+			allowLogicUpdate = !paused;
+		}
+		else
+		{
+			Bool frameDataReady = TheNetwork->isFrameDataReady();
+			if (traceUpdatePass) {
+				AppendStartupTrace(
+					"GameEngine::update pass %d logic gate network!=NULL frameDataReady=%d",
+					tracePassIndex,
+					frameDataReady ? 1 : 0
+				);
+			}
+			allowLogicUpdate = frameDataReady;
+		}
+
+		if (allowLogicUpdate)
+		{
+			if (traceUpdatePass) {
+				AppendStartupTrace("GameEngine::update pass %d before TheGameLogic->UPDATE", tracePassIndex);
+			}
 			TheGameLogic->UPDATE();
+			if (traceUpdatePass) {
+				AppendStartupTrace("GameEngine::update pass %d after TheGameLogic->UPDATE", tracePassIndex);
+			}
+		}
+		else if (traceUpdatePass)
+		{
+			AppendStartupTrace("GameEngine::update pass %d skipped TheGameLogic->UPDATE", tracePassIndex);
 		}
 
 	}	// end perfGather
+	if (traceUpdatePass) {
+		AppendStartupTrace("GameEngine::update pass %d complete", tracePassIndex);
+		s_updateTraceCount++;
+	}
 
 }
 
@@ -851,15 +996,22 @@ extern HWND ApplicationHWnd;
  */
 void GameEngine::execute( void )
 {
+	AppendStartupTrace("GameEngine::execute enter");
 	
 	DWORD prevTime = timeGetTime();
 #if defined(_DEBUG) || defined(_INTERNAL)
 	DWORD startTime = timeGetTime() / 1000;
 #endif
+	Int tracedLoops = 0;
 
 	// pretty basic for now
 	while( !m_quitting )
 	{
+		const Bool traceLoop = (tracedLoops < 5);
+		const Int loopIndex = tracedLoops + 1;
+		if (traceLoop) {
+			AppendStartupTrace("GameEngine::execute loop %d start", loopIndex);
+		}
 
 		//if (TheGlobalData->m_vTune)
 		{
@@ -895,8 +1047,14 @@ void GameEngine::execute( void )
 			{
 				try 
 				{
+					if (traceLoop) {
+						AppendStartupTrace("GameEngine::execute loop %d before update", loopIndex);
+					}
 					// compute a frame
 					update();
+					if (traceLoop) {
+						AppendStartupTrace("GameEngine::execute loop %d after update", loopIndex);
+					}
 				}
 				catch (INIException e)
 				{
@@ -958,15 +1116,37 @@ void GameEngine::execute( void )
 			}
 
 		}	// perfgather for execute_loop
+		if (traceLoop) {
+			AppendStartupTrace("GameEngine::execute loop %d end", loopIndex);
+			tracedLoops++;
+		}
 
+		if (traceLoop) {
+			AppendStartupTrace("GameEngine::execute loop %d before perf epilogue", loopIndex);
+		}
 #ifdef PERF_TIMERS
 		if (!m_quitting && TheGameLogic->isInGame() && !TheGameLogic->isInShellGame() && !TheGameLogic->isGamePaused())
 		{
+			if (traceLoop) {
+				AppendStartupTrace("GameEngine::execute loop %d before PerfGather::dumpAll", loopIndex);
+			}
 			PerfGather::dumpAll(TheGameLogic->getFrame());
+			if (traceLoop) {
+				AppendStartupTrace("GameEngine::execute loop %d after PerfGather::dumpAll", loopIndex);
+			}
 			PerfGather::displayGraph(TheGameLogic->getFrame());
+			if (traceLoop) {
+				AppendStartupTrace("GameEngine::execute loop %d after PerfGather::displayGraph", loopIndex);
+			}
 			PerfGather::resetAll();
+			if (traceLoop) {
+				AppendStartupTrace("GameEngine::execute loop %d after PerfGather::resetAll", loopIndex);
+			}
 		}
 #endif
+		if (traceLoop) {
+			AppendStartupTrace("GameEngine::execute loop %d after perf epilogue", loopIndex);
+		}
 
 	}
 

@@ -1,5 +1,223 @@
 INSTRUCTIONS
 
+
+---
+
+=== 2026-03-30 Claude Code — static analysis sweep, 10 crash fixes ===
+CI: in_progress run 23724330434 for commit 776882c
+
+TOTAL FIXES THIS SESSION (combined with Codex's dfb662d + 4707a3d):
+
+  [Codex]  dfb662d — procedural terrain overlay textures (no file load dep)
+  [Codex]  4707a3d — disable scorch buffer allocation (NULL-out buffers)
+  [Claude] 812fbbb — 5x BaseHeightMap water-disabled NULL crashes:
+             updateShorelineTiles (TheWaterRenderObj NULL → crash)
+             initDestAlphaLUT (TheWaterTransparency guard)
+             initHeightData extra-pass (TheWaterTransparency guard)
+             renderShoreLines (TheWaterTransparency guard)
+             renderShoreLinesSorted (TheWaterTransparency guard)
+  [Claude] 776882c — 3x W3DDisplay::draw render-path crashes:
+             primaryW3DView NULL guard (early return if no view registered)
+             TheWaterTransparency in WW3D::Begin_Render → use 1.0f fallback
+             TheParticleSystemManager NULL guard
+
+KEY ANALYSIS FINDINGS:
+- TheWaterTransparency is NON-NULL (set from Water.ini parse, never reset)
+  → Only TheWaterRenderObj is NULL (explicitly disabled). My guards are correct.
+- HeightMap::Render() is safe once terrain is in scene (initHeightData sets
+  m_stageTwoTexture before terrain is added to 3D scene at W3DTerrainVisual.cpp:685)
+- W3DShaderManager::startRenderToTexture (lines 2900,2904) is only called
+  with active view filters → not reached with default shell map setup
+- W3DView.cpp:1610 (TheWaterTransparency in doExtraRender) only reached
+  with active shader filter effects → also safe
+
+EXPECTED RESULT AFTER THESE FIXES:
+The game should get past:
+1. initHeightData (terrain load with water disabled) ← FIXED
+2. W3DTerrainVisual::load complete
+3. GameLogic::startNewGame completes
+4. Main loop starts → W3DDisplay::draw first frame
+5. updateViews → W3DView::update (TheTerrainRenderObject is non-NULL)
+6. WW3D::Begin_Render → FIXED (water opacity fallback)
+7. drawViews → W3DView::draw → m_3DScene->doRender → HeightMap::Render
+8. TheInGameUI->DRAW() → main menu
+
+Trace coverage is dense through all these steps. The next crash (if any)
+will be clearly identifiable from the trace log.
+
+Codex: test the artifact from CI run 23724330434 when green.
+Look for trace beyond "W3DDisplay::draw first pass after drawViews".
+If game renders → we're at main menu → next step is fixing game stability.
+
+---
+
+=== 2026-03-29 Claude Code — static analysis + multi-crash fix ===
+Branch: main
+Commit pushed: 812fbbb  fix(runtime): guard water-disabled NULL crashes in BaseHeightMap
+
+What I found (static analysis — no artifact needed):
+- Current crash is at updateShorelineTiles() → TheWaterRenderObj->getWaterHeight()
+- Root cause: water rendering disabled during startup → TheWaterRenderObj = NULL
+  But updateShorelineTiles() derefs it unconditionally right after W3DShroud::init
+- This explains exactly why trace ends at "W3DShroud::init complete"
+
+Fixed ALL 5 crash sites in BaseHeightMap.cpp in one commit:
+1. updateShorelineTiles — guard TheWaterRenderObj + TheWaterTransparency NULL at entry
+2. initDestAlphaLUT — guard TheWaterTransparency NULL
+3. initHeightData (extra-pass block) — guard TheWaterTransparency before compare
+4. renderShoreLines — add !TheWaterTransparency to early-exit condition
+5. renderShoreLinesSorted — same
+
+All visual-only / shoreline blending. Zero simulation determinism impact.
+CI building now for 812fbbb. Will test artifact when green.
+
+Next expected frontier after this fix:
+- initHeightData should now complete (textures allocate, scorch buffers allocate)
+- W3DTerrainVisual::load should complete
+- GameLogic::startNewGame continues past TheTerrainLogic->loadMap
+- Trace should show "GameLogic::startNewGame after TheTerrainLogic->loadMap"
+- Next crash is likely somewhere in the post-loadMap section of startNewGame
+  or in the first rendering pass of the shell map terrain
+
+Note for Codex: The 734a55c CI was still in_progress when I started. You can cancel
+or let it finish — those traces will confirm where in initHeightData the crash was,
+but the fix is already in 812fbbb which goes further.
+
+---
+
+Codex Test Update: [2026-03-29]
+
+Test-only work on this machine:
+- No source edits made here during this cycle.
+- Used the green Windows artifact from `main` run `#23699375992`.
+- Artifact commit tested: `b227c6d`
+- Installed artifact over:
+  - `C:\Program Files (x86)\Steam\steamapps\common\Command & Conquer Generals - Zero Hour\Generals.exe`
+- Ran game from PowerShell with timed launch and then inspected:
+  - `C:\Program Files (x86)\Steam\steamapps\common\Command & Conquer Generals - Zero Hour\zh-startup-trace.log`
+
+Result:
+- Startup got materially further again.
+- Bib rendering bypass is confirmed working.
+- Waypoint rendering bypass is confirmed working.
+- New runtime frontier is now inside `W3DRoadBuffer` during the first road texture load.
+
+Latest confirmed trace tail from tested `b227c6d` artifact:
+- `W3DBibBuffer::ctor bib rendering disabled`
+- `BaseHeightMapRenderObjClass::ctor after W3DBibBuffer ptr=...`
+- `BaseHeightMapRenderObjClass::ctor before W3DBridgeBuffer`
+- `BaseHeightMapRenderObjClass::ctor after W3DBridgeBuffer ptr=...`
+- `BaseHeightMapRenderObjClass::ctor waypoint rendering disabled`
+- `BaseHeightMapRenderObjClass::ctor before W3DRoadBuffer`
+- `W3DRoadBuffer::ctor start`
+- `W3DRoadBuffer::allocateRoadBuffers start`
+- `W3DRoadBuffer::allocateRoadBuffers limits segments=4000 vertex=3000 index=5000 types=100`
+- `W3DRoadBuffer::allocateRoadBuffers arrays roads=... roadTypes=...`
+- `W3DRoadBuffer::allocateRoadBuffers loading road slot=0 id=90 texture='TRCobbleStones.tga'`
+- `W3DRoadBuffer::loadTexture start id=90 path='TRCobbleStones.tga'`
+
+Interpretation:
+- The current hang/crash has moved past:
+  - shader manager fallback
+  - bib buffer startup
+  - waypoint buffer startup
+- The next failing point is very likely:
+  1. `WW3DAssetManager::Get_Texture("TRCobbleStones.tga")`
+  2. or immediate follow-on road-buffer resource setup after that first road texture request
+
+Most recent branch / CI status observed during test:
+- `main` HEAD observed before artifact test: `b227c6d`
+- `main` was green on:
+  - `#23699375992` success
+  - `#23698548846` success
+  - `#23698262602` success
+
+Recommended next step for the main dev machine:
+1. Continue using `main` only.
+2. Handle `W3DRoadBuffer` the same way the bib / waypoint startup hazards were handled:
+   - either trace and safely bypass the failing road texture path
+   - or disable road rendering during startup as a temporary visual-only fallback
+3. After that, build/push and retest the next Windows artifact.
+
+Determinism note:
+- Roads, bibs, waypoints, shroud, and shader-manager startup handling are rendering/client-side only.
+- Current findings and workarounds should have no simulation determinism impact.
+
+Retest confirmation:
+- Re-ran the installed `b227c6d` artifact again locally from PowerShell with timed wait.
+- Result matched the previous run exactly.
+- Confirmed current runtime frontier is still:
+  - `W3DRoadBuffer::loadTexture start id=90 path='TRCobbleStones.tga'`
+
+
+---
+
+Codex: [2026-03-29]
+
+Branch / sync:
+- Work remains on `main` only.
+- Current HEAD: `2266029`
+- `main` matches `origin/main`
+
+CI:
+- Active `main` run: `#23699098744`
+- URL: https://github.com/zerwonenetwork/zh-revival/actions/runs/23699098744
+- Status at handoff: in progress
+- Most recent completed `main` runs:
+  - `#23698548846` success (`54308ef`)
+  - `#23698262602` success (`a19521a`)
+  - `#23696469238` failed (`0c420d0`) on Windows-only `__try` use in `W3DBibBuffer.cpp`
+
+Latest runtime progression on Windows artifact testing:
+1. `W3DShaderManager::init()` still AVs internally, but `W3DDisplay::init()` now survives it and continues with custom shaders disabled.
+2. Terrain startup then became the active frontier.
+3. `W3DBibBuffer` was narrowed as the next failing subsystem:
+   - trace reached `W3DBibBuffer::ctor before TBBib.tga`
+   - `TBBib.tga` / `TBRedBib.tga` are not present as loose files in the Steam install or repo checkout
+4. Runtime workaround landed:
+   - `a19521a` disables bib rendering without texture loads
+   - `#23698262602` passed all CI jobs
+5. Artifact test after `a19521a` got further:
+   - trace reached `BaseHeightMapRenderObjClass::ctor before W3DWaypointBuffer`
+   - did NOT print any `W3DWaypointBuffer::ctor start` line
+   - therefore the next crash/hang moved to the waypoint buffer allocation site
+
+Latest successful runtime trace tail from the installed `a19521a` Windows artifact:
+- `W3DBibBuffer::ctor after allocateBibBuffers vertex=... index=...`
+- `W3DBibBuffer::ctor bib rendering disabled`
+- `BaseHeightMapRenderObjClass::ctor after W3DBibBuffer ptr=...`
+- `BaseHeightMapRenderObjClass::ctor before W3DBridgeBuffer`
+- `BaseHeightMapRenderObjClass::ctor after W3DBridgeBuffer ptr=...`
+- `BaseHeightMapRenderObjClass::ctor before W3DWaypointBuffer`
+
+What changed after that:
+- `54308ef`:
+  - `W3dWaypointBuffer.cpp`
+  - disabled waypoint rendering inside the waypoint subsystem itself
+  - CI green on `#23698548846`
+- `2266029`:
+  - `BaseHeightMap.cpp`
+  - skipped `m_waypointBuffer = NEW W3DWaypointBuffer;` entirely during startup
+  - replaces it with:
+    - `AppendStartupTrace("BaseHeightMapRenderObjClass::ctor waypoint rendering disabled");`
+    - `m_waypointBuffer = NULL;`
+  - CI run for this commit is still active: `#23699098744`
+
+Determinism / risk note:
+- Bib rendering and waypoint rendering are visual-only client systems.
+- Disabling them for startup triage should have no simulation determinism impact.
+
+Local repo note:
+- `.gitignore` has a local tracked edit to ignore artifact/log clutter; not committed yet.
+- Local untracked artifact folders remain, but they are expected and ignorable.
+
+Next step once `#23699098744` finishes green:
+1. Download the Windows artifact for `2266029`.
+2. Install it over `Generals.exe`.
+3. Run from PowerShell with timed wait.
+4. Read the next `zh-startup-trace.log`.
+5. Continue the same narrowing process at the next terrain/render startup frontier.
+
 for Claude Code & Codex.
 
 You Both working on the zh task. we have a major a bugs.
@@ -112,6 +330,497 @@ Also: should we be using GetStringFromRegistry (ZH key) instead of GetStringFrom
 
 
 
+---
+
+Claude Code: [2026-03-27]
+
+Crash is isolated to TheGameClient->init() (confirmed by f82ea74 trace).
+Added fine-grained traces inside GameClient::init() for every major step
+including before/after TheDisplay->init (D3D8 renderer init) — commit e5f31b0.
+CI run #23674707821 in progress. Once artifact lands, will know exact step.
+
+SUSPECT: TheDisplay->init() — this calls D3D8 device creation. On modern GPUs,
+D3D8 direct mode can trigger access violation if adapter enumeration fails.
+If TheDisplay->init is the crash, next step is P1-08 fix (D3D8 fallback).
+
+---
+
+Codex: [2026-03-27]
+
+Branch / sync:
+- Work is on `main` only.
+- Current HEAD: `7c3593a`
+- `main` matches `origin/main`
+
+CI:
+- Active `main` run: `#23674108615`
+- URL: https://github.com/zerwonenetwork/zh-revival/actions/runs/23674108615
+- Status at handoff: in progress
+- Previous `main` runs are green:
+  - `#23594558271`
+  - `#23593446907`
+  - `#23591402500`
+
+What is known now:
+1. The local MSBuild exe is NOT the reliable runtime signal. On this machine it crashes before `WinMain` with:
+   - module: `ucrtbase.dll`
+   - offset: `0x00061c76`
+   That looks like a local-build/runtime mismatch.
+2. The useful runtime signal is the Windows artifact from GitHub Actions.
+3. I downloaded and tested the Windows artifact from `main` run `#23594558271` (commit `01fc093`) by installing it as `Generals.exe`.
+4. That artifact gets far into startup, writes `zh-startup-trace.log`, then crashes in `Generals.exe` with:
+   - exception: `0xc0000005`
+   - fault offset: `0x003fab4e`
+
+Trace from the `01fc093` Windows artifact:
+- `WinMain: enter cmd=''`
+- `initializeAppWindows: start windowed=1 borderless=0 800x600`
+- `initializeAppWindows: CreateWindow hwnd=... lastError=0`
+- `initializeAppWindows: success`
+- `WinMain: initializeAppWindows ok`
+- `WinMain: CreateMutex handle=... lastError=0`
+- `WinMain: before GameMain`
+- `GameMain: enter argc=1`
+- `GameMain: CreateGameEngine=...`
+- `GameEngine::init after InitRandom`
+- `GameEngine::init after createFileSystem`
+- `GameEngine::init after TheNameKeyGenerator`
+- `GameEngine::init after TheCommandList`
+- `GameEngine::init after XferCRC open`
+- `GameEngine::init stage=TheLocalFileSystem`
+- `GameEngine::init stage=TheArchiveFileSystem`
+- `BIGFileSystem: current-dir scan loaded=1`
+- `BIGFileSystem: ZH InstallPath='C:\Program Files (x86)\Steam\steamapps\common\Command & Conquer Generals - Zero Hour\'`
+- `BIGFileSystem: installPath scan loaded=1`
+- `GameEngine::init stage=TheWritableGlobalData`
+- `GameEngine::init after parseCommandLine`
+- `GameEngine::init after TheGameLODManager`
+- crash happens after this point
+
+What I changed in `7c3593a`:
+- Added tighter startup trace points in `GameEngine.cpp` around the exact failing gap:
+  - before / after `Default\\Water.ini`
+  - before / after `Water.ini`
+  - before / after `Default\\Weather.ini`
+  - before / after `Weather.ini`
+  - before / after `TheGameText`
+  - after `TheScienceStore`
+  - after `TheMultiplayerSettings`
+  - after `TheTerrainTypes`
+  - after `TheTerrainRoads`
+  - after `TheGlobalLanguageData`
+  - after `TheCDManager`
+  - before / after `TheAudio`
+- Also hardened `AppendStartupTrace` in `WinMain.cpp`:
+  - `GetModuleFileNameA`
+  - `strrchr`
+  - `strcat_s`
+  - `fopen_s`
+
+What Claude should do next:
+1. Wait for `#23674108615` to finish.
+2. Download the Windows artifact for commit `7c3593a`.
+3. Install that artifact into the game folder as `Generals.exe`.
+4. Launch it and read `zh-startup-trace.log`.
+5. Use the new finer-grained trace to identify the exact failing call between `TheGameLODManager` and the next completed subsystem.
+
+Working tree note:
+- No tracked source edits pending.
+- Only untracked local junk remains:
+  - `build-win32/`
+  - `latest_ci_artifacts*/`
+  - `release_runtimecheck/`
+  - `temp_cdb_cmds.txt`
+
+
+---
+
+Codex: [2026-03-28]
+
+Branch / sync:
+- Active work is on `main` only.
+- Current local branch: `main`
+- `task/runtime-startup-frontier` was temporary and is being removed so there is no parallel branch drift.
+
+What I changed just now on `main`:
+- Added tighter startup trace coverage in:
+  - `GeneralsMD/Code/GameEngineDevice/Source/W3DDevice/GameClient/W3DRoadBuffer.cpp`
+  - `GeneralsMD/Code/GameEngineDevice/Source/W3DDevice/GameClient/W3DShroud.cpp`
+
+Why:
+- After waypoint rendering was disabled/skipped, the next likely terrain/render startup frontier is:
+  1. `W3DRoadBuffer`
+  2. `W3DShroud`
+- We need the test laptop to tell us whether the next crash is:
+  - inside road buffer construction / road texture loading
+  - inside shroud texture/surface setup
+  - or after both complete
+
+New trace markers added:
+- Road buffer:
+  - `W3DRoadBuffer::ctor start`
+  - `W3DRoadBuffer::allocateRoadBuffers start`
+  - `W3DRoadBuffer::allocateRoadBuffers limits ...`
+  - `W3DRoadBuffer::allocateRoadBuffers arrays ...`
+  - `W3DRoadBuffer::allocateRoadBuffers loading road slot=... id=... texture='...'`
+  - `W3DRoadBuffer::loadTexture start ...`
+  - `W3DRoadBuffer::loadTexture after Get_Texture ...`
+  - `W3DRoadBuffer::loadTexture buffers ready ...`
+  - `W3DRoadBuffer::allocateRoadBuffers complete loaded=...`
+  - `W3DRoadBuffer::ctor complete ...`
+- Shroud:
+  - `W3DShroud::ctor start`
+  - `W3DShroud::ctor complete`
+  - `W3DShroud::init start ...`
+  - `W3DShroud::init dimensions ...`
+  - `W3DShroud::init source texture=...`
+  - `W3DShroud::init after _Create_DX8_Surface ...`
+  - `W3DShroud::init after LockRect ...`
+  - `W3DShroud::init before ReAcquireResources ...`
+  - `W3DShroud::init after ReAcquireResources ...`
+  - `W3DShroud::ReAcquireResources start ...`
+  - `W3DShroud::ReAcquireResources after texture alloc ...`
+  - `W3DShroud::ReAcquireResources complete`
+  - `W3DShroud::init complete`
+
+Need from test laptop:
+1. Build or artifact-run current `main`.
+2. Launch the game and reproduce the startup crash/hang.
+3. Open `zh-startup-trace.log`.
+4. Send back the last 20-40 lines.
+5. If the last line is a `W3DRoadBuffer::allocateRoadBuffers loading road slot=... texture='...'` line, include that exact texture name.
+
+Important note:
+- I could not do a trustworthy local compile on this machine because:
+  - there is no usable local build tool in PATH here
+  - the existing `build_map` cache points to a different machine path/generator
+- So runtime confirmation must come from the other laptop, but the code edits are isolated to trace-only changes in visual systems.
+
+Determinism / risk note:
+- `W3DRoadBuffer` and `W3DShroud` are rendering-side systems.
+- Current changes are trace-only and should have no simulation determinism impact.
+
 
 
  
+=== 2026-03-29 Codex runtime handoff ===
+Branch: main
+Current HEAD: 0a4cc87
+Current CI run: 23705143028 (green)
+
+Latest verified runtime trace on this machine:
+- Verified artifact: a6d1da2
+- Startup now reaches W3DInGameUI::draw
+- Exact last trace frontier before the newest fix:
+  W3DInGameUI::draw first pass before drawPlaceAngle
+- Concrete fix pushed on main after that:
+  0a4cc87 fix(runtime): defer placement angle asset creation
+  File: GeneralsMD/Code/GameEngineDevice/Source/W3DDevice/GameClient/W3DInGameUI.cpp
+  Change: drawPlaceAngle() no longer creates Locater01/Locater02 render objects before checking isPlacementAnchored().
+
+Current blocker on this test machine:
+- The freshly installed 0a4cc87 Windows artifact is blocked before launch by Windows Application Control:
+  "An Application Control policy has blocked this file."
+- So I could not execute the newest hash locally after the placement-angle fix.
+
+What was already fixed and verified by trace progression:
+- shader-manager startup crash bypassed
+- bib rendering disabled during startup
+- waypoint rendering disabled during startup
+- road rendering disabled during startup
+- water rendering disabled during startup
+- radar reset guarded
+- first texture-loader render deadlock bypassed by skipping first TextureLoader::Update()
+- UI draw narrowed to drawPlaceAngle and then fixed in 0a4cc87
+
+Next step on an unblocked/main PC:
+1. Run the 0a4cc87 Windows artifact.
+2. Read zh-startup-trace.log.
+3. Confirm whether startup moves past drawPlaceAngle.
+4. If it still hangs, the next likely boundaries are:
+   - W3DInGameUI::draw after drawPlaceAngle
+   - postDraw()
+   - TheWindowManager->winRepaint()
+
+=== 2026-03-29 Codex artifact test update ===
+Branch: main
+Tested artifact commit: 81e076d
+CI run: 23706996879 (green)
+
+What I did:
+- Downloaded the Windows artifact for 81e076d from zerwonenetwork/zh-revival Actions.
+- Installed it over the local Steam Zero Hour Generals.exe.
+- Deleted the old zh-startup-trace.log before launch.
+- Launched the game and let it run for 60 seconds, then another 45 seconds.
+
+Observed behavior:
+- Process stayed alive for more than 105 seconds.
+- Process remained non-responsive.
+- CPU kept moving slightly, but the startup trace stopped growing.
+
+Clean trace result:
+- Full init completed successfully.
+- Full first frame completed successfully.
+- GameEngine::execute loop 1 completed.
+- GameEngine::execute loop 2 completed.
+- Loop 3 started and progressed through:
+  - GameEngine::update pass 3 after TheGameClient->UPDATE
+  - GameEngine::update pass 3 after TheMessageStream->propagateMessages
+  - GameEngine::update pass 3 after TheCDManager->UPDATE
+- Trace then stopped permanently at:
+  GameEngine::update pass 3 after TheCDManager->UPDATE
+
+Current verified frontier:
+- The startup problem is no longer in init, terrain startup, render begin, or the first frame.
+- The current hang is later, inside GameEngine::update pass 3, after TheCDManager->UPDATE and before the next trace line.
+
+Implication for next debug step:
+- The next likely boundary is one of:
+  - TheGameLogic->UPDATE
+  - later GameEngine::update pass-3 code immediately after TheCDManager
+- The fastest next move is to add tighter pass-3 tracing in GameEngine::update after TheCDManager->UPDATE.
+
+=== 2026-03-29 Codex runtime trace follow-up ===
+Branch: main
+Current HEAD pushed: 30c68a2
+CI run: 23707788721 (green on all jobs)
+
+What changed in 30c68a2:
+- GameEngine.cpp:
+  - traces the logic-update gate after TheCDManager->UPDATE
+  - logs whether TheNetwork is null / whether frame data is ready
+  - logs before and after TheGameLogic->UPDATE
+- GameLogic.cpp:
+  - adds startup trace phases for the first 5 GameLogic updates
+  - covers script engine, terrain logic, CRC block, stats, recorder, command processing,
+    normal updates, sleepy updates, AI, build assistant, partition manager, destroy/reset/store phases
+  - includes sleepy-update iteration tracing so an infinite sleepy loop becomes visible
+
+Local test machine result:
+- The new Windows artifact for 30c68a2 downloaded and installed successfully.
+- CI artifact path was valid and the binary copied over Generals.exe cleanly.
+- Launch failed before process creation on this machine:
+  "An Application Control policy has blocked this file."
+- Verified this is not Mark-of-the-Web / Zone.Identifier:
+  there is no Zone.Identifier stream on the zip, extracted exe, or installed Generals.exe.
+- Direct invocation with `& Generals.exe` is also blocked the same way.
+
+Current practical status:
+- Latest successful local runtime trace is still the 81e076d artifact result:
+  hang after `GameEngine::update pass 3 after TheCDManager->UPDATE`
+- The new 30c68a2 trace points are ready and CI-green, but they need to be run on an unblocked PC.
+
+Next step on the main/unblocked PC:
+1. Download the Windows artifact for commit 30c68a2 from run 23707788721.
+2. Install it over Generals.exe.
+3. Launch once and capture zh-startup-trace.log.
+4. The new exact frontier should now be inside one of the named GameLogic phases instead of the old blind spot.
+
+Local block note for this test PC:
+- AppLocker policy is active on this machine.
+- Recent local log check:
+  - Microsoft-Windows-AppLocker/EXE and DLL shows policy application events (8001)
+  - direct launch of the freshly installed 30c68a2 Generals.exe is blocked before process creation
+  - there is still no Zone.Identifier stream on the zip, extracted exe, or installed exe
+- Practical conclusion:
+  - this is a machine policy / application control issue, not a downloaded-file MOTW issue
+  - this PC cannot be relied on to launch every new unsigned artifact hash unless the local policy is relaxed or an allow rule is added
+
+How to unblock on this PC:
+1. If this is your own unmanaged PC:
+   - disable or relax the active AppLocker / Windows Application Control rule set for local unsigned binaries, or
+   - create an allow rule for the Zero Hour install path / specific Generals.exe hash
+2. If this is a managed/company policy:
+   - allow the exe by policy (hash/path/publisher) from the admin side
+3. If you only need a quick runtime lane:
+   - do the artifact launch/testing on the main unblocked PC instead of this one
+
+=== 2026-03-29 Codex runtime handoff update ===
+Branch: main
+Current HEAD pushed: 4707a3d
+Latest green CI run: 23723752598
+
+What changed since the older notes above:
+- `dfb662d`:
+  - `TerrainTex.cpp`
+  - replaced the terrain cloud and light/noise overlay textures with procedural 4x4 placeholder textures
+  - this removed the runtime stop at:
+    - `BaseHeightMapRenderObjClass::initHeightData before CloudMapTerrainTextureClass`
+- `4707a3d`:
+  - `BaseHeightMap.cpp`
+  - disabled terrain scorch buffer/texture allocation during startup
+  - this removed the next stop immediately after `initDestAlphaLUT()`
+
+What I verified locally by downloading and running the Windows artifacts:
+- `dfb662d` launched here and progressed further than before.
+- The trace moved past:
+  - `before CloudMapTerrainTextureClass`
+  - `after CloudMapTerrainTextureClass`
+  - `before LightMapTerrainTextureClass`
+  - `after LightMapTerrainTextureClass`
+  - `after destAlphaTexture alloc`
+  - `after initDestAlphaLUT`
+- With `dfb662d`, the process then hung/stopped before the next trace point, which identified the next suspect block as scorch allocation.
+
+- `4707a3d` launched here and ran far enough to complete:
+  - `BaseHeightMapRenderObjClass::initHeightData after allocateScorchBuffers`
+  - `BaseHeightMapRenderObjClass::initHeightData after shader/material setup`
+  - `BaseHeightMapRenderObjClass::initHeightData complete`
+- During that `4707a3d` test the process was already gone by the 70-second check:
+  - `PROCESS_NOT_RUNNING`
+- So the current terrain startup frontier is no longer inside shroud, road-buffer setMap, extra-pass preprocessing, cloud/light terrain textures, destination-alpha LUT, or scorch allocation.
+
+Current verified frontier:
+- The most recent trace now ends at:
+  - `BaseHeightMapRenderObjClass::initHeightData complete`
+- The process exited after that, so the next failing step is after heightmap init returns.
+
+Best next debug move for Claude:
+1. Add traces immediately after the `initHeightData()` return path / after `W3DTerrainVisual::load` resumes.
+2. Trace the next calls in `W3DTerrainVisual::load` and `TerrainLogic::loadMap` after heightmap init completes.
+3. Also check the Windows Application / WER crash event for the `4707a3d` run, because this is now an exit/crash after the terrain init block rather than the previous in-place hang.
+
+Operational note:
+- Local repo source is synced to `main`.
+- Only local artifact zip leftovers remain untracked:
+  - `latest_ci_artifacts_30c68a2.zip`
+  - `latest_ci_artifacts_81e076d.zip`
+
+=== 2026-04-01 Codex runtime completion update ===
+Branch: main
+Current HEAD pushed: 88c4074
+Latest green CI run: 23877409405
+
+What changed after the older shell-map notes:
+- `1da7602`
+  - `Weapon.cpp`
+  - added a shell-state early return in `WeaponTemplate::dealDamageInternal()`
+  - this prevented shell-only AoE damage from continuing through the full damage-dispatch path during menu startup
+- `88c4074`
+  - `GlobalData.cpp`
+  - changed the default shell-map flag from `TRUE` to `FALSE`
+  - the existing `-shellmap` command-line option still exists for anyone who explicitly wants the old 3D background back
+
+What I verified locally:
+- Run `23876559911` for `1da7602` was green on all 4 CI jobs.
+- The `1da7602` artifact still crashed on a plain launch, but a direct launch with `-noshellmap` stayed alive and stable for 3+ minutes.
+- That proved the remaining startup blocker was the shell map itself, not core game init, menu logic, or the no-shell-map path.
+
+- Run `23877409405` for `88c4074` is green on all 4 CI jobs.
+- I downloaded the Windows artifact for `88c4074`, installed it over `Generals.exe`, and launched it with no command-line flags.
+- The process stayed alive and stable for 3+ minutes with:
+  - no new `Application Error` event
+  - no new `Windows Error Reporting` event
+  - no new crash dump
+- `zh-startup-trace.log` completed the first 5 traced update passes cleanly and then stopped growing only because there are no later trace points, not because the process exited.
+
+Current practical result:
+- The game now starts cleanly on this test machine with the default startup path.
+- The shell map is disabled by default to avoid the long chain of shell-only terrain/render/combat crashes.
+- This is a rendering/menu presentation change only; gameplay/simulation determinism is unaffected.
+
+Recommended next cleanup work (not required for startup):
+1. Remove or reduce the temporary runtime tracing once the team is satisfied.
+2. Decide whether to keep the shell map permanently opt-in (`-shellmap`) or revisit it later as a separate rendering task.
+3. Update user-facing docs/release notes to mention that the 3D shell map is now disabled by default for stability.
+
+=== 2026-04-01 Codex late-render completion update ===
+Branch: main
+Current HEAD pushed: 284b113
+Latest green CI run: 23878663780
+
+What changed after the shell-map default-off fix:
+- `284b113`
+  - `W3DAssetManager.cpp`
+    - validates recolor/hue-shift generated textures before caching them
+    - refuses to insert broken wrapper-created textures with missing D3D surfaces
+  - `W3DMouse.cpp`
+    - clears cursor texture/frame slots after failed surface loads and after release
+    - fixes the `m_currentD3DSurface[j]` initialization bug
+    - guards DX8 cursor frame binding so a missing cursor surface cannot turn into a later use-after-free / NULL dereference
+  - `W3DWater.cpp`
+    - binds remaining late water textures through a safe helper that degrades to `NULL`
+  - `texture.cpp`
+    - hardens cube/volume texture constructor surface acquisition against missing wrapper-created surfaces
+
+What I verified locally:
+- CI run `23878663780` is green on all 4 jobs.
+- I downloaded the Windows artifact for `284b113`, installed it over `Generals.exe`, and tested the artifact build directly.
+- Timed runtime repro:
+  - stayed alive and responding for 240 seconds
+  - working set stabilized around ~198 MB
+  - no new `Application Error`
+  - no new `Windows Error Reporting`
+- Live window sanity check:
+  - window handle remained valid
+  - title changed from temporary `zh-revival` to `Command & Conquer (TM) Generals Zero Hour`
+  - process was responding from the 10-second mark onward
+
+Current practical result:
+- The artifact build on `main` now starts and stays up on this test machine without the previous late render crash.
+- The old later crash at `Generals.exe + 0x002c8df8` did not reproduce after the `284b113` batch fix.
+
+Recommended next cleanup work (not required to keep the game opening):
+1. Remove or reduce the temporary startup/runtime trace spam.
+2. Document that shell map is disabled by default and only opt-in via `-shellmap`.
+3. Decide whether to keep the late render hardening permanently or refactor it later once DXWrapper/D3D8 compatibility is cleaner.
+
+---
+
+=== 2026-04-02 Claude Code — in-game black screen investigation ===
+
+STATUS: HANDED OFF TO CODEX — black 3D viewport in skirmish/in-game, menus/HUD/minimap work fine.
+
+## What was confirmed working
+- Shell map (main menu background terrain): renders correctly
+- In-game HUD (money counter, command bar, minimap): renders correctly
+- D3D device resets: FIXED — `m_windowed=1` default in GlobalData.cpp (commit 4e3b05d) eliminates the WM_ACTIVATEAPP → Reset_D3D_Device → WW3D::Set_Render_Device chain during map load. DXWrapper log confirmed no `ResetT` call on second test.
+- Startup: game launches, menus work, loading screen works, transitions to in-game
+
+## What is broken
+- The main 3D viewport in skirmish is completely black
+- The HUD and minimap render correctly on top of the black viewport
+- Even with the shroud texture forced to all-white (0xFFFF), terrain stays black
+
+## Root cause: NOT the shroud texture
+Commit ab33b97 added a diagnostic: first render frame fills the entire shroud dst texture with 0xFFFF (pure white = no fog). Terrain still black. This definitively rules out the shroud system as the cause.
+
+The lock+memcpy approach in W3DShroud.cpp (commit 9e23866) is correct for future use but doesn't fix the black screen. The POOL_MANAGED dst texture CAN be locked (lock trace shows pDst non-NULL, dstPitch=valid in ab33b97 trace). The ab33b97 diagnostic code is still active in main — should be REVERTED once the real fix is in.
+
+## What we know about the render pipeline
+- `W3DDisplay::draw()` calls `drawViews()` for in-game frames (m_loadScreenRender == FALSE)
+- `drawViews()` iterates `m_viewList` and calls `v->drawView()` on each view
+- `W3DView::drawView()` is the actual 3D scene renderer (file: W3DView.cpp, line ~1527)
+- The view list is populated — TheTacticalView exists (HUD references it)
+- ChipsetType = 12 (DC_GENERIC_PIXEL_SHADER_1_4) — pixel shader terrain path is active
+- All terrain VBs created and locked successfully (confirmed in startup trace)
+- Terrain textures created via D3DX fallback path (fmt=26 = A8R8G8B8 — many fallbacks in trace)
+- No device reset between VB creation and in-game rendering
+- W3DShroud::ReAcquireResources: dstTex=0B0571B4 (non-NULL, POOL_MANAGED)
+
+## Most likely cause
+`W3DView::drawView()` is being called but the 3D terrain draw calls are NOT producing visible output. Possible reasons:
+1. **Camera is wrong** — camera position/target outside the map, or view frustum culls terrain
+2. **Render object not in scene** — TheTerrainRenderObject might not be added to the W3D scene graph for the in-game map (added for shell map but reset on new map load without re-adding)
+3. **Vertex buffer lost** — VBs created but POOL_DEFAULT VBs were released by a device reset that happened AFTER our trace ends, OR VBs created in wrong pool that gets wiped
+4. **Z-test failure** — all terrain pixels fail depth test due to wrong near/far clip or inverted depth
+5. **Shader error** — chipset 12 pixel shader path produces no output (shader missing or failing to compile/link)
+
+## Key files to investigate next
+- `GeneralsMD/Code/GameEngineDevice/Source/W3DDevice/GameClient/W3DView.cpp` line ~1527 — `W3DView::drawView()` — add trace to see if it's called and what it draws
+- `GeneralsMD/Code/GameEngineDevice/Source/W3DDevice/GameClient/HeightMap.cpp` or `W3DTerrainDraw.cpp` — how the terrain render object is drawn
+- `GeneralsMD/Code/GameEngineDevice/Source/W3DDevice/GameClient/W3DTerrainVisual.cpp` — how TheTerrainRenderObject is set up and added to the scene; check if it's re-added after map load
+- Look for camera initialization during game start (W3DView camera reset on new map)
+
+## Current main branch state (commit ab33b97)
+- ab33b97: DIAGNOSTIC — shroud first-frame white fill + lock trace (MUST REVERT once fix is found)
+- 9e23866: shroud POOL_MANAGED + lock+memcpy (keep — correct approach, doesn't hurt)
+- ec7fc98: merge of shroud POOL_MANAGED fix
+- 4e3b05d: m_windowed=1 default (keep — fixes device reset)
+- All previous crash fixes from 284b113 batch (keep)
+
+## Suggested Codex tasks
+1. Add `AppendStartupTrace` to `W3DView::drawView()` — fire on FIRST call only — log: camera position, view frustum, number of render objects in scene
+2. Check `W3DTerrainVisual` — is `TheTerrainRenderObject` in the scene's render object list during in-game? Look for `Add_Render_Object` / `Remove_Render_Object` around map load
+3. Check the vertex buffer pool: VBs use POOL_DEFAULT. After game start, if any late device reset happens (even from a different trigger), POOL_DEFAULT VBs are wiped. Check for late WM_ACTIVATEAPP or any other Reset_D3D_Device call.
+4. REVERT the ab33b97 diagnostic white-fill once cause is found and real fix is in.

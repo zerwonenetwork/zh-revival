@@ -330,7 +330,11 @@ public:
 
 	virtual void joinTeam( void );			///< This unit just got added to a team & needs to catch up.
 	
-	Bool areTurretsLinked() const { return getAIUpdateModuleData()->m_turretsLinked; }
+	Bool areTurretsLinked() const
+	{
+		const AIUpdateModuleData* data = getAIUpdateModuleData();
+		return data ? data->m_turretsLinked : FALSE;
+	}
 
 	// this is present solely for some transports to override, so that they can land before 
 	// allowing people to exit...
@@ -586,7 +590,11 @@ public:
 	// while the move is the original command source.  John A.
 	void friend_setLastCommandSource( CommandSourceType source ) {m_lastCommandSource = source;}
 
-	Bool canAutoAcquire() const { return getAIUpdateModuleData()->m_autoAcquireEnemiesWhenIdle; }
+	Bool canAutoAcquire() const
+	{
+		const AIUpdateModuleData* data = getAIUpdateModuleData();
+		return data ? data->m_autoAcquireEnemiesWhenIdle : FALSE;
+	}
 
   Bool canAutoAcquireWhileStealthed() const ;
 
@@ -634,7 +642,21 @@ public:
 
 	inline StateID getCurrentStateID() const { return getStateMachine()->getCurrentStateID(); }	///< return the id of the current state of the machine
 /// @ todo -- srj sez: JBA NUKE THIS CODE, IT IS EVIL
-	inline void friend_addToWaypointGoalPath( const Coord3D *pathPoint ) { getStateMachine()->addToGoalPath(pathPoint); }
+	inline void friend_addToWaypointGoalPath( const Coord3D *pathPoint )
+	{
+		AIStateMachine* stateMachine = getStateMachine();
+		if (stateMachine == NULL)
+			return;
+
+		Bool wasLocked = stateMachine->isLocked();
+		if (wasLocked)
+			stateMachine->unlock();
+
+		stateMachine->addToGoalPath(pathPoint);
+
+		if (wasLocked)
+			stateMachine->lock("Relocking after friend_addToWaypointGoalPath");
+	}
 
 	// this is intended for use ONLY by W3dWaypointBuffer and AIFollowPathState.
 	inline const Coord3D* friend_getGoalPathPosition( Int index ) const { return getStateMachine()->getGoalPathPosition( index ); }

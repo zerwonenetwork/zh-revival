@@ -49,10 +49,78 @@
 
 #include "W3DDevice/GameClient/TerrainTex.h"
 #include "W3DDevice/GameClient/WorldHeightMap.h"
+
+extern void AppendStartupTrace(const char *format, ...);
 #include "W3DDevice/GameClient/TileData.h"
 #include "Common/GlobalData.h"
 #include "WW3D2/dx8wrapper.h"
 #include "d3dx8tex.h"
+
+namespace
+{
+	void FillProceduralTerrainTexture(TextureClass *texture, UnsignedInt argb);
+
+	void EnsureProceduralTerrainTexture(TextureClass *texture, UnsignedInt width, UnsignedInt height, UnsignedInt argb, const char *tag)
+	{
+		if (texture == NULL) {
+			return;
+		}
+
+		if (texture->Peek_D3D_Texture() == NULL)
+		{
+			IDirect3DDevice8 *dev = DX8Wrapper::_Get_D3D_Device8();
+			if (dev)
+			{
+				IDirect3DTexture8 *tex = NULL;
+				HRESULT hr = dev->CreateTexture(width, height, 1, 0, D3DFMT_A8R8G8B8, D3DPOOL_MANAGED, &tex);
+				if (SUCCEEDED(hr) && tex)
+				{
+					AppendStartupTrace("%s: direct CreateTexture fallback ok tex=%p %ux%u", tag, tex, width, height);
+					texture->Set_D3D_Texture_For_Compat(tex);
+					tex->Release();
+				}
+				else
+				{
+					AppendStartupTrace("%s: direct CreateTexture fallback failed hr=%08x", tag, (unsigned)hr);
+				}
+			}
+		}
+
+		FillProceduralTerrainTexture(texture, argb);
+	}
+
+	void FillProceduralTerrainTexture(TextureClass *texture, UnsignedInt argb)
+	{
+		if (texture == NULL) {
+			return;
+		}
+
+		IDirect3DSurface8 *surface_level = texture->Get_D3D_Surface_Level(0);
+		if (surface_level == NULL) {
+			return;
+		}
+
+		D3DLOCKED_RECT locked_rect;
+		if (FAILED(surface_level->LockRect(&locked_rect, NULL, 0))) {
+			surface_level->Release();
+			return;
+		}
+
+		D3DSURFACE_DESC surface_desc;
+		::ZeroMemory(&surface_desc, sizeof(surface_desc));
+		surface_level->GetDesc(&surface_desc);
+
+		for (UnsignedInt y = 0; y < surface_desc.Height; ++y) {
+			UnsignedInt *row = reinterpret_cast<UnsignedInt *>(static_cast<UnsignedByte *>(locked_rect.pBits) + y * locked_rect.Pitch);
+			for (UnsignedInt x = 0; x < surface_desc.Width; ++x) {
+				row[x] = argb;
+			}
+		}
+
+		surface_level->UnlockRect();
+		surface_level->Release();
+	}
+}
 
 /******************************************************************************
 						TerrainTextureClass
@@ -68,9 +136,24 @@
 texture of the desired height and mip level. */
 //=============================================================================
 TerrainTextureClass::TerrainTextureClass(int height) :
-	TextureClass(TEXTURE_WIDTH, height, 
+	TextureClass(TEXTURE_WIDTH, height,
 		WW3D_FORMAT_A1R5G5B5, MIP_LEVELS_3 )
 {
+	AppendStartupTrace("TerrainTextureClass ctor(h): peek=%p device=%p h=%d", Peek_D3D_Texture(), DX8Wrapper::_Get_D3D_Device8(), height);
+	// D3DXCreateTexture may fail with DXWrapper (D3D8→D3D9 proxy).
+	// Fall back to direct CreateTexture with the universally-supported A8R8G8B8 format.
+	IDirect3DDevice8 *dev = DX8Wrapper::_Get_D3D_Device8();
+	if (!Peek_D3D_Texture() && dev) {
+		IDirect3DTexture8 *tex = NULL;
+		HRESULT hr = dev->CreateTexture(
+			TEXTURE_WIDTH, height, 3, 0, D3DFMT_A8R8G8B8, D3DPOOL_MANAGED, &tex);
+		if (SUCCEEDED(hr) && tex) {
+			AppendStartupTrace("TerrainTextureClass ctor(h): A8R8G8B8 fallback ok tex=%p", tex);
+			Poke_Texture(tex);
+		} else {
+			AppendStartupTrace("TerrainTextureClass ctor(h): both failed hr=%08x", (unsigned)hr);
+		}
+	}
 }
 
 //=============================================================================
@@ -96,11 +179,20 @@ TerrainTextureClass::TerrainTextureClass(int height, int width) :
 int TerrainTextureClass::update(WorldHeightMap *htMap)
 {
 	// D3DTexture is our texture;
+	AppendStartupTrace("TerrainTextureClass::update enter d3dtex=%p", Peek_D3D_Texture());
+	if (!Peek_D3D_Texture()) {
+		AppendStartupTrace("TerrainTextureClass::update D3D texture is NULL; skipping fill");
+		return 0;	// D3D texture creation failed; skip fill but don't crash
+	}
 
 	IDirect3DSurface8 *surface_level;
 	D3DSURFACE_DESC surface_desc;
 	D3DLOCKED_RECT locked_rect;
-	DX8_ErrorCode(Peek_D3D_Texture()->GetSurfaceLevel(0, &surface_level));
+	HRESULT hr = Peek_D3D_Texture()->GetSurfaceLevel(0, &surface_level);
+	if (FAILED(hr) || !surface_level) {
+		AppendStartupTrace("TerrainTextureClass::update GetSurfaceLevel failed hr=%08x", (unsigned)hr);
+		return 0;
+	}
 	DX8_ErrorCode(surface_level->GetDesc(&surface_desc));
 	if (surface_desc.Width < TEXTURE_WIDTH) {
 		return 0;
@@ -116,18 +208,9 @@ int TerrainTextureClass::update(WorldHeightMap *htMap)
 	//DEBUG_ASSERTCRASH(tilesPerRow*numRows >= htMap->m_numBitmapTiles, ("Too many tiles."));
 	DEBUG_ASSERTCRASH((Int)surface_desc.Width >= tilePixelExtent*tilesPerRow, ("Bitmap too small."));
 #endif
-	if (surface_desc.Format == D3DFMT_A1R5G5B5) {
-#if 0
-		UnsignedInt cellX, cellY;
-		for (cellX = 0; cellX < surface_desc.Width; cellX++) {
-			for (cellY = 0; cellY < surface_desc.Height; cellY++) {
-				UnsignedByte *pBGR = ((UnsignedByte *)locked_rect.pBits)+(cellY*surface_desc.Width+cellX)*2;
-				*((Short*)pBGR) = (((255-2*cellY)>>3)<<10) + ((4*cellX)>>4);
-			}
-		}
-#endif
+	if (surface_desc.Format == D3DFMT_A1R5G5B5 || surface_desc.Format == D3DFMT_A8R8G8B8) {
 		Int tileNdx;
-		Int pixelBytes = 2;
+		Int pixelBytes = (surface_desc.Format == D3DFMT_A8R8G8B8) ? 4 : 2;
 		for (tileNdx=0; tileNdx < htMap->m_numBitmapTiles; tileNdx++) {
 			TileData *pTile = htMap->getSourceTile(tileNdx);
 			if (!pTile) continue;
@@ -145,7 +228,12 @@ int TerrainTextureClass::update(WorldHeightMap *htMap)
 				Int column = position.x;
 				pBGRX += column*pixelBytes;
 				for (i=0; i<tilePixelExtent; i++) {
-					*((Short*)pBGRX) = 0x8000 + ((pBGR[2]>>3)<<10) + ((pBGR[1]>>3)<<5) + (pBGR[0]>>3);
+					if (pixelBytes == 4) {
+						// A8R8G8B8: source is BGR, write as BGRA (little-endian 0xAARRGGBB)
+						*((UnsignedInt*)pBGRX) = 0xFF000000u | ((UnsignedInt)pBGR[2]<<16) | ((UnsignedInt)pBGR[1]<<8) | pBGR[0];
+					} else {
+						*((Short*)pBGRX) = 0x8000 + ((pBGR[2]>>3)<<10) + ((pBGR[1]>>3)<<5) + (pBGR[0]>>3);
+					}
 					pBGRX +=pixelBytes;
 					pBGR +=TILE_BYTES_PER_PIXEL;
 				}
@@ -375,11 +463,19 @@ void TerrainTextureClass::setLOD(Int LOD)
 Bool TerrainTextureClass::updateFlat(WorldHeightMap *htMap, Int xCell, Int yCell, Int cellWidth, Int pixelsPerCell)
 {
 	// D3DTexture is our texture;
+	if (!Peek_D3D_Texture()) {
+		AppendStartupTrace("TerrainTextureClass::updateFlat: D3D texture is NULL; skipping fill");
+		return false;
+	}
 
 	IDirect3DSurface8 *surface_level;
 	D3DSURFACE_DESC surface_desc;
 	D3DLOCKED_RECT locked_rect;
-	DX8_ErrorCode(Peek_D3D_Texture()->GetSurfaceLevel(0, &surface_level));
+	HRESULT hr = Peek_D3D_Texture()->GetSurfaceLevel(0, &surface_level);
+	if (FAILED(hr) || !surface_level) {
+		AppendStartupTrace("TerrainTextureClass::updateFlat GetSurfaceLevel failed hr=%08x", (unsigned)hr);
+		return false;
+	}
 	DX8_ErrorCode(surface_level->GetDesc(&surface_desc));
 	DEBUG_ASSERTCRASH((Int)surface_desc.Width == cellWidth*pixelsPerCell, ("Bitmap too small."));
 	DEBUG_ASSERTCRASH((Int)surface_desc.Height == cellWidth*pixelsPerCell, ("Bitmap too small."));
@@ -647,8 +743,9 @@ void AlphaTerrainTextureClass::Apply(unsigned int stage)
 /** Constructor. Calls parent constructor to load the .tga texture. */
 //=============================================================================
 LightMapTerrainTextureClass::LightMapTerrainTextureClass(AsciiString name, MipCountType mipLevelCount) :
-TextureClass(name.isEmpty()?"TSNoiseUrb.tga":name.str(),name.isEmpty()?"TSNoiseUrb.tga":name.str(), mipLevelCount )
+TextureClass(4, 4, WW3D_FORMAT_A8R8G8B8, MIP_LEVELS_1)
 { 
+	EnsureProceduralTerrainTexture(this, 4, 4, 0xFFFFFFFF, "LightMapTerrainTextureClass");
 	Get_Filter().Set_Min_Filter(TextureFilterClass::FILTER_TYPE_BEST);
 	Get_Filter().Set_Mag_Filter(TextureFilterClass::FILTER_TYPE_BEST);
 	Get_Filter().Set_U_Addr_Mode(TextureFilterClass::TEXTURE_ADDRESS_REPEAT);
@@ -769,11 +866,16 @@ int AlphaEdgeTextureClass::update256(WorldHeightMap *htMap)
 int AlphaEdgeTextureClass::update(WorldHeightMap *htMap)
 {
 	// D3DTexture is our texture;
+	if (!Peek_D3D_Texture()) return 0;	// D3D texture creation failed; skip fill
 
 	IDirect3DSurface8 *surface_level;
 	D3DSURFACE_DESC surface_desc;
 	D3DLOCKED_RECT locked_rect;
-	DX8_ErrorCode(Peek_D3D_Texture()->GetSurfaceLevel(0, &surface_level));
+	HRESULT hr = Peek_D3D_Texture()->GetSurfaceLevel(0, &surface_level);
+	if (FAILED(hr) || !surface_level) {
+		AppendStartupTrace("AlphaEdgeTextureClass::update GetSurfaceLevel failed hr=%08x", (unsigned)hr);
+		return 0;
+	}
 	DX8_ErrorCode(surface_level->LockRect(&locked_rect, NULL, 0));
 	DX8_ErrorCode(surface_level->GetDesc(&surface_desc));
 
@@ -913,8 +1015,9 @@ up the "sliding" parameters for the clouds to slide over the terrain. */
 //=============================================================================
 //@todo - Allow adjustment of the cloud slide rate, and lose the hard coded "cloudmap.tga"
 CloudMapTerrainTextureClass::CloudMapTerrainTextureClass(MipCountType mipLevelCount) :
-	TextureClass("TSCloudMed.tga","TSCloudMed.tga", mipLevelCount )
+	TextureClass(4, 4, WW3D_FORMAT_A8R8G8B8, MIP_LEVELS_1)
 { 
+	EnsureProceduralTerrainTexture(this, 4, 4, 0xFFFFFFFF, "CloudMapTerrainTextureClass");
 	Get_Filter().Set_Mip_Mapping( TextureFilterClass::FILTER_TYPE_FAST );
 	m_xSlidePerSecond = -0.02f;	 
 	m_ySlidePerSecond =  1.50f * m_xSlidePerSecond;

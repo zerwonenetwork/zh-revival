@@ -52,6 +52,8 @@
 #include "Common/GameState.h"
 #include "Common/GlobalData.h"
 #include "Common/PerfTimer.h"
+
+extern void AppendStartupTrace(const char *format, ...);
 #include "Common/Xfer.h"
 #include "Common/GameLOD.h"
 
@@ -64,6 +66,63 @@
 #include "W3DDevice/GameClient/W3DPoly.h"
 #include "W3DDevice/GameClient/W3DScene.h"
 #include "W3DDevice/GameClient/W3DCustomScene.h"
+
+namespace
+{
+	static Int s_missingWaterSurfaceTraceCount = 0;
+
+	static void TraceMissingWaterSurface(const char *context, Int level = -1)
+	{
+		if (s_missingWaterSurfaceTraceCount >= 16)
+			return;
+
+		if (level >= 0)
+		{
+			AppendStartupTrace("W3DWater: missing surface in %s level=%d", context, level);
+		}
+		else
+		{
+			AppendStartupTrace("W3DWater: missing surface in %s", context);
+		}
+		++s_missingWaterSurfaceTraceCount;
+	}
+
+	static void SafePrimeWhiteTexture(TextureClass *texture, const char *context)
+	{
+		if (!texture)
+			return;
+
+		if (!texture->Is_Initialized())
+			texture->Init();
+
+		SurfaceClass *surface = texture->Get_Surface_Level();
+		if (!surface)
+		{
+			TraceMissingWaterSurface(context);
+			return;
+		}
+
+		surface->DrawPixel(0, 0, 0xffffffff);
+		REF_PTR_RELEASE(surface);
+	}
+
+	static IDirect3DBaseTexture8 *SafeWaterTexture(TextureClass *texture, const char *context)
+	{
+		if (!texture)
+		{
+			TraceMissingWaterSurface(context);
+			return NULL;
+		}
+
+		if (!texture->Is_Initialized())
+			texture->Init();
+
+		IDirect3DBaseTexture8 *baseTexture = texture->Peek_D3D_Base_Texture();
+		if (!baseTexture)
+			TraceMissingWaterSurface(context);
+		return baseTexture;
+	}
+}
 
 
 #ifdef _INTERNAL
@@ -216,7 +275,7 @@ void WaterRenderObjClass::setupJbaWaterShader(void)
 	DX8Wrapper::Set_DX8_Texture_Stage_State( 0, D3DTSS_ALPHAOP,   D3DTOP_ADD );
 	if (!m_riverAlphaEdge->Is_Initialized())
 		m_riverAlphaEdge->Init();
-	DX8Wrapper::_Get_D3D_Device8()->SetTexture(3,m_riverAlphaEdge->Peek_D3D_Texture());	
+	DX8Wrapper::_Get_D3D_Device8()->SetTexture(3, SafeWaterTexture(m_riverAlphaEdge, "jba water river alpha edge"));	
 	DX8Wrapper::Set_DX8_Texture_Stage_State(3,  D3DTSS_ADDRESSU, D3DTADDRESS_WRAP);
 	DX8Wrapper::Set_DX8_Texture_Stage_State(3,  D3DTSS_ADDRESSV, D3DTADDRESS_WRAP);
 	DX8Wrapper::Set_DX8_Texture_Stage_State(0,  D3DTSS_TEXCOORDINDEX, 0);
@@ -228,11 +287,11 @@ void WaterRenderObjClass::setupJbaWaterShader(void)
 	if (m_riverWaterPixelShader && doSparkles) {
 		if (!m_waterSparklesTexture->Is_Initialized())
 			m_waterSparklesTexture->Init();
-		DX8Wrapper::_Get_D3D_Device8()->SetTexture(1,m_waterSparklesTexture->Peek_D3D_Texture());	
+		DX8Wrapper::_Get_D3D_Device8()->SetTexture(1, SafeWaterTexture(m_waterSparklesTexture, "jba water sparkles"));	
 
 		if (!m_waterNoiseTexture->Is_Initialized())
 			m_waterNoiseTexture->Init();
-		DX8Wrapper::_Get_D3D_Device8()->SetTexture(2,m_waterNoiseTexture->Peek_D3D_Texture());	
+		DX8Wrapper::_Get_D3D_Device8()->SetTexture(2, SafeWaterTexture(m_waterNoiseTexture, "jba water noise"));	
 
 		DX8Wrapper::Set_DX8_Texture_Stage_State(1,  D3DTSS_ADDRESSU, D3DTADDRESS_WRAP);
 		DX8Wrapper::Set_DX8_Texture_Stage_State(1,  D3DTSS_ADDRESSV, D3DTADDRESS_WRAP);
@@ -455,10 +514,24 @@ HRESULT WaterRenderObjClass::initBumpMap(LPDIRECT3DTEXTURE8 *pTex, TextureClass 
 		return S_OK;
 
 	pTex[0]=DX8Wrapper::_Create_DX8_Texture(d3dsd.Width,d3dsd.Height,WW3D_FORMAT_U8V8,MIP_LEVELS_ALL,D3DPOOL_MANAGED,false);
+	if (!pTex[0]) {
+		AppendStartupTrace("W3DWater: bump pTex[0] creation failed; skipping bump copy");
+		return S_OK;
+	}
 
 	for (Int level=0; level < numLevels; level++)
 	{
 		surf=pBumpSource->Get_Surface_Level(level);
+		if (!surf)
+		{
+			TraceMissingWaterSurface("initBumpMap mip source", level);
+			if (pTex[0])
+			{
+				pTex[0]->Release();
+				pTex[0] = NULL;
+			}
+			return S_OK;
+		}
 		surf->Get_Description(d3dsd);
 		pSrc=(unsigned char *)surf->Lock((int *)&dwSrcPitch);
 
@@ -536,11 +609,21 @@ HRESULT WaterRenderObjClass::initBumpMap(LPDIRECT3DTEXTURE8 *pTex, TextureClass 
 
 #else
 	surf=pBumpSource->Get_Surface_Level();
+	if (!surf)
+	{
+		TraceMissingWaterSurface("initBumpMap source");
+		return S_OK;
+	}
 	surf->Get_Description(d3dsd);
 	pSrc=(unsigned char *)surf->Lock((int *)&dwSrcPitch);
 
     // Create the bumpmap's surface and texture objects
 	m_pBumpTexture[i]=DX8Wrapper::_Create_DX8_Texture(d3dsd.Width,d3dsd.Height,WW3D_FORMAT_U8V8,TextureClass::MIP_LEVELS_1,D3DPOOL_MANAGED,false);
+	if (!m_pBumpTexture[i]) {
+		AppendStartupTrace("W3DWater: m_pBumpTexture[%d] creation failed; skipping bump fill", i);
+		surf->Unlock();
+		continue;
+	}
 
     // Fill the bits of the new texture surface with bits from
     // a private format.
@@ -969,10 +1052,8 @@ void WaterRenderObjClass::ReAcquireResources(void)
 	if (m_waterSparklesTexture && !m_waterSparklesTexture->Is_Initialized())
 		m_waterSparklesTexture->Init();
 	if (m_whiteTexture && !m_whiteTexture->Is_Initialized())
-	{	m_whiteTexture->Init();
-		SurfaceClass *surface=m_whiteTexture->Get_Surface_Level();
-		surface->DrawPixel(0,0,0xffffffff);
-		REF_PTR_RELEASE(surface);
+	{
+		SafePrimeWhiteTexture(m_whiteTexture, "ReAcquireResources white texture");
 	}
 }
 
@@ -1116,9 +1197,7 @@ Int WaterRenderObjClass::init(Real waterLevel, Real dx, Real dy, SceneClass *par
 
 	//For some reason setting a NULL texture does not result in 0xffffffff for pixel shaders so using explicit "white" texture.
 	m_whiteTexture=MSGNEW("TextureClass") TextureClass(1,1,WW3D_FORMAT_A4R4G4B4,MIP_LEVELS_1);
-	SurfaceClass *surface=m_whiteTexture->Get_Surface_Level();
-	surface->DrawPixel(0,0,0xffffffff);
-	REF_PTR_RELEASE(surface);
+	SafePrimeWhiteTexture(m_whiteTexture, "WaterRenderObjClass::init white texture");
 
 	m_waterNoiseTexture=WW3DAssetManager::Get_Instance()->Get_Texture("Noise0000.tga");
 	m_riverAlphaEdge=WW3DAssetManager::Get_Instance()->Get_Texture("TWAlphaEdge.tga");
@@ -1434,6 +1513,12 @@ void WaterRenderObjClass::updateRenderTargetTextures(CameraClass *cam)
 //-------------------------------------------------------------------------------------------------
 void WaterRenderObjClass::renderMirror(CameraClass *cam)
 {
+	// Reflection render target may be NULL if the format is unsupported or device has DXWrapper proxy
+	if (!m_pReflectionTexture) {
+		AppendStartupTrace("WaterRenderObjClass::renderMirror: m_pReflectionTexture is NULL; skipping mirror render");
+		return;
+	}
+
 #ifdef EXTENDED_STATS
 	if (DX8Wrapper::stats.m_disableWater) {
 		return;
@@ -1789,6 +1874,12 @@ Bool WaterRenderObjClass::getClippedWaterPlane(CameraClass *cam, AABoxClass *box
 //-------------------------------------------------------------------------------------------------
 void WaterRenderObjClass::drawSea(RenderInfoClass & rinfo)
 {
+	// Reflection texture may be NULL if render target creation failed (e.g. DXWrapper proxy)
+	if (!m_pReflectionTexture) {
+		AppendStartupTrace("WaterRenderObjClass::drawSea: m_pReflectionTexture NULL; skipping shader water draw");
+		return;
+	}
+
 	AABoxClass	seaBox;
 
 	if (!getClippedWaterPlane(&rinfo.Camera,&seaBox))
@@ -1897,7 +1988,7 @@ void WaterRenderObjClass::drawSea(RenderInfoClass & rinfo)
 	m_pDev->SetRenderState( D3DRS_DESTBLEND, D3DBLEND_INVSRCALPHA );
 
 	m_pDev->SetRenderState(D3DRS_ALPHABLENDENABLE , TRUE);
-	m_pDev->SetTexture( 1, m_pReflectionTexture->Peek_D3D_Texture());
+	m_pDev->SetTexture(1, SafeWaterTexture(m_pReflectionTexture, "render bump reflection"));
 
 //	m_pDev->SetRenderState(D3DRS_FILLMODE,D3DFILL_WIREFRAME);//LORENZEN
 
@@ -2978,12 +3069,10 @@ void WaterRenderObjClass::setupFlatWaterShader(void)
 		{	//Assume no shroud, so stage 3 will be "NULL" texture but using actual white because
 			//pixel shader on GF4 generates random colors with SetTexture(3,NULL).
 			if (!m_whiteTexture->Is_Initialized())
-			{	m_whiteTexture->Init();
-				SurfaceClass *surface=m_whiteTexture->Get_Surface_Level();
-				surface->DrawPixel(0,0,0xffffffff);
-				REF_PTR_RELEASE(surface);
+			{
+				SafePrimeWhiteTexture(m_whiteTexture, "Render white texture");
 			}
-			DX8Wrapper::_Get_D3D_Device8()->SetTexture(3,m_whiteTexture->Peek_D3D_Texture());	
+			DX8Wrapper::_Get_D3D_Device8()->SetTexture(3, SafeWaterTexture(m_whiteTexture, "flat water white texture"));	
 		}
 	}
 
@@ -2998,12 +3087,12 @@ void WaterRenderObjClass::setupFlatWaterShader(void)
 		if (!m_waterSparklesTexture->Is_Initialized())
 			m_waterSparklesTexture->Init();
 
-		DX8Wrapper::_Get_D3D_Device8()->SetTexture(1,m_waterSparklesTexture->Peek_D3D_Texture());	
+		DX8Wrapper::_Get_D3D_Device8()->SetTexture(1, SafeWaterTexture(m_waterSparklesTexture, "flat water sparkles"));	
 
 		if (!m_waterNoiseTexture->Is_Initialized())
 			m_waterNoiseTexture->Init();
 
-		DX8Wrapper::_Get_D3D_Device8()->SetTexture(2,m_waterNoiseTexture->Peek_D3D_Texture());	
+		DX8Wrapper::_Get_D3D_Device8()->SetTexture(2, SafeWaterTexture(m_waterNoiseTexture, "flat water noise"));	
 
 		DX8Wrapper::Set_DX8_Texture_Stage_State(1,  D3DTSS_ADDRESSU, D3DTADDRESS_WRAP);
 		DX8Wrapper::Set_DX8_Texture_Stage_State(1,  D3DTSS_ADDRESSV, D3DTADDRESS_WRAP);
@@ -3510,5 +3599,3 @@ void WaterRenderObjClass::loadPostProcess( void )
 {
 
 }  // end loadPostProcess
-
-

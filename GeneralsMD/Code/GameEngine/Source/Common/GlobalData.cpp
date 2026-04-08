@@ -607,7 +607,7 @@ GlobalData::GlobalData()
 	m_dumpAssetUsage = FALSE;
 	m_framesPerSecondLimit = 0;
 	m_chipSetType = 0;
-	m_windowed = 0;
+	m_windowed = 1;  // default windowed to prevent DXWrapper POOL_DEFAULT reset on WM_ACTIVATEAPP
 	m_xResolution = 800;
 	m_yResolution = 600;
 	m_maxShellScreens = 0;
@@ -965,7 +965,7 @@ GlobalData::GlobalData()
 	m_weaponBonusSet = newInstance(WeaponBonusSet);
 
 	m_shellMapName.set("Maps\\ShellMap1\\ShellMap1.map");
-	m_shellMapOn =TRUE;
+	m_shellMapOn = FALSE;
 	m_playIntro = TRUE;
 	m_playSizzle = TRUE;
 	m_afterIntro = FALSE;
@@ -1253,4 +1253,3 @@ void GlobalData::parseGameDataDefinition( INI* ini )
 	TheWritableGlobalData->m_xResolution = xres;
 	TheWritableGlobalData->m_yResolution = yres;
 }
-

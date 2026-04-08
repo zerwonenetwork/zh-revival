@@ -63,6 +63,8 @@
 #include "bitmaphandler.h"
 #include "wwprofile.h"
 
+extern void AppendStartupTrace(const char *format, ...);
+
 //#pragma optimize("", off)
 //#pragma MESSAGE("************************************** WARNING, optimization disabled for debugging purposes")
 
@@ -274,6 +276,10 @@ IDirect3DTexture8* Load_Compressed_Texture(
 		(MipCountType)mips
 	);
 
+	if (!d3d_texture) {
+		AppendStartupTrace("TextureLoader: _Create_DX8_Texture returned NULL for %ux%u fmt=%d; skipping surface fill", width, height, (int)dest_format);
+		return NULL;
+	}
 	for (unsigned level=0;level<mips;++level) {
 		IDirect3DSurface8* d3d_surface=NULL;
 		WWASSERT(d3d_texture);
@@ -452,6 +458,10 @@ IDirect3DTexture8* TextureLoader::Load_Thumbnail(const StringClass& filename, co
 		D3DPOOL_SYSTEMMEM);
 #endif
 
+	if (!sysmem_texture) {
+		AppendStartupTrace("TextureLoader Load_Thumbnail: sysmem_texture NULL; skipping");
+		return NULL;
+	}
 	unsigned level=0;
 	D3DLOCKED_RECT locked_rects[12];
 	WWASSERT(sysmem_texture->GetLevelCount()<=12);
@@ -846,23 +856,51 @@ void TextureLoader::Flush_Pending_Load_Tasks(void)
 		}                                               \
 	}                                                  \
 
+extern void AppendStartupTrace(const char *format, ...);
 
 void TextureLoader::Update(void (*network_callback)(void))
 {
+	static bool s_traceFirstUpdate = true;
+	static const unsigned long kForegroundBudgetMs = 10;
+	static const int kForegroundTaskBudget = 32;
+	static bool s_skipFirstUpdate = true;
 	WWASSERT_PRINT(Is_DX8_Thread(), "TextureLoader::Update must be called from the main thread!");
 
 	if (TextureLoadSuspended) {
+		if (s_traceFirstUpdate) {
+			AppendStartupTrace("TextureLoader::Update first pass suspended");
+			s_traceFirstUpdate = false;
+		}
+		return;
+	}
+
+	if (s_skipFirstUpdate) {
+		AppendStartupTrace("TextureLoader::Update first pass skipped to avoid startup deadlock");
+		s_skipFirstUpdate = false;
+		s_traceFirstUpdate = false;
 		return;
 	}
 
 	// grab foreground lock to prevent any other thread from
 	// modifying texture tasks.
 	FastCriticalSectionClass::LockClass lock(_ForegroundCriticalSection);
+	if (s_traceFirstUpdate) {
+		AppendStartupTrace("TextureLoader::Update first pass after foreground lock");
+	}
 
 	unsigned long time = timeGetTime();
+	unsigned long budgetStart = time;
+	int processedTasks = 0;
 
 	// while we have tasks on the foreground queue
 	while (TextureLoadTaskClass *task = _ForegroundQueue.Pop_Front()) {
+		if (s_traceFirstUpdate && processedTasks < 4) {
+			AppendStartupTrace("TextureLoader::Update first pass task=%d type=%d state=%d priority=%d",
+				processedTasks,
+				(int)task->Get_Type(),
+				(int)task->Get_State(),
+				(int)task->Get_Priority());
+		}
 		UPDATE_NETWORK;
 		// dispatch to proper task handler
 		switch (task->Get_Type()) {
@@ -874,9 +912,22 @@ void TextureLoader::Update(void (*network_callback)(void))
 				Process_Foreground_Load(task);
 				break;
 		}
+		++processedTasks;
+		if (processedTasks >= kForegroundTaskBudget || (timeGetTime() - budgetStart) >= kForegroundBudgetMs) {
+			if (s_traceFirstUpdate) {
+				AppendStartupTrace("TextureLoader::Update first pass budget hit processed=%d elapsed=%lu",
+					processedTasks, (unsigned long)(timeGetTime() - budgetStart));
+			}
+			break;
+		}
 	}
 
 	TextureBaseClass::Invalidate_Old_Unused_Textures(TextureInactiveOverrideTime);
+	if (s_traceFirstUpdate) {
+		AppendStartupTrace("TextureLoader::Update first pass complete processed=%d elapsed=%lu",
+			processedTasks, (unsigned long)(timeGetTime() - budgetStart));
+		s_traceFirstUpdate = false;
+	}
 }
 
 void TextureLoader::Suspend_Texture_Load()
@@ -1220,6 +1271,12 @@ bool TextureLoadTaskClass::Begin_Load(void)
 bool TextureLoadTaskClass::Load(void)
 {
 	WWMEMLOG(MEM_TEXTURE);
+	if (!Peek_D3D_Texture()) {
+		AppendStartupTrace(
+			"TextureLoadTaskClass::Load missing d3d texture for %s",
+			Texture ? Texture->Get_Full_Path().Peek_Buffer() : "<null>");
+		return false;
+	}
 	WWASSERT(Peek_D3D_Texture());
 
 	bool loaded = false;
@@ -1778,21 +1835,28 @@ bool TextureLoadTaskClass::Begin_Uncompressed_Load(void)
 
 void TextureLoadTaskClass::Lock_Surfaces(void)
 {
+	IDirect3DTexture8 *d3dTexture = Peek_D3D_Texture();
+	if (!D3DTexture || !d3dTexture) {
+		AppendStartupTrace("TextureLoadTaskClass::Lock_Surfaces: D3DTexture is NULL; skipping lock");
+		MipLevelCount = 0;
+		return;
+	}
 	MipLevelCount = D3DTexture->GetLevelCount();
 
 	for (unsigned int i = 0; i < MipLevelCount; ++i) 
 	{
 		D3DLOCKED_RECT locked_rect;
-		DX8_ErrorCode
-		(
-			Peek_D3D_Texture()->LockRect
-			(
+		HRESULT hr = d3dTexture->LockRect(i, &locked_rect, NULL, 0);
+		if (FAILED(hr))
+		{
+			AppendStartupTrace(
+				"TextureLoadTaskClass::Lock_Surfaces: LockRect failed level=%u texture=%p hr=%08x",
 				i,
-				&locked_rect,
-				NULL,
-				0
-			)
-		);
+				d3dTexture,
+				(unsigned)hr);
+			MipLevelCount = i;
+			break;
+		}
 		LockedSurfacePtr[i]		= (unsigned char *)locked_rect.pBits;
 		LockedSurfacePitch[i]	= locked_rect.Pitch;
 	}
@@ -1801,22 +1865,36 @@ void TextureLoadTaskClass::Lock_Surfaces(void)
 
 void TextureLoadTaskClass::Unlock_Surfaces(void)
 {
+	IDirect3DTexture8 *d3dTexture = Peek_D3D_Texture();
 	for (unsigned int i = 0; i < MipLevelCount; ++i) 
 	{
 		if (LockedSurfacePtr[i]) 
 		{
 			WWASSERT(ThreadClass::_Get_Current_Thread_ID() == DX8Wrapper::_Get_Main_Thread_ID());
-			DX8_ErrorCode(Peek_D3D_Texture()->UnlockRect(i));
+			if (d3dTexture)
+			{
+				DX8_ErrorCode(d3dTexture->UnlockRect(i));
+			}
+			else
+			{
+				AppendStartupTrace(
+					"TextureLoadTaskClass::Unlock_Surfaces: missing D3D texture while unlocking level=%u",
+					i);
+			}
 		}
 		LockedSurfacePtr[i] = NULL;
 	}
 
 #ifndef USE_MANAGED_TEXTURES
 	IDirect3DTexture8* tex = DX8Wrapper::_Create_DX8_Texture(Width, Height, Format, Texture->MipLevelCount,D3DPOOL_DEFAULT);
-	DX8CALL(UpdateTexture(Peek_D3D_Texture(),tex));
-	Peek_D3D_Texture()->Release();
-	D3DTexture=tex;
-	WWDEBUG_SAY(("Created non-managed texture (%s)\n",Texture->Get_Full_Path()));
+	if (tex && Peek_D3D_Texture()) {
+		DX8CALL(UpdateTexture(Peek_D3D_Texture(),tex));
+		Peek_D3D_Texture()->Release();
+		D3DTexture=tex;
+		WWDEBUG_SAY(("Created non-managed texture (%s)\n",Texture->Get_Full_Path()));
+	} else {
+		AppendStartupTrace("TextureLoadTaskClass::Unlock_Surfaces: default pool texture creation failed for %s", Texture->Get_Full_Path());
+	}
 #endif
 
 }

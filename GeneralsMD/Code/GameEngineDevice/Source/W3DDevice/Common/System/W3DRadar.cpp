@@ -29,6 +29,8 @@
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 // INCLUDES ///////////////////////////////////////////////////////////////////////////////////////
+extern void AppendStartupTrace( const char *format, ... );
+
 #include "Common/AudioEventRTS.h"
 #include "Common/Debug.h"
 #include "Common/GlobalData.h"
@@ -52,6 +54,15 @@
 #include "W3DDevice/GameClient/W3DShroud.h"
 #include "WW3D2/texture.h"
 #include "WW3D2/dx8caps.h"
+
+static void TraceMissingRadarSurface(const char *context, TextureClass *texture)
+{
+	AppendStartupTrace(
+		"W3DRadar: missing surface in %s texture=%p d3d=%p",
+		context,
+		texture,
+		texture ? texture->Peek_D3D_Texture() : NULL);
+}
 
 #ifdef _INTERNAL
 // for occasional debugging...
@@ -626,6 +637,11 @@ void W3DRadar::renderObjectList( const RadarObject *listHead, TextureClass *text
 
 	// get surface for texture to render into
 	SurfaceClass *surface = texture->Get_Surface_Level();
+	if( !surface )
+	{
+		TraceMissingRadarSurface("renderObjectList", texture);
+		return;
+	}
 
 	// loop through all objects and draw
 	ICoord2D radarPoint;
@@ -957,9 +973,18 @@ void W3DRadar::init( void )
 //-------------------------------------------------------------------------------------------------
 void W3DRadar::reset( void )
 {
+	AppendStartupTrace("W3DRadar::reset start");
 
 	// extending functionality, call base class
 	Radar::reset();
+	AppendStartupTrace("W3DRadar::reset after Radar::reset");
+
+	if( !m_terrainTexture || !m_overlayTexture || !m_shroudTexture )
+	{
+		AppendStartupTrace("W3DRadar::reset radar textures unavailable terrain=%p overlay=%p shroud=%p",
+			m_terrainTexture, m_overlayTexture, m_shroudTexture);
+		return;
+	}
 
 	// clear our texture data, but do not delete the resources
 	SurfaceClass *surface;
@@ -981,6 +1006,7 @@ void W3DRadar::reset( void )
 	// don't call Clear(); that wips to transparent. do this instead.
 	//gs Dude, it's called CLEARshroud.  It needs to clear the shroud.
 	clearShroud();
+	AppendStartupTrace("W3DRadar::reset complete");
 	
 }  // end reset
 
@@ -1033,6 +1059,10 @@ void W3DRadar::buildTerrainTexture( TerrainLogic *terrain )
 
 	// get the terrain surface to draw in
 	surface = m_terrainTexture->Get_Surface_Level();
+	if (!surface) {
+		AppendStartupTrace("W3DRadar::buildTerrainTexture: terrain texture surface is NULL (D3D texture creation failed); skipping radar build");
+		return;
+	}
 	DEBUG_ASSERTCRASH( surface, ("W3DRadar: Can't get surface for terrain texture\n") );
 
 	// build the terrain
@@ -1260,7 +1290,12 @@ void W3DRadar::clearShroud()
 		return;
 #endif
 
+	if( !m_shroudTexture )
+		return;
+
 	SurfaceClass *surface = m_shroudTexture->Get_Surface_Level();
+	if( !surface )
+		return;
 	
 	// fill to clear, shroud will make black.  Don't want to make something black that logic can't clear
 	unsigned int color = GameMakeColor( 0, 0, 0, 0 );
@@ -1281,11 +1316,12 @@ void W3DRadar::setShroudLevel(Int shroudX, Int shroudY, CellShroudStatus setting
 #endif
 
 	W3DShroud* shroud = TheTerrainRenderObject ? TheTerrainRenderObject->getShroud() : NULL;
-	if (!shroud)
+	if (!shroud || !m_shroudTexture)
 		return;
 
 	SurfaceClass* surface = m_shroudTexture->Get_Surface_Level();
-	DEBUG_ASSERTCRASH( surface, ("W3DRadar: Can't get surface for Shroud texture\n") );
+	if( !surface )
+		return;
 
 	Int mapMinX = shroudX * shroud->getCellWidth();
 	Int mapMinY = shroudY * shroud->getCellHeight();
@@ -1349,6 +1385,11 @@ void W3DRadar::setShroudLevel(Int shroudX, Int shroudY, CellShroudStatus setting
 //-------------------------------------------------------------------------------------------------
 void W3DRadar::draw( Int pixelX, Int pixelY, Int width, Int height )
 {
+	if( !m_terrainImage || !m_overlayImage || !m_shroudImage ||
+			!m_terrainTexture || !m_overlayTexture || !m_shroudTexture )
+	{
+		return;
+	}
 
 	// if the local player does not have a radar then we can't draw anything
 	Player *player = ThePlayerList->getLocalPlayer();
@@ -1398,13 +1439,20 @@ void W3DRadar::draw( Int pixelX, Int pixelY, Int width, Int height )
 	{
 
 		// reset the overlay texture
-		SurfaceClass *surface = m_overlayTexture->Get_Surface_Level();
-		surface->Clear();
-		REF_PTR_RELEASE(surface);
+		SurfaceClass *surface = m_overlayTexture ? m_overlayTexture->Get_Surface_Level() : NULL;
+		if( surface )
+		{
+			surface->Clear();
+			REF_PTR_RELEASE(surface);
 
-		// rebuild the object overlay
-		renderObjectList( getObjectList(), m_overlayTexture );
-		renderObjectList( getLocalObjectList(), m_overlayTexture, TRUE );
+			// rebuild the object overlay
+			renderObjectList( getObjectList(), m_overlayTexture );
+			renderObjectList( getLocalObjectList(), m_overlayTexture, TRUE );
+		}
+		else
+		{
+			TraceMissingRadarSurface("draw overlay clear", m_overlayTexture);
+		}
 		
 	}  // end if
 

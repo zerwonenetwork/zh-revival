@@ -50,6 +50,18 @@
 
 //static PerfTimer s_stateMachineTimer("StateMachine::update", false, PERFMETRICS_LOGIC_STARTFRAME, PERFMETRICS_LOGIC_STOPFRAME);
 //-------------------------------------------------------------------------------------------------
+static const Object* ResolveBoundOwnerPtr(const Object* owner, ObjectID ownerID)
+{
+	if (ownerID != INVALID_ID && TheGameLogic != NULL)
+	{
+		const Object* live = TheGameLogic->findObjectByID(ownerID);
+		if (live != NULL)
+			return live;
+	}
+
+	return owner;
+}
+
 //-----------------------------------------------------------------------------
 /**
  * Constructor
@@ -267,6 +279,7 @@ StateReturnType State::friend_checkForSleepTransitions( StateReturnType status )
 StateMachine::StateMachine( Object *owner, AsciiString name )
 {
 	m_owner = owner;
+	m_ownerID = owner ? owner->getID() : INVALID_ID;
 	m_sleepTill = 0;
 	m_defaultStateID = INVALID_STATE_ID;
 	m_defaultStateInited = false;
@@ -280,24 +293,59 @@ StateMachine::StateMachine( Object *owner, AsciiString name )
 	internalClear();
 }
 
+Object *StateMachine::getOwner()
+{
+	return const_cast<Object*>(ResolveBoundOwnerPtr(m_owner, m_ownerID));
+}
+
+const Object *StateMachine::getOwner() const
+{
+	return ResolveBoundOwnerPtr(m_owner, m_ownerID);
+}
+
 //-----------------------------------------------------------------------------
 /**
  * Destructor.  Destroy any states attached to this machine.
  */
 StateMachine::~StateMachine()
 {
+	State* exitingState = m_currentState;
+	m_currentState = NULL;
 
 	// do not allow current state to exit
-	if (m_currentState)
-		m_currentState->onExit( EXIT_RESET );
+	if (exitingState)
+		exitingState->onExit( EXIT_RESET );
 
+	std::vector<State*> statesToDelete;
+	statesToDelete.reserve(m_stateMap.size());
 	std::map<StateID, State *>::iterator i;
 
-	// delete all states in the mapping
+	// Take a unique snapshot first so reentrant teardown cannot double-delete
+	// the same state through duplicate map entries or recursive cleanup.
 	for( i = m_stateMap.begin(); i != m_stateMap.end(); ++i )
 	{
-		if ((*i).second)
-			(*i).second->deleteInstance();
+		State* state = (*i).second;
+		(*i).second = NULL;
+		if (state == NULL)
+			continue;
+
+		Bool alreadyQueued = false;
+		for (std::vector<State*>::const_iterator queued = statesToDelete.begin(); queued != statesToDelete.end(); ++queued)
+		{
+			if (*queued == state)
+			{
+				alreadyQueued = true;
+				break;
+			}
+		}
+
+		if (!alreadyQueued)
+			statesToDelete.push_back(state);
+	}
+
+	for (std::vector<State*>::iterator queued = statesToDelete.begin(); queued != statesToDelete.end(); ++queued)
+	{
+		(*queued)->deleteInstance();
 	}
 }
 
@@ -337,9 +385,10 @@ void StateMachine::internalClear()
 	m_goalPosition.y = 0.0f;
 	m_goalPosition.z = 0.0f;
 #ifdef STATE_MACHINE_DEBUG
-	if (getWantsDebugOutput())
+	const Object* owner = getOwner();
+	if (getWantsDebugOutput() && owner != NULL)
 	{
-		DEBUG_LOG(("%d '%s'%x -- '%s' %x internalClear()\n", TheGameLogic->getFrame(), m_owner->getTemplate()->getName().str(), m_owner, m_name.str(), this));
+		DEBUG_LOG(("%d '%s'%x -- '%s' %x internalClear()\n", TheGameLogic->getFrame(), owner->getTemplate()->getName().str(), owner, m_name.str(), this));
 	}
 #endif
 }
@@ -360,11 +409,13 @@ void StateMachine::clear()
 		return;
 	}
 
-	// invoke the old state's onExit()
-	if (m_currentState)
-		m_currentState->onExit( EXIT_RESET );
-
+	State* exitingState = m_currentState;
 	m_currentState = NULL;
+
+	// Let the old state unwind only after detaching it so reentrant clears or
+	// transitions cannot keep operating on a stale current-state pointer.
+	if (exitingState)
+		exitingState->onExit( EXIT_RESET );
 
 	internalClear();
 }
@@ -391,10 +442,13 @@ StateReturnType StateMachine::resetToDefaultState()
 		return STATE_FAILURE;
 	}
 
-	// allow current state to exit with EXIT_RESET if present
-	if (m_currentState)
-		m_currentState->onExit( EXIT_RESET );
+	State* exitingState = m_currentState;
 	m_currentState = NULL;
+
+	// Detach before onExit so nested reset/clear paths cannot reuse the same
+	// current-state pointer after it has begun tearing down.
+	if (exitingState)
+		exitingState->onExit( EXIT_RESET );
 
 	//
 	// the current state has done an onExit, clear the internal guts before we set
@@ -606,9 +660,13 @@ StateReturnType StateMachine::internalSetState( StateID newStateID )
 #endif
 	}
 
-	// invoke the old state's onExit()
-	if (m_currentState)
-		m_currentState->onExit( EXIT_NORMAL );
+	State* exitingState = m_currentState;
+	m_currentState = NULL;
+
+	// Detach the outgoing state first so reentrant state changes during onExit
+	// cannot keep driving a stale current-state pointer.
+	if (exitingState)
+		exitingState->onExit( EXIT_NORMAL );
 
 	// set the new state
 	m_currentState = newState;
@@ -757,9 +815,10 @@ void StateMachine::halt()
 	m_locked = true;
 	m_currentState = NULL; // don't exit current state, just clear it.
 #ifdef STATE_MACHINE_DEBUG
-	if (getWantsDebugOutput())
+	const Object* owner = getOwner();
+	if (getWantsDebugOutput() && owner != NULL)
 	{
-		DEBUG_LOG(("%d '%s' -- '%s' %x halt()\n", TheGameLogic->getFrame(), m_owner->getTemplate()->getName().str(), m_name.str(), this));
+		DEBUG_LOG(("%d '%s' -- '%s' %x halt()\n", TheGameLogic->getFrame(), owner->getTemplate()->getName().str(), m_name.str(), this));
 	}	
 #endif
 }
@@ -896,6 +955,7 @@ void StateMachine::xfer( Xfer *xfer )
 // ------------------------------------------------------------------------------------------------
 void StateMachine::loadPostProcess( void )
 {
-
+	if (m_owner != NULL)
+		m_ownerID = m_owner->getID();
 }  // end loadPostProcess
 

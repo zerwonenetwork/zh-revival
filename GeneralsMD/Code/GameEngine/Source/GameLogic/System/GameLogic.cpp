@@ -78,6 +78,8 @@
 #include "GameClient/View.h"
 #include "GameClient/ControlBar.h"
 #include "GameClient/CampaignManager.h"
+
+extern void AppendStartupTrace(const char *fmt, ...);
 #include "GameClient/GameWindowTransitions.h"
 
 #include "GameLogic/AI.h"
@@ -149,6 +151,14 @@ enum { OBJ_HASH_SIZE	= 8192 };
 GameLogic *TheGameLogic = NULL;
 
 static void findAndSelectCommandCenter(Object *obj, void* alreadyFound);
+
+static AsciiString MakeControlBarOverrideKey(const AsciiString& commandSetName, Int slot)
+{
+	AsciiString key;
+	key.concat(static_cast<char>('0' + slot));
+	key.concat(commandSetName);
+	return key;
+}
 
 
 // ------------------------------------------------------------------------------------------------
@@ -1109,6 +1119,7 @@ void GameLogic::deleteLoadScreen( void )
 // ------------------------------------------------------------------------------------------------
 void GameLogic::startNewGame( Bool loadingSaveGame )
 {
+	AppendStartupTrace("GameLogic::startNewGame enter loadingSaveGame=%d m_startNewGame=%d", loadingSaveGame ? 1 : 0, m_startNewGame ? 1 : 0);
 
 	#ifdef DUMP_PERF_STATS
 	__int64 startTime64;
@@ -1118,6 +1129,7 @@ void GameLogic::startNewGame( Bool loadingSaveGame )
 	#endif
 
 	setLoadingMap( TRUE );
+	AppendStartupTrace("GameLogic::startNewGame after setLoadingMap");
 
 	if( loadingSaveGame == FALSE )
 	{
@@ -1138,6 +1150,7 @@ void GameLogic::startNewGame( Bool loadingSaveGame )
 
 		if( m_startNewGame == FALSE )
 		{
+			AppendStartupTrace("GameLogic::startNewGame first-entry preflight");
 			/// @todo: Here is where we would look at the game mode & play an intro movie or something.
 			// Failing that, we just set the flag so the actual game can start from a uniform
 			// entry point (startNewGame() called from update()).
@@ -1160,6 +1173,7 @@ void GameLogic::startNewGame( Bool loadingSaveGame )
 			}
 
 			m_startNewGame = TRUE;
+			AppendStartupTrace("GameLogic::startNewGame first-entry returning with m_startNewGame=TRUE");
 			return;
 
 		}  
@@ -1167,17 +1181,22 @@ void GameLogic::startNewGame( Bool loadingSaveGame )
 	}  // end if
 
 	m_rankLevelLimit = 1000;	// this is reset every game.
+	AppendStartupTrace("GameLogic::startNewGame before setDefaults");
 	setDefaults( loadingSaveGame );
+	AppendStartupTrace("GameLogic::startNewGame after setDefaults");
 	TheWritableGlobalData->m_loadScreenRender = TRUE;	///< mark it so only a few select things are rendered during load	
 	TheWritableGlobalData->m_TiVOFastMode = FALSE;	//always disable the TIVO fast-forward mode at the start of a new game.
+	AppendStartupTrace("GameLogic::startNewGame after loadScreen/tivo flags");
 
 	m_showBehindBuildingMarkers = TRUE;
 	m_drawIconUI = TRUE;
 	m_showDynamicLOD = TRUE;
 	m_scriptHulkMaxLifetimeOverride = -1;
+	AppendStartupTrace("GameLogic::startNewGame after visual flags");
 
 	Campaign* currentCampaign = TheCampaignManager->getCurrentCampaign();
 	Bool isChallengeCampaign = m_gameMode == GAME_SINGLE_PLAYER && currentCampaign && currentCampaign->m_isChallengeCampaign;
+	AppendStartupTrace("GameLogic::startNewGame after currentCampaign gameMode=%d challenge=%d", (int)m_gameMode, isChallengeCampaign ? 1 : 0);
 
 	// Fill in the game color and Factions before we do the Load Screen
 	GameInfo *game = NULL;
@@ -1211,6 +1230,7 @@ void GameLogic::startNewGame( Bool loadingSaveGame )
 			TheGameInfo = game = TheChallengeGameInfo;
 		}
 	}
+	AppendStartupTrace("GameLogic::startNewGame after game info selection game=%p network=%p", game, TheNetwork);
 
   // On a NEW game, we need to copy the superweapon restrictions from the game info to here
   // (because TheGameInfo is not always saved and doesn't carry over to replays). On a save
@@ -1227,8 +1247,10 @@ void GameLogic::startNewGame( Bool loadingSaveGame )
       m_superweaponRestriction = 0;
     }
   }
+	AppendStartupTrace("GameLogic::startNewGame after superweapon restriction");
 
 	checkForDuplicateColors( game );
+	AppendStartupTrace("GameLogic::startNewGame after checkForDuplicateColors");
 
 	Bool isSkirmishOrSkirmishReplay = FALSE;
 	if (game)
@@ -1253,9 +1275,12 @@ void GameLogic::startNewGame( Bool loadingSaveGame )
 			}
 		}
 	}
+	AppendStartupTrace("GameLogic::startNewGame after skirmish/replay scan");
 
 	populateRandomSideAndColor( game );
+	AppendStartupTrace("GameLogic::startNewGame after populateRandomSideAndColor");
 	populateRandomStartPosition( game );
+	AppendStartupTrace("GameLogic::startNewGame after populateRandomStartPosition");
 
 	//****************************//
 	// Start the LoadScreen Now!	//
@@ -1264,44 +1289,68 @@ void GameLogic::startNewGame( Bool loadingSaveGame )
 	// Get the m_loadScreen for this kind of game
 	if(!m_loadScreen)
 	{
+		AppendStartupTrace("GameLogic::startNewGame before getLoadScreen");
 		m_loadScreen = getLoadScreen( loadingSaveGame );
+		AppendStartupTrace("GameLogic::startNewGame after getLoadScreen loadScreen=%p", m_loadScreen);
 		if(m_loadScreen)
 		{
+			AppendStartupTrace("GameLogic::startNewGame before TheMouse->setVisibility(FALSE)");
 			TheMouse->setVisibility(FALSE);
+			AppendStartupTrace("GameLogic::startNewGame after TheMouse->setVisibility(FALSE)");
+			AppendStartupTrace("GameLogic::startNewGame before m_loadScreen->init(game)");
 			m_loadScreen->init(game);
+			AppendStartupTrace("GameLogic::startNewGame after m_loadScreen->init(game)");
 
 			// 
 			updateLoadProgress( LOAD_PROGRESS_START );
+			AppendStartupTrace("GameLogic::startNewGame after LOAD_PROGRESS_START");
 		}
 	}
+	AppendStartupTrace("GameLogic::startNewGame after loadscreen init");
 	if(m_background)
 	{
+		AppendStartupTrace("GameLogic::startNewGame before background destroy");
 		m_background->destroyWindows();
+		AppendStartupTrace("GameLogic::startNewGame after background destroy");
 		m_background->deleteInstance();
+		AppendStartupTrace("GameLogic::startNewGame after background deleteInstance");
 		m_background = NULL;
 	}
+	AppendStartupTrace("GameLogic::startNewGame after background cleanup");
+	AppendStartupTrace("GameLogic::startNewGame before setFPMode post-loadscreen");
 	setFPMode();
+	AppendStartupTrace("GameLogic::startNewGame after setFPMode post-loadscreen");
 	if(TheCampaignManager)
+	{
+		AppendStartupTrace("GameLogic::startNewGame before SetVictorious(FALSE)");
 		TheCampaignManager->SetVictorious(FALSE);
+		AppendStartupTrace("GameLogic::startNewGame after SetVictorious(FALSE)");
+	}
 	m_startNewGame = FALSE;
+	AppendStartupTrace("GameLogic::startNewGame after SetVictorious and m_startNewGame=FALSE");
 
 	// update the loadscreen 
 	if(m_loadScreen)
 		updateLoadProgress(LOAD_PROGRESS_POST_PARTICLE_INI_LOAD);
+	AppendStartupTrace("GameLogic::startNewGame after initial load progress");
 
 	// reset the frame counter
 	m_frame = 0;
+	AppendStartupTrace("GameLogic::startNewGame after m_frame reset");
 
 	// before loading the map, load the map.ini file in the same directory.
 	loadMapINI( TheGlobalData->m_mapName );
+	AppendStartupTrace("GameLogic::startNewGame after loadMapINI");
 
 	// load a map
 	TheTerrainLogic->loadMap( TheGlobalData->m_mapName, false );
+	AppendStartupTrace("GameLogic::startNewGame after TheTerrainLogic->loadMap");
 	// anytime the world's size changes, must reset the partition mgr
 	//ThePartitionManager->init();
 
 	// update the loadscreen 
 	updateLoadProgress(LOAD_PROGRESS_POST_LOAD_MAP);
+	AppendStartupTrace("GameLogic::startNewGame after LOAD_PROGRESS_POST_LOAD_MAP");
 
 	#ifdef DUMP_PERF_STATS
 	GetPrecisionTimer(&endTime64);
@@ -3611,6 +3660,12 @@ extern __int64 Total_Load_3D_Assets;
 // ------------------------------------------------------------------------------------------------
 void GameLogic::update( void )
 {
+	static Int s_logicUpdateTraceCount = 0;
+	const Bool traceLogicPass = (s_logicUpdateTraceCount < 5);
+	const Int traceLogicPassIndex = s_logicUpdateTraceCount + 1;
+	if (traceLogicPass) {
+		AppendStartupTrace("GameLogic::update pass %d start", traceLogicPassIndex);
+	}
 	USE_PERF_TIMER(GameLogic_update)
 
 	LatchRestore<Bool> inUpdateLatch(m_isInUpdate, TRUE);
@@ -3619,10 +3674,21 @@ void GameLogic::update( void )
 #endif
 
 	setFPMode();
+	if (traceLogicPass) {
+		AppendStartupTrace(
+			"GameLogic::update pass %d after setFPMode m_startNewGame=%d moviePlaying=%d",
+			traceLogicPassIndex,
+			m_startNewGame ? 1 : 0,
+			TheDisplay->isMoviePlaying() ? 1 : 0
+		);
+	}
 	
 	/// @todo remove this hack
 	if ( m_startNewGame && !TheDisplay->isMoviePlaying())
 	{
+		if (traceLogicPass) {
+			AppendStartupTrace("GameLogic::update pass %d before startNewGame(FALSE)", traceLogicPassIndex);
+		}
 	#ifdef DUMP_PERF_STATS
 		Total_Get_Texture_Time=0;
 		Total_Get_HAnim_Time=0;
@@ -3637,7 +3703,13 @@ void GameLogic::update( void )
 #ifdef _PROFILE
     Profile::StopRange("map_load");
 #endif
+		if (traceLogicPass) {
+			AppendStartupTrace("GameLogic::update pass %d after startNewGame(FALSE)", traceLogicPassIndex);
+		}
 		m_startNewGame = FALSE;
+		if (traceLogicPass) {
+			AppendStartupTrace("GameLogic::update pass %d after clearing m_startNewGame", traceLogicPassIndex);
+		}
 
 	#ifdef DUMP_PERF_STATS
 		char Buf[1024];
@@ -3658,10 +3730,16 @@ void GameLogic::update( void )
 	DEBUG_ASSERTCRASH(TheGameLogic == this, ("hmm, TheGameLogic is not right"));
 	UnsignedInt now = TheGameLogic->getFrame();
 	TheGameClient->setFrame(now);
+	if (traceLogicPass) {
+		AppendStartupTrace("GameLogic::update pass %d after setFrame now=%u", traceLogicPassIndex, now);
+	}
 
 	// update (execute) scripts
 	{
 		TheScriptEngine->UPDATE();
+	}
+	if (traceLogicPass) {
+		AppendStartupTrace("GameLogic::update pass %d after TheScriptEngine->UPDATE", traceLogicPassIndex);
 	}
 
 	Bool freezeTime = TheTacticalView->isTimeFrozen() && !TheTacticalView->isCameraMovementFinished();
@@ -3676,6 +3754,10 @@ void GameLogic::update( void )
 		else 
 		{
 			/// @todo - make sure this never happens during a network game.  jba.
+			if (traceLogicPass) {
+				AppendStartupTrace("GameLogic::update pass %d returning early due to freezeTime", traceLogicPassIndex);
+				s_logicUpdateTraceCount++;
+			}
 			return;
 		}
 	}
@@ -3684,6 +3766,9 @@ void GameLogic::update( void )
 	// This way changes in bridges are noted in the script engine before being cleared in TerrainLogic->update
 	{
 		TheTerrainLogic->UPDATE();
+	}
+	if (traceLogicPass) {
+		AppendStartupTrace("GameLogic::update pass %d after TheTerrainLogic->UPDATE", traceLogicPassIndex);
 	}
 
 	// force CRC calculation, so we can keep a cache of the last N CRCs.  We do this right where the recorder
@@ -3716,21 +3801,33 @@ void GameLogic::update( void )
 			//DEBUG_LOG(("Appended Playback CRC of %8.8X on frame %d\n", m_CRC, m_frame));
 		}
 	}
+	if (traceLogicPass) {
+		AppendStartupTrace("GameLogic::update pass %d after CRC block", traceLogicPassIndex);
+	}
 
 	// collect stats
 	if(TheStatsCollector)
 	{
 		TheStatsCollector->update();
 	}
+	if (traceLogicPass) {
+		AppendStartupTrace("GameLogic::update pass %d after TheStatsCollector->update", traceLogicPassIndex);
+	}
 
 	// Update the Recorder
 	{
 		TheRecorder->UPDATE();
 	}
+	if (traceLogicPass) {
+		AppendStartupTrace("GameLogic::update pass %d after TheRecorder->UPDATE", traceLogicPassIndex);
+	}
 
 	// process client commands
 	{
 		processCommandList( TheCommandList );
+	}
+	if (traceLogicPass) {
+		AppendStartupTrace("GameLogic::update pass %d after processCommandList", traceLogicPassIndex);
 	}
 
 #ifdef ALLOW_NONSLEEPY_UPDATES
@@ -3738,7 +3835,13 @@ void GameLogic::update( void )
 		for (std::list<UpdateModulePtr>::const_iterator it = m_normalUpdates.begin(); it != m_normalUpdates.end(); ++it)
 		{
 			UpdateModulePtr u = *it;
-			DisabledMaskType dis = u->friend_getObject()->getDisabledFlags();
+			const Object *updateObject = u ? u->friend_getObject() : NULL;
+			if (updateObject == NULL || updateObject->isDestroyed())
+			{
+				continue;
+			}
+
+			DisabledMaskType dis = updateObject->getDisabledFlags();
 			if (!dis.any() || dis.anyIntersectionWith(u->getDisabledTypesToProcess()))
 			{
 				USE_PERF_TIMER(GameLogic_update_normal)
@@ -3757,15 +3860,37 @@ void GameLogic::update( void )
 		}
 	}
 #endif
+	if (traceLogicPass) {
+		AppendStartupTrace("GameLogic::update pass %d after normal updates", traceLogicPassIndex);
+	}
 
 	{
+		UnsignedInt sleepyIterations = 0;
 		while (!m_sleepyUpdates.empty())
 		{
 			UpdateModulePtr u = peekSleepyUpdate();
+			if (traceLogicPass && (sleepyIterations < 5 || (sleepyIterations % 1000) == 0))
+			{
+				AppendStartupTrace(
+					"GameLogic::update pass %d sleepy iter=%u nextCall=%u now=%u",
+					traceLogicPassIndex,
+					sleepyIterations,
+					u ? u->friend_getNextCallFrame() : 0,
+					now
+				);
+			}
 
 			if (!u)
 			{
 				DEBUG_CRASH(("Null update. should not happen."));
+				continue;
+			}
+
+			const Object *updateObject = u->friend_getObject();
+			if (updateObject == NULL || updateObject->isDestroyed())
+			{
+				eraseSleepyUpdate(0);
+				++sleepyIterations;
 				continue;
 			}
 
@@ -3778,7 +3903,7 @@ void GameLogic::update( void )
 
 			UpdateSleepTime sleepLen = UPDATE_SLEEP_NONE;	// default, if it is disabled.
 
-			DisabledMaskType dis = u->friend_getObject()->getDisabledFlags();
+			DisabledMaskType dis = updateObject->getDisabledFlags();
 			if (!dis.any() || dis.anyIntersectionWith(u->getDisabledTypesToProcess()))
 			{
 				USE_PERF_TIMER(GameLogic_update_sleepy)
@@ -3798,24 +3923,40 @@ void GameLogic::update( void )
 			// else defer it till next frame and re-push it
 			u->friend_setNextCallFrame(now + sleepLen);
 			rebalanceSleepyUpdate(0);
+			++sleepyIterations;
+		}
+		if (traceLogicPass) {
+			AppendStartupTrace("GameLogic::update pass %d after sleepy updates", traceLogicPassIndex);
 		}
 	}
 
 	validateSleepyUpdate();
+	if (traceLogicPass) {
+		AppendStartupTrace("GameLogic::update pass %d after validateSleepyUpdate", traceLogicPassIndex);
+	}
 
 	// update the Artificial Intelligence system
 	{
 		TheAI->UPDATE();
+	}
+	if (traceLogicPass) {
+		AppendStartupTrace("GameLogic::update pass %d after TheAI->UPDATE", traceLogicPassIndex);
 	}
 
 	// production updates
 	{
 		TheBuildAssistant->UPDATE();
 	}
+	if (traceLogicPass) {
+		AppendStartupTrace("GameLogic::update pass %d after TheBuildAssistant->UPDATE", traceLogicPassIndex);
+	}
 
 	// update partition info
 	{
 		ThePartitionManager->UPDATE();
+	}
+	if (traceLogicPass) {
+		AppendStartupTrace("GameLogic::update pass %d after ThePartitionManager->UPDATE", traceLogicPassIndex);
 	}
 
 	//
@@ -3824,13 +3965,22 @@ void GameLogic::update( void )
 
 	// destroy all pending objects
 	processDestroyList();
+	if (traceLogicPass) {
+		AppendStartupTrace("GameLogic::update pass %d after processDestroyList", traceLogicPassIndex);
+	}
 
 	// reset the command list, destroying all messages
 	TheCommandList->reset();
+	if (traceLogicPass) {
+		AppendStartupTrace("GameLogic::update pass %d after TheCommandList->reset", traceLogicPassIndex);
+	}
 
 	TheWeaponStore->UPDATE();	
 	TheLocomotorStore->UPDATE();	
 	TheVictoryConditions->UPDATE();
+	if (traceLogicPass) {
+		AppendStartupTrace("GameLogic::update pass %d after store/victory updates", traceLogicPassIndex);
+	}
 
 #ifdef DO_COPY_PROTECTION
 	if (!isInShellGame() && isInGame())
@@ -3854,6 +4004,9 @@ void GameLogic::update( void )
 			}
 		}
 	}
+	if (traceLogicPass) {
+		AppendStartupTrace("GameLogic::update pass %d after disabled-status sweep", traceLogicPassIndex);
+	}
 
   
 
@@ -3863,6 +4016,10 @@ void GameLogic::update( void )
 	if (!m_startNewGame)
 	{
 		m_frame++;
+	}
+	if (traceLogicPass) {
+		AppendStartupTrace("GameLogic::update pass %d complete frame=%u", traceLogicPassIndex, m_frame);
+		s_logicUpdateTraceCount++;
 	}
 }
 
@@ -4014,6 +4171,7 @@ void GameLogic::destroyObject( Object *obj )
 
 	// mark object as destroyed
 	obj->setStatus( MAKE_OBJECT_STATUS_MASK( OBJECT_STATUS_DESTROYED ) );
+	obj->setStatus( MAKE_OBJECT_STATUS_MASK( OBJECT_STATUS_NO_COLLISIONS ) );
 
 	// We desperately need to stop here, or else the destructor of the statemachine will try to do
 	// stopping logic, which uses virtual functions and deleted modules, which will crash us.
@@ -4452,20 +4610,13 @@ Bool GameLogic::findBuildableStatusOverride(const ThingTemplate* tt, BuildableSt
 // ------------------------------------------------------------------------------------------------
 void GameLogic::setControlBarOverride(const AsciiString& commandSetName, Int slot, ConstCommandButtonPtr commandButton)
 {
-	char buf[256];
-	buf[0] = '0' + slot;
-	strcpy(&buf[1], commandSetName.str());
-	m_controlBarOverrides[buf] = commandButton;
+	m_controlBarOverrides[MakeControlBarOverrideKey(commandSetName, slot)] = commandButton;
 }
 
 // ------------------------------------------------------------------------------------------------
 Bool GameLogic::findControlBarOverride(const AsciiString& commandSetName, Int slot, ConstCommandButtonPtr& commandButton) const
 {
-	char buf[256];
-	buf[0] = '0' + slot;
-	strcpy(&buf[1], commandSetName.str());
-
-	ControlBarOverrideMap::const_iterator it = m_controlBarOverrides.find(buf);
+	ControlBarOverrideMap::const_iterator it = m_controlBarOverrides.find(MakeControlBarOverrideKey(commandSetName, slot));
 	if (it != m_controlBarOverrides.end())
 	{
 		commandButton = it->second;	// could be null.

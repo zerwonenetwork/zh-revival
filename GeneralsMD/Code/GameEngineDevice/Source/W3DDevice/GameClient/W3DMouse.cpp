@@ -47,6 +47,16 @@
 #include "mutex.h"
 #include "thread.h"
 
+extern void AppendStartupTrace(const char *format, ...);
+
+namespace
+{
+	static IDirect3DSurface8 *SafeCursorSurface(SurfaceClass *surface)
+	{
+		return surface ? surface->Peek_D3D_Surface() : NULL;
+	}
+}
+
 #ifdef _INTERNAL
 // for occasional debugging...
 //#pragma optimize("", off)
@@ -168,7 +178,11 @@ Bool W3DMouse::releaseD3DCursorTextures(MouseCursor cursor)
 	{
 		REF_PTR_RELEASE(m_currentD3DSurface[i]);
 		REF_PTR_RELEASE(cursorTextures[cursor][i]);
+		m_currentD3DSurface[i] = NULL;
+		cursorTextures[cursor][i] = NULL;
 	}
+
+	m_currentFrames = 0;
 
 	return TRUE;
 }
@@ -198,7 +212,23 @@ Bool W3DMouse::loadD3DCursorTextures(MouseCursor cursor)
 	{	//single animation frame without trailing numbers
 		sprintf(FrameName,"%s.tga",baseName);
 		cursorTextures[cursor][0]=	am->Get_Texture(FrameName);
+		if (cursorTextures[cursor][0] == NULL)
+			return FALSE;
+
 		m_currentD3DSurface[0]=cursorTextures[cursor][0]->Get_Surface_Level();
+		if (m_currentD3DSurface[0] == NULL)
+		{
+			AppendStartupTrace(
+				"W3DMouse::loadD3DCursorTextures missing surface cursor=%d frame='%s' texture=%p d3d=%p",
+				cursor,
+				FrameName,
+				cursorTextures[cursor][0],
+				cursorTextures[cursor][0]->Peek_D3D_Texture());
+			REF_PTR_RELEASE(cursorTextures[cursor][0]);
+			cursorTextures[cursor][0] = NULL;
+			m_currentD3DSurface[0] = NULL;
+			return FALSE;
+		}
 		m_currentFrames = 1;
 	}
 	else
@@ -206,11 +236,26 @@ Bool W3DMouse::loadD3DCursorTextures(MouseCursor cursor)
 	{
 		sprintf(FrameName,"%s%04d.tga",baseName,i);
 		if ((cursorTextures[cursor][i]=am->Get_Texture(FrameName)) != NULL)
-		{	m_currentD3DSurface[m_currentFrames]=cursorTextures[cursor][i]->Get_Surface_Level();
+		{
+			SurfaceClass *surface = cursorTextures[cursor][i]->Get_Surface_Level();
+			if (surface == NULL)
+			{
+				AppendStartupTrace(
+					"W3DMouse::loadD3DCursorTextures missing surface cursor=%d frame='%s' texture=%p d3d=%p",
+					cursor,
+					FrameName,
+					cursorTextures[cursor][i],
+					cursorTextures[cursor][i]->Peek_D3D_Texture());
+				REF_PTR_RELEASE(cursorTextures[cursor][i]);
+				cursorTextures[cursor][i] = NULL;
+				continue;
+			}
+
+			m_currentD3DSurface[m_currentFrames]=surface;
 			m_currentFrames++;
 		}
 	}
-	return TRUE;
+	return m_currentFrames > 0;
 }
 
 void W3DMouse::initD3DAssets(void)
@@ -235,7 +280,7 @@ void W3DMouse::initD3DAssets(void)
 			for (Int j=0; j < MAX_2D_CURSOR_ANIM_FRAMES; j++)
 			{
 				cursorTextures[i][j]=NULL;//am->Get_Texture(m_cursorInfo[i].textureName.str());
-				m_currentD3DSurface[i]=NULL;
+				m_currentD3DSurface[j]=NULL;
 			}
 		}
 	}
@@ -245,14 +290,22 @@ void W3DMouse::freeD3DAssets(void)
 {
 	//free pointers to texture surfaces.
 	for (Int i=0; i<MAX_2D_CURSOR_ANIM_FRAMES; i++)
+	{
 		REF_PTR_RELEASE(m_currentD3DSurface[i]);
+		m_currentD3DSurface[i] = NULL;
+	}
 
 	//free textures.
 	for (Int i=0; i<NUM_MOUSE_CURSORS; i++)
 	{
 		for (Int j=0; j<MAX_2D_CURSOR_ANIM_FRAMES; j++)
+		{
 			REF_PTR_RELEASE(cursorTextures[i][j]);
+			cursorTextures[i][j] = NULL;
+		}
 	}
+
+	m_currentFrames = 0;
 
 }
 
@@ -413,10 +466,16 @@ void W3DMouse::setCursor( MouseCursor cursor )
 		if (doImageChange)
 		{
 			HRESULT res;
+			IDirect3DSurface8 *cursorSurface = SafeCursorSurface(m_currentD3DSurface[(Int)m_currentAnimFrame]);
+			if (!cursorSurface)
+			{
+				AppendStartupTrace("W3DMouse::setCursor missing DX8 cursor surface cursor=%d frame=%d", cursor, (Int)m_currentAnimFrame);
+				return;
+			}
 			m_currentHotSpot = m_cursorInfo[cursor].hotSpotPosition;
 			m_currentFMS = m_cursorInfo[cursor].fps/1000.0f;
 			m_currentAnimFrame = 0;	//reset animation when cursor changes
-			res = m_pDev->SetCursorProperties(m_currentHotSpot.x,m_currentHotSpot.y,m_currentD3DSurface[(Int)m_currentAnimFrame]->Peek_D3D_Surface());
+			res = m_pDev->SetCursorProperties(m_currentHotSpot.x,m_currentHotSpot.y,cursorSurface);
 			m_pDev->ShowCursor(TRUE);	//Enable DX8 cursor
 			m_currentD3DFrame=(Int)m_currentAnimFrame;
 			m_currentD3DCursor = cursor;
@@ -509,8 +568,15 @@ void W3DMouse::draw(void)
 
 				if ((Int)m_currentAnimFrame != m_currentD3DFrame)
 				{
+					IDirect3DSurface8 *cursorSurface = SafeCursorSurface(m_currentD3DSurface[(Int)m_currentAnimFrame]);
+					if (!cursorSurface)
+					{
+						AppendStartupTrace("W3DMouse::draw missing animated cursor surface cursor=%d frame=%d", m_currentD3DCursor, (Int)m_currentAnimFrame);
+						m_currentFrames = 0;
+						return;
+					}
 					m_currentD3DFrame=(Int)m_currentAnimFrame;
-					m_pDev->SetCursorProperties(m_currentHotSpot.x,m_currentHotSpot.y,m_currentD3DSurface[m_currentD3DFrame]->Peek_D3D_Surface());
+					m_pDev->SetCursorProperties(m_currentHotSpot.x,m_currentHotSpot.y,cursorSurface);
 				}
 			}
 		}

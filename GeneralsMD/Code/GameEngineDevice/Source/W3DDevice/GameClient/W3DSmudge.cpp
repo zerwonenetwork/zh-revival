@@ -41,6 +41,8 @@
 #include "WW3D2/camera.h"
 #include "WW3D2/sortingrenderer.h"
 
+extern void AppendStartupTrace(const char *format, ...);
+
 #ifdef _INTERNAL
 // for occasional debugging...
 //#pragma optimize("", off)
@@ -86,6 +88,11 @@ void W3DSmudgeManager::ReAcquireResources(void)
 
 	SurfaceClass *surface=DX8Wrapper::_Get_DX8_Back_Buffer();
 	SurfaceClass::SurfaceDescription surface_desc;
+	if (!surface)
+	{
+		AppendStartupTrace("W3DSmudge::ReAcquireResources missing back buffer surface");
+		return;
+	}
 
 	surface->Get_Description(surface_desc);
 	REF_PTR_RELEASE(surface);
@@ -332,8 +339,17 @@ void W3DSmudgeManager::render(RenderInfoClass &rinfo)
 
 	SurfaceClass::SurfaceDescription surface_desc;
 #ifdef USE_COPY_RECTS
-	SurfaceClass *background=m_backgroundTexture->Get_Surface_Level();
+	SurfaceClass *background = m_backgroundTexture ? m_backgroundTexture->Get_Surface_Level() : NULL;
+	if (!background)
+	{
+		AppendStartupTrace(
+			"W3DSmudge::render background surface NULL texture=%p d3d=%p",
+			m_backgroundTexture,
+			m_backgroundTexture ? m_backgroundTexture->Peek_D3D_Texture() : NULL);
+		return;
+	}
 	background->Get_Description(surface_desc);
+	REF_PTR_RELEASE(background);
 #else
 	D3DSURFACE_DESC D3DDesc;
 

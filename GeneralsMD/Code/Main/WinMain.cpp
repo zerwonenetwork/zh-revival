@@ -108,26 +108,42 @@ static Int  ApplicationHeightOverride = 0;   // -height N
 void AppendStartupTrace( const char *format, ... )
 {
 	char path[_MAX_PATH];
+	char *slash = NULL;
 	va_list args;
 	FILE *file = NULL;
-	int len = GetModuleFileName(NULL, path, _MAX_PATH);
+	DWORD len = GetModuleFileNameA(NULL, path, _MAX_PATH);
 
-	if (len <= 0 || len >= _MAX_PATH)
+	if (len == 0 || len >= _MAX_PATH)
 		return;
 
-	for (int i = len - 1; i >= 0; --i)
+	path[len] = '\0';
+
+	slash = strrchr(path, '\\');
+	if (slash == NULL)
+		slash = strrchr(path, '/');
+
+	if (slash != NULL)
+		slash[1] = '\0';
+	else
 	{
-		if (path[i] == '\\' || path[i] == '/')
-		{
-			path[i + 1] = '\0';
-			break;
-		}
+#if defined(_MSC_VER) && !defined(__clang__)
+		strcpy_s(path, sizeof(path), ".\\");
+#else
+		strncpy(path, ".\\", sizeof(path) - 1);
+		path[sizeof(path) - 1] = '\0';
+#endif
 	}
 
-	strcat(path, "zh-startup-trace.log");
+#if defined(_MSC_VER) && !defined(__clang__)
+	strcat_s(path, sizeof(path), "zh-startup-trace.log");
+	if (fopen_s(&file, path, "a") != 0 || file == NULL)
+		return;
+#else
+	strncat(path, "zh-startup-trace.log", sizeof(path) - strlen(path) - 1);
 	file = fopen(path, "a");
 	if (file == NULL)
 		return;
+#endif
 
 	va_start(args, format);
 	vfprintf(file, format, args);

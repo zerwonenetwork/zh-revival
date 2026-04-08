@@ -2503,6 +2503,10 @@ void PartitionContactList::processContactList()
 
 		Object* obj = cd->m_obj->getObject();
 		Object* other = cd->m_other->getObject();
+
+		if (obj->isDestroyed() || other->isDestroyed() ||
+				obj->isEffectivelyDead() || other->isEffectivelyDead())
+			continue;
 		
 		if( obj->getStatusBits().test( OBJECT_STATUS_NO_COLLISIONS ) ||
 				other->getStatusBits().test( OBJECT_STATUS_NO_COLLISIONS ) )

@@ -27,6 +27,8 @@
 // Author: Colin Day, April 2001
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+extern void AppendStartupTrace(const char *format, ...);
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <windows.h>
@@ -233,77 +235,80 @@ W3DTerrainVisual::~W3DTerrainVisual()
 //-------------------------------------------------------------------------------------------------
 void W3DTerrainVisual::init( void )
 {
+	AppendStartupTrace("W3DTerrainVisual::init start");
 
 	// extend
 	TerrainVisual::init();
+	AppendStartupTrace("W3DTerrainVisual::init after TerrainVisual::init");
 	// create a new render object for W3D
 	m_terrainRenderObject = NEW_REF( HeightMapRenderObjClass, () );
+	AppendStartupTrace("W3DTerrainVisual::init after HeightMapRenderObjClass NEW_REF ptr=%p", m_terrainRenderObject);
 	m_terrainRenderObject->Set_Collision_Type( PICK_TYPE_TERRAIN );
 	TheTerrainRenderObject = m_terrainRenderObject;
+	AppendStartupTrace("W3DTerrainVisual::init after terrain render object setup");
 
 	// initialize track drawing system
 	TheTerrainTracksRenderObjClassSystem = NEW TerrainTracksRenderObjClassSystem;
+	AppendStartupTrace("W3DTerrainVisual::init after TerrainTracksRenderObjClassSystem NEW ptr=%p", TheTerrainTracksRenderObjClassSystem);
 	TheTerrainTracksRenderObjClassSystem->init(W3DDisplay::m_3DScene);
+	AppendStartupTrace("W3DTerrainVisual::init after TerrainTracksRenderObjClassSystem->init");
 
 #ifdef	INCLUDE_GRANNY_IN_BUILD
 	// initialize Granny model drawing system
 	TheGrannyRenderObjSystem = NEW GrannyRenderObjSystem;
+	AppendStartupTrace("W3DTerrainVisual::init after GrannyRenderObjSystem NEW ptr=%p", TheGrannyRenderObjSystem);
 #endif
 
 	// initialize object shadow drawing system
 	TheW3DShadowManager = NEW W3DShadowManager;
+	AppendStartupTrace("W3DTerrainVisual::init after W3DShadowManager NEW ptr=%p", TheW3DShadowManager);
  	TheW3DShadowManager->init();
+	AppendStartupTrace("W3DTerrainVisual::init after W3DShadowManager->init");
 	
-	// create a water plane render object
-	TheWaterRenderObj=m_waterRenderObject = NEW_REF( WaterRenderObjClass, () );
-	m_waterRenderObject->init(TheGlobalData->m_waterPositionZ, TheGlobalData->m_waterExtentX, TheGlobalData->m_waterExtentY, W3DDisplay::m_3DScene, (WaterRenderObjClass::WaterType)TheGlobalData->m_waterType);	//create a water plane that's 128x128 units
-	m_waterRenderObject->Set_Position(Vector3(TheGlobalData->m_waterPositionX,TheGlobalData->m_waterPositionY,TheGlobalData->m_waterPositionZ));	//place water in world
+	// Water rendering is visual-only; skip it during startup while modern D3D8 wrapper compatibility is stabilized.
+	TheWaterRenderObj = NULL;
+	m_waterRenderObject = NULL;
+	AppendStartupTrace("W3DTerrainVisual::init water rendering disabled during startup");
 
 	// create smudge rendering system.
 	TheSmudgeManager = NEW(W3DSmudgeManager);
+	AppendStartupTrace("W3DTerrainVisual::init after W3DSmudgeManager NEW ptr=%p", TheSmudgeManager);
 	TheSmudgeManager->init();
+	AppendStartupTrace("W3DTerrainVisual::init after W3DSmudgeManager->init");
 
-#ifdef DO_UNIT_TIMINGS
-#pragma MESSAGE("********************* WARNING- Doing UNIT TIMINGS. ")
-#else 
-		if (TheGlobalData->m_waterType == WaterRenderObjClass::WATER_TYPE_1_FB_REFLECTION)
-		{	// add water render object to the pre-pass scene (to be rendered before main scene)
- 			//W3DDisplay::m_prePass3DScene->Add_Render_Object( m_waterRenderObject);
-		}
-		else
-		{	// add water render object to the post-pass scene (to be rendered after main scene)
-			W3DDisplay::m_3DScene->Add_Render_Object( m_waterRenderObject);
-		}
-#endif
-	if (TheGlobalData->m_useCloudPlane)
-		m_waterRenderObject->toggleCloudLayer(true);
-	else
-		m_waterRenderObject->toggleCloudLayer(false);
+	AppendStartupTrace("W3DTerrainVisual::init after water render object scene hookup");
+	AppendStartupTrace("W3DTerrainVisual::init after toggleCloudLayer");
 
 	// set the vertex animated water properties
 	Int waterSettingIndex = 0;  // use index 0 settings by default
 	TheTerrainVisual->setWaterGridHeightClamps( NULL, 
 																							TheGlobalData->m_vertexWaterHeightClampLow[ waterSettingIndex ], 
 																							TheGlobalData->m_vertexWaterHeightClampHi[ waterSettingIndex ] );
+	AppendStartupTrace("W3DTerrainVisual::init after setWaterGridHeightClamps");
 	TheTerrainVisual->setWaterTransform( NULL, 
 																			 TheGlobalData->m_vertexWaterAngle[ waterSettingIndex ], 
 																			 TheGlobalData->m_vertexWaterXPosition[ waterSettingIndex ], 
 																			 TheGlobalData->m_vertexWaterYPosition[ waterSettingIndex ], 
 																			 TheGlobalData->m_vertexWaterZPosition[ waterSettingIndex ] );
+	AppendStartupTrace("W3DTerrainVisual::init after setWaterTransform");
 	TheTerrainVisual->setWaterGridResolution( NULL, 
 																						TheGlobalData->m_vertexWaterXGridCells[ waterSettingIndex ], 
 																						TheGlobalData->m_vertexWaterYGridCells[ waterSettingIndex ], 
 																						TheGlobalData->m_vertexWaterGridSize[ waterSettingIndex ] );
+	AppendStartupTrace("W3DTerrainVisual::init after setWaterGridResolution");
 	TheTerrainVisual->setWaterAttenuationFactors( NULL, 
 																								TheGlobalData->m_vertexWaterAttenuationA[ waterSettingIndex ], 
 																								TheGlobalData->m_vertexWaterAttenuationB[ waterSettingIndex ], 
 																								TheGlobalData->m_vertexWaterAttenuationC[ waterSettingIndex ], 
 																								TheGlobalData->m_vertexWaterAttenuationRange[ waterSettingIndex ] );	
+	AppendStartupTrace("W3DTerrainVisual::init after setWaterAttenuationFactors");
 	m_isWaterGridRenderingEnabled = FALSE;
+	AppendStartupTrace("W3DTerrainVisual::init after water grid disable");
 
 #ifdef DO_SEISMIC_SIMULATIONS
   m_seismicSimulationList.clear();
 #endif
+	AppendStartupTrace("W3DTerrainVisual::init complete");
 
 }  // end init
 
@@ -549,6 +554,7 @@ void W3DTerrainVisual::updateSeismicSimulations( void )
 //-------------------------------------------------------------------------------------------------
 Bool W3DTerrainVisual::load( AsciiString filename )
 {
+	AppendStartupTrace("W3DTerrainVisual::load start file='%s'", filename.str());
 	
 #if 0	
 	// (gth) Testing exclusion list asset releasing
@@ -573,6 +579,7 @@ Bool W3DTerrainVisual::load( AsciiString filename )
 	// enhancing functionality specific for W3D terrain
 	if( TerrainVisual::load( filename ) == FALSE )
 		return FALSE;  // failed
+	AppendStartupTrace("W3DTerrainVisual::load after TerrainVisual::load");
 
 	// open the terrain file
 	CachedFileInputStream fileStrm;
@@ -583,9 +590,11 @@ Bool W3DTerrainVisual::load( AsciiString filename )
 		return FALSE;
 
 	}  // end if
+	AppendStartupTrace("W3DTerrainVisual::load after file open");
 
 	if( m_terrainRenderObject == NULL )
 		return FALSE;
+	AppendStartupTrace("W3DTerrainVisual::load terrainRenderObject=%p", m_terrainRenderObject);
 
 
   ChunkInputStream *pStrm = &fileStrm;
@@ -593,6 +602,7 @@ Bool W3DTerrainVisual::load( AsciiString filename )
   // allocate new height map data to read from file
   REF_PTR_RELEASE( m_logicHeightMap );
 	m_logicHeightMap = NEW WorldHeightMap(pStrm);
+	AppendStartupTrace("W3DTerrainVisual::load after logic heightmap");
 
 
 
@@ -646,6 +656,7 @@ Bool W3DTerrainVisual::load( AsciiString filename )
 		}
 		pMapObj = pMapObj->getNext();
 	}
+	AppendStartupTrace("W3DTerrainVisual::load after light pass");
 
 
 	RefRenderObjListIterator *it = W3DDisplay::m_3DScene->createLightsIterator();
@@ -662,14 +673,17 @@ Bool W3DTerrainVisual::load( AsciiString filename )
 																				 m_logicHeightMap,
 																				 it);
 #endif
+	AppendStartupTrace("W3DTerrainVisual::load after initHeightData");
 
 
 	if (it) {
 	 W3DDisplay::m_3DScene->destroyLightsIterator(it);
 	 it = NULL;
 	}
+	AppendStartupTrace("W3DTerrainVisual::load after destroyLightsIterator");
 	// add our terrain render object to the scene
 	W3DDisplay::m_3DScene->Add_Render_Object( m_terrainRenderObject );
+	AppendStartupTrace("W3DTerrainVisual::load after Add_Render_Object terrain");
 
 #if defined _DEBUG || defined _INTERNAL
 	// Icon drawing utility object for pathfinding.
@@ -702,13 +716,16 @@ Bool W3DTerrainVisual::load( AsciiString filename )
 		}
 		pMapObj = pMapObj->getNext();
 	}
+	AppendStartupTrace("W3DTerrainVisual::load after scorch pass");
 
 	// reset water render object if present
 	if( m_waterRenderObject )
 	{
 		m_waterRenderObject->load();
+		AppendStartupTrace("W3DTerrainVisual::load after waterRenderObject->load");
 	}
 
+	AppendStartupTrace("W3DTerrainVisual::load complete");
 	return TRUE;  // success
 
 }  // end load

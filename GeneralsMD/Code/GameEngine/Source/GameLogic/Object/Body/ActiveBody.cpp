@@ -44,6 +44,7 @@
 #include "GameClient/Drawable.h"
 #include "GameClient/InGameUI.h"
 #include "GameClient/ParticleSys.h"
+#include "GameClient/Shell.h"
 #include "GameLogic/AI.h"
 #include "GameLogic/AIPathfind.h"
 #include "GameLogic/Armor.h"
@@ -59,6 +60,8 @@
 #include "GameLogic/Module/ContainModule.h"
 #include "GameLogic/Module/DamageModule.h"
 #include "GameLogic/Module/DieModule.h"
+
+extern void AppendStartupTrace( const char *format, ... );
 
 
 #ifdef _INTERNAL
@@ -125,6 +128,81 @@ static BodyDamageType calcDamageState(Real health, Real maxHealth)
 	{
 		return BODY_RUBBLE;
 	}
+}
+
+//-------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------
+static const Object *ResolveBoundObjectPtr(const Object *obj)
+{
+	if (!obj || !TheGameLogic)
+		return NULL;
+
+	ObjectID id = INVALID_ID;
+
+#if defined(_MSC_VER) && defined(_WIN32)
+	__try
+	{
+		id = obj->getID();
+	}
+	__except (EXCEPTION_EXECUTE_HANDLER)
+	{
+		return NULL;
+	}
+#else
+	id = obj->getID();
+#endif
+
+	if (id == INVALID_ID)
+		return NULL;
+
+	Object *live = TheGameLogic->findObjectByID(id);
+	if (live != obj)
+		return NULL;
+
+	return live;
+}
+
+//-------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------
+static Object *ResolveBoundObjectPtr(Object *obj)
+{
+	return const_cast<Object *>(ResolveBoundObjectPtr(static_cast<const Object *>(obj)));
+}
+
+//-------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------
+static Object *ResolveLiveObjectPtr(Object *obj)
+{
+	Object *live = ResolveBoundObjectPtr(obj);
+	if (!live)
+		return NULL;
+
+#if defined(_MSC_VER) && defined(_WIN32)
+	__try
+	{
+		if (live->isEffectivelyDead())
+			return NULL;
+	}
+	__except (EXCEPTION_EXECUTE_HANDLER)
+	{
+		return NULL;
+	}
+#else
+	if (live->isEffectivelyDead())
+		return NULL;
+#endif
+
+	return live;
+}
+
+//-------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------
+static Bool ShouldSkipShellDamage()
+{
+	return TheGameLogic &&
+		(TheGameLogic->isInShellGame() ||
+		 (TheShell && TheShell->isShellActive()) ||
+		 (TheGlobalData && TheGlobalData->m_shellMapOn));
 }
 
 //-------------------------------------------------------------------------------------------------
@@ -320,6 +398,10 @@ Real ActiveBody::estimateDamage( DamageInfoInput& damageInfo ) const
 //-------------------------------------------------------------------------------------------------
 void ActiveBody::doDamageFX( const DamageInfo *damageInfo )
 {
+	Object *target = ResolveBoundObjectPtr(getObject());
+	if (!target)
+		return;
+
 	DamageType damageTypeToUse = damageInfo->in.m_damageType;
 	if (damageInfo->in.m_damageFXOverride != DAMAGE_UNRESISTABLE )
 	{
@@ -333,10 +415,10 @@ void ActiveBody::doDamageFX( const DamageInfo *damageInfo )
 		UnsignedInt now = TheGameLogic->getFrame();
 		if (damageTypeToUse == m_lastDamageFXDone && m_nextDamageFXTime > now)
 			return;
-		Object *source = TheGameLogic->findObjectByID(damageInfo->in.m_sourceID);	// might be null, I guess
+		Object *source = ResolveBoundObjectPtr(TheGameLogic->findObjectByID(damageInfo->in.m_sourceID));	// might be null, I guess
 		m_lastDamageFXDone = damageTypeToUse;
 		m_nextDamageFXTime = now + m_curDamageFX->getDamageFXThrottleTime(damageTypeToUse, source);
-		m_curDamageFX->doDamageFX(damageTypeToUse, damageInfo->out.m_actualDamageDealt, source, getObject());
+		m_curDamageFX->doDamageFX(damageTypeToUse, damageInfo->out.m_actualDamageDealt, source, target);
 	}
 }
 
@@ -356,13 +438,36 @@ void ActiveBody::attemptDamage( DamageInfo *damageInfo )
 	// initialize these, just in case we bail out early
 	damageInfo->out.m_actualDamageDealt = 0.0f;
 	damageInfo->out.m_actualDamageClipped = 0.0f;
+	damageInfo->out.m_noEffect = false;
+
+	Object* obj = ResolveBoundObjectPtr(getObject());
+	if (!obj)
+		return;
+
+	if (ShouldSkipShellDamage())
+	{
+		static Int s_shellDamageSkipTraceCount = 0;
+		if (s_shellDamageSkipTraceCount < 24)
+		{
+			AppendStartupTrace(
+				"ActiveBody::attemptDamage shell-skip body=%p obj=%p source=%u type=%d amount=%f kill=%d",
+				this,
+				obj,
+				(UnsignedInt)damageInfo->in.m_sourceID,
+				(Int)damageInfo->in.m_damageType,
+				(double)damageInfo->in.m_amount,
+				damageInfo->in.m_kill ? 1 : 0);
+			++s_shellDamageSkipTraceCount;
+		}
+		damageInfo->out.m_noEffect = true;
+		return;
+	}
 
 	// we cannot damage again objects that are already dead
-	Object* obj = getObject();
 	if( obj->isEffectivelyDead() )
 		return;
 
-	Object *damager = TheGameLogic->findObjectByID( damageInfo->in.m_sourceID );
+	Object *damager = ResolveBoundObjectPtr(TheGameLogic->findObjectByID( damageInfo->in.m_sourceID ));
 	if( damager )
 	{
 		//Store the template so later if the attacking object dies, we use script conditions to look at the 
@@ -404,8 +509,9 @@ void ActiveBody::attemptDamage( DamageInfo *damageInfo )
 					if( ai->isMoving() )
 					{
 						//Bike is moving, so just blow it up instead.
-						if (damager)
-							damager->scoreTheKill( obj );
+						Object *liveDamager = ResolveBoundObjectPtr(damager);
+						if (liveDamager)
+							liveDamager->scoreTheKill( obj );
 						obj->kill();
 					}
 					else
@@ -415,8 +521,9 @@ void ActiveBody::attemptDamage( DamageInfo *damageInfo )
 						ai->aiEvacuateInstantly( TRUE, CMD_FROM_AI );
 
 						//Kill the rider.
-						if (damager)
-							damager->scoreTheKill( rider );
+						Object *liveDamager = ResolveBoundObjectPtr(damager);
+						if (liveDamager)
+							liveDamager->scoreTheKill( rider );
 						rider->kill();
 					}
 				}
@@ -466,11 +573,14 @@ void ActiveBody::attemptDamage( DamageInfo *damageInfo )
 						Object* thingToKill = *it;
 						if (!thingToKill->isEffectivelyDead() )
 						{
-							if (damager)
-								damager->scoreTheKill( thingToKill );
+							Object *liveDamager = ResolveBoundObjectPtr(damager);
+							if (liveDamager)
+								liveDamager->scoreTheKill( thingToKill );
 							thingToKill->kill();
 							++numKilled;
-							thingToKill->getControllingPlayer()->getAcademyStats()->recordClearedGarrisonedBuilding();
+							Player *killedPlayer = thingToKill->getControllingPlayer();
+							if (killedPlayer)
+								killedPlayer->getAcademyStats()->recordClearedGarrisonedBuilding();
 						}
 					} // next contained item
 
@@ -569,22 +679,58 @@ void ActiveBody::attemptDamage( DamageInfo *damageInfo )
 		// m_lastDamageTimestamp is initialized to FFFFFFFFFF, so doing a < compare is problematic.
 		// jba.
 		if (m_lastDamageTimestamp!=TheGameLogic->getFrame() && m_lastDamageTimestamp != TheGameLogic->getFrame()-1) {
+			static Int s_lastDamageTraceCount = 0;
+			if (s_lastDamageTraceCount < 10)
+			{
+				++s_lastDamageTraceCount;
+				AppendStartupTrace(
+					"ActiveBody::attemptDamage before snapshot body=%p obj=%p source=%u type=%d amount=%f",
+					this,
+					obj,
+					(UnsignedInt)damageInfo->in.m_sourceID,
+					(Int)damageInfo->in.m_damageType,
+					(double)damageInfo->out.m_actualDamageDealt);
+			}
 			m_lastDamageInfo = *damageInfo;
 			m_lastDamageCleared = false;
 			m_lastDamageTimestamp = TheGameLogic->getFrame();
 		} else {
 			// Multiple damages applied in one/next frame.  We prefer the one that tells who the attacker is.
-			Object *srcObj1 = TheGameLogic->findObjectByID(m_lastDamageInfo.in.m_sourceID);
-			Object *srcObj2 = TheGameLogic->findObjectByID(damageInfo->in.m_sourceID);
+			Object *srcObj1 = ResolveBoundObjectPtr(TheGameLogic->findObjectByID(m_lastDamageInfo.in.m_sourceID));
+			Object *srcObj2 = ResolveBoundObjectPtr(TheGameLogic->findObjectByID(damageInfo->in.m_sourceID));
 			if (srcObj2) {
 				if (srcObj1) {
 					if (srcObj2->isKindOf(KINDOF_VEHICLE) || srcObj2->isKindOf(KINDOF_INFANTRY) ||
 						srcObj2->isFactionStructure()) {
+							static Int s_lastDamageReplaceTraceCount = 0;
+							if (s_lastDamageReplaceTraceCount < 10)
+							{
+								++s_lastDamageReplaceTraceCount;
+								AppendStartupTrace(
+									"ActiveBody::attemptDamage replace snapshot body=%p obj=%p source=%u type=%d amount=%f",
+									this,
+									obj,
+									(UnsignedInt)damageInfo->in.m_sourceID,
+									(Int)damageInfo->in.m_damageType,
+									(double)damageInfo->out.m_actualDamageDealt);
+							}
 							m_lastDamageInfo = *damageInfo;
 							m_lastDamageCleared = false;
 							m_lastDamageTimestamp = TheGameLogic->getFrame();
 						}
 				} else {
+					static Int s_lastDamageAdoptTraceCount = 0;
+					if (s_lastDamageAdoptTraceCount < 10)
+					{
+						++s_lastDamageAdoptTraceCount;
+						AppendStartupTrace(
+							"ActiveBody::attemptDamage adopt snapshot body=%p obj=%p source=%u type=%d amount=%f",
+							this,
+							obj,
+							(UnsignedInt)damageInfo->in.m_sourceID,
+							(Int)damageInfo->in.m_damageType,
+							(double)damageInfo->out.m_actualDamageDealt);
+					}
 					m_lastDamageInfo = *damageInfo;
 					m_lastDamageCleared = false;
 					m_lastDamageTimestamp = TheGameLogic->getFrame();
@@ -598,11 +744,13 @@ void ActiveBody::attemptDamage( DamageInfo *damageInfo )
 		// Notify the player that they have been attacked by this player
 		if (m_lastDamageInfo.in.m_sourceID != INVALID_ID) 
 		{
-			Object *srcObj = TheGameLogic->findObjectByID(m_lastDamageInfo.in.m_sourceID);
+			Object *srcObj = ResolveBoundObjectPtr(TheGameLogic->findObjectByID(m_lastDamageInfo.in.m_sourceID));
 			if (srcObj)
 			{
+				Player *targetPlayer = obj->getControllingPlayer();
 				Player *srcPlayer = srcObj->getControllingPlayer();
-				obj->getControllingPlayer()->setAttackedBy(srcPlayer->getPlayerIndex());
+				if (targetPlayer && srcPlayer)
+					targetPlayer->setAttackedBy(srcPlayer->getPlayerIndex());
 			}
 		}
 
@@ -617,6 +765,11 @@ void ActiveBody::attemptDamage( DamageInfo *damageInfo )
 
 				d->onDamage( damageInfo );
 			}
+
+			obj = ResolveBoundObjectPtr(obj);
+			damager = ResolveBoundObjectPtr(damager);
+			if (!obj)
+				return;
 		}
 
 		if (m_curDamageState != oldState)
@@ -629,6 +782,11 @@ void ActiveBody::attemptDamage( DamageInfo *damageInfo )
 
 				d->onBodyDamageStateChange( damageInfo, oldState, m_curDamageState );
 			}
+
+			obj = ResolveBoundObjectPtr(obj);
+			damager = ResolveBoundObjectPtr(damager);
+			if (!obj)
+				return;
 			
 			// @todo: This really feels like it should be in the TransitionFX lists.
 			if (m_curDamageState == BODY_DAMAGED) 
@@ -656,12 +814,21 @@ void ActiveBody::attemptDamage( DamageInfo *damageInfo )
 			{
 				AudioEventRTS fearSound = *obj->getTemplate()->getVoiceFear();
 				fearSound.setPosition( obj->getPosition() );
-				fearSound.setPlayerIndex( obj->getControllingPlayer()->getPlayerIndex() );
-				TheAudio->addAudioEvent(&fearSound);
+				Player *ownerPlayer = obj->getControllingPlayer();
+				if (ownerPlayer)
+				{
+					fearSound.setPlayerIndex( ownerPlayer->getPlayerIndex() );
+					TheAudio->addAudioEvent(&fearSound);
+				}
 			}
 		}
 
 		// check to see if we died
+		obj = ResolveBoundObjectPtr(obj);
+		damager = ResolveBoundObjectPtr(damager);
+		if (!obj)
+			return;
+
 		if( m_currentHealth <= 0 && m_prevHealth > 0 )
 		{
 			// Give our killer credit for killing us, if there is one.
@@ -671,38 +838,54 @@ void ActiveBody::attemptDamage( DamageInfo *damageInfo )
 			}
 	
 			obj->onDie( damageInfo );
+			obj = ResolveBoundObjectPtr(obj);
+			if (!obj)
+				return;
 		}
 	}
+
+	obj = ResolveBoundObjectPtr(obj);
+	if (!obj)
+		return;
 
 	doDamageFX(damageInfo);
 
 	// Damaged repulsable civilians scare (repulse) other civs.	jba.
-	if( TheAI->getAiData()->m_enableRepulsors ) 
+	Object *retaliationObj = ResolveLiveObjectPtr(obj);
+	if( retaliationObj && TheAI->getAiData()->m_enableRepulsors ) 
 	{
-		if( obj->isKindOf( KINDOF_CAN_BE_REPULSED ) ) 
+		if( retaliationObj->isKindOf( KINDOF_CAN_BE_REPULSED ) ) 
 		{
-			obj->setStatus( MAKE_OBJECT_STATUS_MASK( OBJECT_STATUS_REPULSOR ) );
+			retaliationObj->setStatus( MAKE_OBJECT_STATUS_MASK( OBJECT_STATUS_REPULSOR ) );
 		}
 	}
 
 	//Retaliate, even if I'm dead -- we'll still get my nearby friends to get revenge!!!
 	//Also only retaliate if we're controlled by a human player and the thing that attacked me
 	//is an enemy.
-	Player *controllingPlayer = obj->getControllingPlayer();
+	Object *retaliationDamager = ResolveLiveObjectPtr(damager);
+	if (!retaliationObj || !retaliationDamager)
+		return;
+
+	Player *controllingPlayer = retaliationObj->getControllingPlayer();
 	if( controllingPlayer && controllingPlayer->isLogicalRetaliationModeEnabled() && controllingPlayer->getPlayerType() == PLAYER_HUMAN ) 
 	{
-		if( shouldRetaliateAgainstAggressor(obj, damager))
+		if( shouldRetaliateAgainstAggressor(retaliationObj, retaliationDamager))
 		{
 			PartitionFilterPlayerAffiliation f1( controllingPlayer, ALLOW_ALLIES, true );
 			PartitionFilterOnMap filterMapStatus;
 			PartitionFilter *filters[] = { &f1, &filterMapStatus, 0 };
 
 			
-			Real distance = TheAI->getAiData()->m_retaliateFriendsRadius + obj->getGeometryInfo().getBoundingCircleRadius();
-			SimpleObjectIterator *iter = ThePartitionManager->iterateObjectsInRange( obj->getPosition(), distance, FROM_CENTER_2D, filters, ITER_FASTEST );
+			Real distance = TheAI->getAiData()->m_retaliateFriendsRadius + retaliationObj->getGeometryInfo().getBoundingCircleRadius();
+			SimpleObjectIterator *iter = ThePartitionManager->iterateObjectsInRange( retaliationObj->getPosition(), distance, FROM_CENTER_2D, filters, ITER_FASTEST );
 			MemoryPoolObjectHolder hold( iter );
 			for( Object *them = iter->first(); them; them = iter->next() ) 
 			{
+				them = ResolveLiveObjectPtr(them);
+				retaliationDamager = ResolveLiveObjectPtr(retaliationDamager);
+				if (!them || !retaliationDamager)
+					continue;
 				if (!shouldRetaliate(them)) {
 					continue;
 				}
@@ -714,10 +897,10 @@ void ActiveBody::attemptDamage( DamageInfo *damageInfo )
 				if( !them->isKindOf( KINDOF_IMMOBILE ))
 				{
 					//But only if we can attack it!
-					CanAttackResult result = them->getAbleToAttackSpecificObject( ATTACK_NEW_TARGET, damager, CMD_FROM_AI );
+					CanAttackResult result = them->getAbleToAttackSpecificObject( ATTACK_NEW_TARGET, retaliationDamager, CMD_FROM_AI );
 					if( result == ATTACKRESULT_POSSIBLE_AFTER_MOVING || result == ATTACKRESULT_POSSIBLE )
 					{
-						ai->aiGuardRetaliate( damager, them->getPosition(), NO_MAX_SHOTS_LIMIT, CMD_FROM_AI );
+						ai->aiGuardRetaliate( retaliationDamager, them->getPosition(), NO_MAX_SHOTS_LIMIT, CMD_FROM_AI );
 					}
 				}
 			}
@@ -729,6 +912,9 @@ void ActiveBody::attemptDamage( DamageInfo *damageInfo )
 //-------------------------------------------------------------------------------------------------
 Bool ActiveBody::shouldRetaliateAgainstAggressor(Object *obj, Object *damager)
 {
+	obj = ResolveLiveObjectPtr(obj);
+	damager = ResolveLiveObjectPtr(damager);
+
 	/* This considers whether obj should invoke his friends to retaliate against damager.
 		 Note that obj could be a structure, so we don't actually check whether obj will 
 		 retaliate, as in many cases he wouldn't. */
@@ -746,7 +932,8 @@ Bool ActiveBody::shouldRetaliateAgainstAggressor(Object *obj, Object *damager)
 		return false;
 	}
 	// Only human players retaliate. [8/25/2003]
-	if (obj->getControllingPlayer()->getPlayerType() != PLAYER_HUMAN) {
+	Player *controllingPlayer = obj->getControllingPlayer();
+	if (!controllingPlayer || controllingPlayer->getPlayerType() != PLAYER_HUMAN) {
 		return false;
 	}
 	// Drones never retaliate. [8/25/2003]
@@ -760,6 +947,11 @@ Bool ActiveBody::shouldRetaliateAgainstAggressor(Object *obj, Object *damager)
 //-------------------------------------------------------------------------------------------------
 Bool ActiveBody::shouldRetaliate(Object *obj)
 {
+	obj = ResolveLiveObjectPtr(obj);
+	if (!obj) {
+		return false;
+	}
+
 	// Cannot retaliate objects dont. [8/25/2003]
 	if (obj->isKindOf(KINDOF_CANNOT_RETALIATE)) {
 		return false;
@@ -838,6 +1030,17 @@ void ActiveBody::attemptHealing( DamageInfo *damageInfo )
 
 		//then copy the whole DamageInfo struct for easy lookup 
 		//(object pointer loses scope as soon as atteptdamage's caller ends)
+		static Int s_lastHealingTraceCount = 0;
+		if (s_lastHealingTraceCount < 6)
+		{
+			++s_lastHealingTraceCount;
+			AppendStartupTrace(
+				"ActiveBody::attemptHealing snapshot body=%p obj=%p source=%u amount=%f",
+				this,
+				obj,
+				(UnsignedInt)damageInfo->in.m_sourceID,
+				(double)damageInfo->out.m_actualDamageDealt);
+		}
 		m_lastDamageInfo = *damageInfo;
 		m_lastDamageCleared = false;
 		m_lastDamageTimestamp = TheGameLogic->getFrame();

@@ -32,10 +32,12 @@
 #include "PreRTS.h"	// This must go first in EVERY cpp file int the GameEngine
 #define DEFINE_RELATIONSHIP_NAMES
 #include "Common/GameState.h"
+#include "Common/GlobalData.h"
 #include "Common/RandomValue.h"
 #include "Common/Xfer.h"
 #include "GameClient/Drawable.h"
 #include "GameClient/InGameUI.h"
+#include "GameClient/Shell.h"
 #include "GameLogic/GameLogic.h"
 #include "GameLogic/Object.h"
 #include "GameLogic/Module/AIUpdate.h"
@@ -45,6 +47,8 @@
 #include "GameLogic/Module/AutoHealBehavior.h"
 #include "GameLogic/Weapon.h"
 
+extern void AppendStartupTrace(const char *format, ...);
+
 #ifdef _INTERNAL
 // for occasional debugging...
 //#pragma optimize("", off)
@@ -53,6 +57,19 @@
 
 // detonation never puts our health below this, since we probably auto-regen
 const Real MIN_HEALTH = 0.1f;
+
+namespace
+{
+	static Int s_minefieldCtorTraceCount = 0;
+	static Int s_shellMinefieldDisableTraceCount = 0;
+
+	static Bool ShouldDisableMinefieldForShell()
+	{
+		return (TheGameLogic && TheGameLogic->isInShellGame()) ||
+			(TheShell && TheShell->isShellActive()) ||
+			(TheGlobalData && TheGlobalData->m_shellMapOn);
+	}
+}
 
 //-------------------------------------------------------------------------------------------------
 // ------------------------------------------------------------------------------------------------
@@ -107,27 +124,54 @@ MinefieldBehaviorModuleData::MinefieldBehaviorModuleData()
 MinefieldBehavior::MinefieldBehavior( Thing *thing, const ModuleData* moduleData ) 
 								 : UpdateModule( thing, moduleData )
 {
-	const MinefieldBehaviorModuleData* d = getMinefieldBehaviorModuleData();
 	m_nextDeathCheckFrame = 0;
 	m_scootFramesLeft = 0;
 	m_scootVel.zero();
 	m_scootAccel.zero();
 	m_detonators.clear();
 	m_ignoreDamage = false;
-	m_regenerates = d->m_regenerates;
+	m_regenerates = false;
 	m_draining = false;
-	m_virtualMinesRemaining = d->m_numVirtualMines;
+	m_virtualMinesRemaining = 0;
 	for (Int i = 0; i < MAX_IMMUNITY; ++i)
 	{
 		m_immunes[i].id = INVALID_ID;
 		m_immunes[i].collideTime = 0;
 	}
 
-	// start off awake, and we will calcSleepTime from here on
-	setWakeFrame( getObject(), UPDATE_SLEEP_NONE );
+	if (ShouldDisableMinefieldForShell())
+	{
+		if (s_shellMinefieldDisableTraceCount < 8)
+		{
+			AppendStartupTrace(
+				"MinefieldBehavior::ctor shell-disable obj=%p moduleData=%p shellActive=%d shellMap=%d inShell=%d",
+				getObject(),
+				moduleData,
+				(TheShell && TheShell->isShellActive()) ? 1 : 0,
+				(TheGlobalData && TheGlobalData->m_shellMapOn) ? 1 : 0,
+				(TheGameLogic && TheGameLogic->isInShellGame()) ? 1 : 0);
+			++s_shellMinefieldDisableTraceCount;
+		}
+		return;
+	}
 
-	// mines aren't auto-acquirable
-	getObject()->setStatus( MAKE_OBJECT_STATUS_MASK( OBJECT_STATUS_NO_ATTACK_FROM_AI ) );
+	const MinefieldBehaviorModuleData* d = getMinefieldBehaviorModuleData();
+	if (d != NULL)
+	{
+		m_regenerates = d->m_regenerates;
+		m_virtualMinesRemaining = d->m_numVirtualMines;
+	}
+
+	if (s_minefieldCtorTraceCount < 8)
+	{
+		AppendStartupTrace(
+			"MinefieldBehavior::ctor obj=%p moduleData=%p mines=%u regen=%d deferWakeStatus=1",
+			getObject(),
+			moduleData,
+			m_virtualMinesRemaining,
+			(Int)m_regenerates);
+		++s_minefieldCtorTraceCount;
+	}
 }
 
 //-------------------------------------------------------------------------------------------------
@@ -177,6 +221,9 @@ UpdateSleepTime MinefieldBehavior::calcSleepTime()
 //-------------------------------------------------------------------------------------------------
 UpdateSleepTime MinefieldBehavior::update()
 {
+	if (ShouldDisableMinefieldForShell())
+		return UPDATE_SLEEP_FOREVER;
+
 	Object* obj = getObject();
 	const MinefieldBehaviorModuleData* d = getMinefieldBehaviorModuleData();
 	UnsignedInt now = TheGameLogic->getFrame();
@@ -340,11 +387,52 @@ static Real calcDistSquared(const Coord3D& a, const Coord3D& b)
 	return sqr(a.x - b.x) + sqr(a.y - b.y) + sqr(a.z - b.z);
 }
 
+//-----------------------------------------------------------------------------
+static Object *ResolveLiveMinefieldCollider(Object *other)
+{
+	if (other == NULL)
+		return NULL;
+
+	if (other->isDestroyed() || other->isEffectivelyDead())
+		return NULL;
+
+	Object *liveOther = TheGameLogic->findObjectByID(other->getID());
+	if (liveOther == NULL || liveOther != other)
+		return NULL;
+
+	if (liveOther->isDestroyed() || liveOther->isEffectivelyDead())
+		return NULL;
+
+	return liveOther;
+}
+
+//-----------------------------------------------------------------------------
+static Bool IsActiveMineClearer(const Object *other)
+{
+	if (other == NULL)
+		return FALSE;
+
+	if (!other->testStatus(OBJECT_STATUS_IS_ATTACKING))
+		return FALSE;
+
+	const Weapon *weapon = other->getCurrentWeapon();
+	if (weapon == NULL)
+		return FALSE;
+
+	return (weapon->getAntiMask() & WEAPON_ANTI_MINE) != 0;
+}
+
 // ------------------------------------------------------------------------------------------------
 //-------------------------------------------------------------------------------------------------
 void MinefieldBehavior::onCollide( Object *other, const Coord3D *loc, const Coord3D *normal )
 {
-	if (other == NULL || other->isEffectivelyDead())
+	if ((TheShell && TheShell->isShellActive()) ||
+			(TheGlobalData && TheGlobalData->m_shellMapOn) ||
+			TheGameLogic->isInShellGame())
+		return;
+
+	other = ResolveLiveMinefieldCollider(other);
+	if (other == NULL)
 		return;
 
 	if (m_virtualMinesRemaining == 0)
@@ -389,8 +477,7 @@ void MinefieldBehavior::onCollide( Object *other, const Coord3D *loc, const Coor
 	// even if we aren't the specific mine they are trying to clear. (however, they must
 	// have a real mine they area trying to clear... it's possible they could be trying to
 	// clear a position where there is no mine, in which case we grant them no immunity, muwahahaha)
-	AIUpdateInterface* otherAI = other->getAI();
-	if (otherAI && otherAI->isClearingMines() && otherAI->getGoalObject() != NULL)
+	if (IsActiveMineClearer(other))
 	{
 		// mine-clearers are granted immunity to us for as long as they continuously
 		// collide, even if no longer clearing mines. (this prevents the problem
@@ -452,6 +539,9 @@ void MinefieldBehavior::onCollide( Object *other, const Coord3D *loc, const Coor
 //-------------------------------------------------------------------------------------------------
 void MinefieldBehavior::onDamage( DamageInfo *damageInfo )
 {
+	if (ShouldDisableMinefieldForShell())
+		return;
+
 	if (m_ignoreDamage)
 		return;
 
@@ -523,6 +613,9 @@ void MinefieldBehavior::onHealing( DamageInfo *damageInfo )
 //-------------------------------------------------------------------------------------------------
 void MinefieldBehavior::onDie( const DamageInfo *damageInfo )
 {
+	if (ShouldDisableMinefieldForShell())
+		return;
+
 	TheGameLogic->destroyObject(getObject());
 }
 
@@ -530,6 +623,9 @@ void MinefieldBehavior::onDie( const DamageInfo *damageInfo )
 //-------------------------------------------------------------------------------------------------
 void MinefieldBehavior::disarm()
 {
+	if (ShouldDisableMinefieldForShell())
+		return;
+
 	if (!m_regenerates)
 	{
 		TheGameLogic->destroyObject(getObject());
@@ -566,6 +662,9 @@ void MinefieldBehavior::disarm()
 //-------------------------------------------------------------------------------------------------
 void MinefieldBehavior::setScootParms(const Coord3D& start, const Coord3D& end)
 {
+	if (ShouldDisableMinefieldForShell())
+		return;
+
 	Object* obj = getObject();
 	const MinefieldBehaviorModuleData* d = getMinefieldBehaviorModuleData();
 	UnsignedInt scootFromStartingPointTime = d->m_scootFromStartingPointTime;
@@ -703,5 +802,39 @@ void MinefieldBehavior::loadPostProcess( void )
 
 	// extend base class
 	UpdateModule::loadPostProcess();
+
+	if (ShouldDisableMinefieldForShell())
+	{
+		if (s_shellMinefieldDisableTraceCount < 12)
+		{
+			AppendStartupTrace(
+				"MinefieldBehavior::loadPostProcess shell-disable obj=%p shellActive=%d shellMap=%d inShell=%d",
+				getObject(),
+				(TheShell && TheShell->isShellActive()) ? 1 : 0,
+				(TheGlobalData && TheGlobalData->m_shellMapOn) ? 1 : 0,
+				(TheGameLogic && TheGameLogic->isInShellGame()) ? 1 : 0);
+			++s_shellMinefieldDisableTraceCount;
+		}
+		return;
+	}
+
+	Object *obj = getObject();
+	if (s_minefieldCtorTraceCount < 16)
+	{
+		AppendStartupTrace(
+			"MinefieldBehavior::loadPostProcess obj=%p shellActive=%d shellMap=%d inShell=%d",
+			obj,
+			(TheShell && TheShell->isShellActive()) ? 1 : 0,
+			(TheGlobalData && TheGlobalData->m_shellMapOn) ? 1 : 0,
+			TheGameLogic->isInShellGame() ? 1 : 0);
+		++s_minefieldCtorTraceCount;
+	}
+
+	if (obj != NULL)
+	{
+		// Defer constructor-time object mutation until the module is fully attached.
+		setWakeFrame(obj, UPDATE_SLEEP_NONE);
+		obj->setStatus(MAKE_OBJECT_STATUS_MASK(OBJECT_STATUS_NO_ATTACK_FROM_AI));
+	}
 
 }  // end loadPostProcess

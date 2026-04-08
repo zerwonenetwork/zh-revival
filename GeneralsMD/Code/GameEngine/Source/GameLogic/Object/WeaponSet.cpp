@@ -699,6 +699,12 @@ CanAttackResult WeaponSet::getAbleToUseWeaponAgainstTarget( AbleToAttackType att
 		//of the weapon mask check preceding this, the attack is possible!
 		if( !victim )
 			return okResult;
+
+		if (source->isDestroyed() || source->isEffectivelyDead() ||
+			victim->isDestroyed() || victim->isEffectivelyDead())
+		{
+			return ATTACKRESULT_INVALID_SHOT;
+		}
 		
 		if (!isAnyWithinTargetPitch(source, victim))
 			return ATTACKRESULT_INVALID_SHOT;
@@ -813,6 +819,12 @@ Bool WeaponSet::chooseBestWeaponForTarget(const Object* obj, const Object* victi
 		// and make only Primary attack the ground.
 		m_curWeapon = PRIMARY_WEAPON;
 		return TRUE;
+	}
+
+	if (obj->isDestroyed() || obj->isEffectivelyDead() ||
+		victim->isDestroyed() || victim->isEffectivelyDead())
+	{
+		return FALSE;
 	}
 
 	Bool found = FALSE;				// A Ready weapon has been found

@@ -308,10 +308,20 @@ void Get_WW3D_Format(WW3DFormat& src_format,unsigned& src_bpp,const Targa& targa
 //
 // ----------------------------------------------------------------------------
 
+static bool Is_Valid_Runtime_Texture_Format(WW3DFormat format)
+{
+	int raw_format = (int)format;
+	return raw_format >= 0 && raw_format < (int)WW3D_FORMAT_COUNT;
+}
+
 WW3DFormat Get_Valid_Texture_Format(WW3DFormat format, bool is_compression_allowed)
 {
 	int w,h,bits;
 	bool windowed;
+
+	if (!Is_Valid_Runtime_Texture_Format(format)) {
+		format = WW3D_FORMAT_A8R8G8B8;
+	}
 
 	if (!DX8Wrapper::Get_Current_Caps()->Support_DXTC() || 
 		!is_compression_allowed) {

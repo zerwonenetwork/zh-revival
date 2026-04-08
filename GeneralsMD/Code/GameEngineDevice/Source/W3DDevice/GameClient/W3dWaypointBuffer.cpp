@@ -51,6 +51,8 @@
 //-----------------------------------------------------------------------------
 //         Includes                                                      
 //-----------------------------------------------------------------------------
+extern void AppendStartupTrace(const char *format, ...);
+
 #include "W3DDevice/GameClient/W3DWaypointBuffer.h"
 
 #include <stdio.h>
@@ -101,13 +103,11 @@ for the bibs. */
 //=============================================================================
 W3DWaypointBuffer::W3DWaypointBuffer(void)
 {
-	m_waypointNodeRobj = WW3DAssetManager::Get_Instance()->Create_Render_Obj( "SCMNode" );
-	m_line = new SegmentedLineClass;
-
-	m_texture = WW3DAssetManager::Get_Instance()->Get_Texture( "EXLaser.tga" );
-
-
-  setDefaultLineStyle();
+	AppendStartupTrace("W3DWaypointBuffer::ctor start");
+	m_waypointNodeRobj = NULL;
+	m_line = NULL;
+	m_texture = NULL;
+	AppendStartupTrace("W3DWaypointBuffer::ctor waypoint rendering disabled");
 }
 
 //=============================================================================
@@ -134,9 +134,13 @@ void W3DWaypointBuffer::freeWaypointBuffers()
 
 void W3DWaypointBuffer::setDefaultLineStyle( void )
 {
-	if( m_texture )
+	if( m_texture && m_line )
 	{
 		m_line->Set_Texture( m_texture );
+	}
+	if( !m_line )
+	{
+		return;
 	}
 	ShaderClass lineShader=ShaderClass::_PresetAdditiveShader;
 	lineShader.Set_Depth_Compare(ShaderClass::PASS_ALWAYS);
@@ -154,6 +158,8 @@ void W3DWaypointBuffer::setDefaultLineStyle( void )
 //=============================================================================
 void W3DWaypointBuffer::drawWaypoints(RenderInfoClass &rinfo)
 {
+  if ( !m_waypointNodeRobj || !m_line )
+    return;
 
   if ( ! TheInGameUI )
     return;

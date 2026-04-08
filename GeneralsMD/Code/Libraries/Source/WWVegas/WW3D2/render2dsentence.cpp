@@ -41,6 +41,8 @@
 #include "wwmemlog.h"
 #include "dx8wrapper.h"
 
+extern void AppendStartupTrace(const char *format, ...);
+
 #ifdef _INTERNAL
 // for occasional debugging...
 //#pragma optimize("", off)
@@ -381,6 +383,15 @@ Render2DSentenceClass::Build_Textures (void)
 		//
 		TextureClass *new_texture = W3DNEW TextureClass (desc.Width, desc.Width, WW3D_FORMAT_A4R4G4B4, MIP_LEVELS_1);
 		SurfaceClass *texture_surface = new_texture->Get_Surface_Level ();
+		if (texture_surface == NULL) {
+			AppendStartupTrace(
+				"Render2DSentenceClass::Record_Renderers missing texture surface size=%ux%u",
+				desc.Width,
+				desc.Height);
+			REF_PTR_RELEASE (new_texture);
+			REF_PTR_RELEASE (curr_surface);
+			continue;
+		}
 
 		new_texture->Get_Filter().Set_U_Addr_Mode(TextureFilterClass::TEXTURE_ADDRESS_CLAMP);
 		new_texture->Get_Filter().Set_V_Addr_Mode(TextureFilterClass::TEXTURE_ADDRESS_CLAMP);
