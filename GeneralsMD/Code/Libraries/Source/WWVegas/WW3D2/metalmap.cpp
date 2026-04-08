@@ -317,6 +317,11 @@ void MetalMapManagerClass::Update_Textures(void)
 		}
 		int pitch;
 		unsigned char *map=(unsigned char *) metal_map_surface->Lock(&pitch);
+		if (!map) {
+			AppendStartupTrace("MetalMapManagerClass::Update_Textures lock failed index=%d", i);
+			REF_PTR_RELEASE(metal_map_surface);
+			continue;
+		}
 		int idx=0;
 		for (int y = 0; y < METALMAP_SIZE; y++) {			
 			for (int x = 0; x < METALMAP_SIZE; x++) {				

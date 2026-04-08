@@ -2442,9 +2442,23 @@ IDirect3DTexture8 * DX8Wrapper::_Create_DX8_Texture
 	DX8_THREAD_ASSERT();
 	DX8_Assert();
 	IDirect3DTexture8 *texture = NULL;
+	WW3DFormat safe_format = format;
+	int raw_format = (int)format;
+
+	if (raw_format < 0 || raw_format >= (int)WW3D_FORMAT_COUNT) {
+		safe_format = Get_Valid_Texture_Format(WW3D_FORMAT_A8R8G8B8, false);
+		AppendStartupTrace(
+			"_Create_DX8_Texture: invalid WW3DFormat=%d for %ux%u mips=%u rt=%d; using safe fmt=%d",
+			raw_format,
+			width,
+			height,
+			(unsigned)mip_level_count,
+			rendertarget ? 1 : 0,
+			(int)safe_format);
+	}
 
 	// Paletted textures not supported!
-	WWASSERT(format!=D3DFMT_P8);
+	WWASSERT(safe_format!=D3DFMT_P8);
 
 	// NOTE: If 'format' is not supported as a texture format, this function will find the closest
 	// format that is supported and use that instead.
@@ -2458,7 +2472,7 @@ IDirect3DTexture8 * DX8Wrapper::_Create_DX8_Texture
 			height,
 			mip_level_count,
 			D3DUSAGE_RENDERTARGET,
-			WW3DFormat_To_D3DFormat(format),
+			WW3DFormat_To_D3DFormat(safe_format),
 			pool,
 			&texture);
 
@@ -2482,7 +2496,7 @@ IDirect3DTexture8 * DX8Wrapper::_Create_DX8_Texture
 				height,
 				mip_level_count,
 				D3DUSAGE_RENDERTARGET,
-				WW3DFormat_To_D3DFormat(format),
+				WW3DFormat_To_D3DFormat(safe_format),
 				pool,
 				&texture);
 
@@ -2502,7 +2516,7 @@ IDirect3DTexture8 * DX8Wrapper::_Create_DX8_Texture
 		// D3DXCreateTexture may fail with D3D8-to-D3D9 proxy wrappers (e.g. DXWrapper).
 		// Fall back to direct IDirect3DDevice8::CreateTexture for render targets.
 		if (!texture && DX8Wrapper::_Get_D3D_Device8()) {
-			D3DFORMAT rtFmt = WW3DFormat_To_D3DFormat(format);
+			D3DFORMAT rtFmt = WW3DFormat_To_D3DFormat(safe_format);
 			HRESULT hr = DX8Wrapper::_Get_D3D_Device8()->CreateTexture(
 				width, height, mip_level_count, D3DUSAGE_RENDERTARGET, rtFmt, D3DPOOL_DEFAULT, &texture);
 			if (FAILED(hr) || !texture) {
@@ -2531,7 +2545,7 @@ IDirect3DTexture8 * DX8Wrapper::_Create_DX8_Texture
 		height,
 		mip_level_count,
 		0,
-		WW3DFormat_To_D3DFormat(format),
+		WW3DFormat_To_D3DFormat(safe_format),
 		pool,
 		&texture);
 
@@ -2550,7 +2564,7 @@ IDirect3DTexture8 * DX8Wrapper::_Create_DX8_Texture
 			height,
 			mip_level_count,
 			0,
-			WW3DFormat_To_D3DFormat(format),
+			WW3DFormat_To_D3DFormat(safe_format),
 			pool,
 			&texture);
 		if (SUCCEEDED(ret)) {
@@ -2558,7 +2572,7 @@ IDirect3DTexture8 * DX8Wrapper::_Create_DX8_Texture
 		}
 		else {
 			StringClass format_name(0,true);
-			Get_WW3D_Format_Name(format, format_name);
+			Get_WW3D_Format_Name(safe_format, format_name);
 			WWDEBUG_SAY(("...Texture creation failed. (%d x %d, format: %s, mips: %d\n",width,height,format_name,mip_level_count));
 		}
 
@@ -2569,7 +2583,7 @@ IDirect3DTexture8 * DX8Wrapper::_Create_DX8_Texture
 	// Fall back to direct IDirect3DDevice8::CreateTexture with A8R8G8B8 which is
 	// universally supported by all D3D9 hardware.
 	if (!texture && DX8Wrapper::_Get_D3D_Device8()) {
-		D3DFORMAT fallbackFmt = WW3DFormat_To_D3DFormat(format);
+		D3DFORMAT fallbackFmt = WW3DFormat_To_D3DFormat(safe_format);
 		HRESULT hr = DX8Wrapper::_Get_D3D_Device8()->CreateTexture(
 			width, height, mip_level_count, 0, fallbackFmt, pool, &texture);
 		if (FAILED(hr) || !texture) {

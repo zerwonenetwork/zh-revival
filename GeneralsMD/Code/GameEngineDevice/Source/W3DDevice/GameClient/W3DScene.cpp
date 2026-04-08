@@ -71,6 +71,8 @@
 //#pragma MESSAGE("************************************** WARNING, optimization disabled for debugging purposes")
 #endif
 
+extern void AppendStartupTrace(const char *format, ...);
+
 ///////////////////////////////////////////////////////////////////////////////
 // DEFINITIONS ////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
@@ -1087,6 +1089,7 @@ void RTS3DScene::Customized_Render( RenderInfoClass &rinfo )
 	RenderObjClass *terrainObject=NULL,*robj;
 	m_translucentObjectsCount = 0;	//start of new frame so no translucent objects
 	m_occludedObjectsCount = 0;
+	static Bool s_traceFirstInGameSceneRender = true;
 
 	Int localPlayerIndex = ThePlayerList ? ThePlayerList->getLocalPlayer()->getPlayerIndex() : 0;
 
@@ -1119,6 +1122,15 @@ void RTS3DScene::Customized_Render( RenderInfoClass &rinfo )
 	//terrain needs to be rendered first
 	if (terrainObject)	// Don't check visibility - terrain is always visible. jba.
 	{		
+		if (s_traceFirstInGameSceneRender && TheGameLogic && !TheGameLogic->isInShellGame())
+		{
+			AppendStartupTrace(
+				"RTS3DScene::Customized_Render first in-game scene terrain=%p drawTerrainOnly=%d customPass=%d addPasses=%d",
+				terrainObject,
+				m_drawTerrainOnly ? 1 : 0,
+				(int)m_customPassMode,
+				rinfo.Additional_Pass_Count());
+		}
 		robj=terrainObject;
 		rinfo.light_environment = NULL;		// Terrain is self lit.
 		rinfo.Camera.Set_User_Data(this);	//pass the scene to terrain via user data.
@@ -1137,6 +1149,11 @@ void RTS3DScene::Customized_Render( RenderInfoClass &rinfo )
 		}
 		else
 		robj->Render(rinfo);
+		if (s_traceFirstInGameSceneRender && TheGameLogic && !TheGameLogic->isInShellGame())
+		{
+			AppendStartupTrace("RTS3DScene::Customized_Render first in-game scene terrain render returned");
+			s_traceFirstInGameSceneRender = false;
+		}
 	}
 
 	if (m_drawTerrainOnly) {
