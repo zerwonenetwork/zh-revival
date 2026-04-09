@@ -40,6 +40,8 @@
 #include "GameNetwork/LANAPICallbacks.h"
 #include "GameClient/MapUtil.h"
 
+extern void AppendStartupTrace( const char *format, ... );
+
 void LANAPI::handleRequestLocations( LANMessage *msg, UnsignedInt senderIP )
 {
 	if (m_inLobby)
@@ -209,9 +211,19 @@ void LANAPI::handleRequestJoin( LANMessage *msg, UnsignedInt senderIP )
 {
 	UnsignedInt responseIP = senderIP;	// need this cause the player may or may not be
 																			// in the player list at the sendMessage.
+	AppendStartupTrace("LAN:handleRequestJoin senderIP=0x%08x gameIP=0x%08x inLobby=%d hasGame=%d host=%d inProgress=%d exeCRC=%08X/%08X iniCRC=%08X/%08X",
+		senderIP,
+		msg->GameToJoin.gameIP,
+		m_inLobby ? 1 : 0,
+		m_currentGame ? 1 : 0,
+		(!m_inLobby && m_currentGame && m_currentGame->getIP(0) == m_localIP) ? 1 : 0,
+		(m_currentGame && m_currentGame->isGameInProgress()) ? 1 : 0,
+		msg->GameToJoin.exeCRC, TheGlobalData->m_exeCRC,
+		msg->GameToJoin.iniCRC, TheGlobalData->m_iniCRC);
 
 	if (msg->GameToJoin.gameIP != m_localIP)
 	{
+		AppendStartupTrace("LAN:handleRequestJoin ignore-not-for-us localIP=0x%08x", m_localIP);
 		return; // Not us.  Ignore it.
 	}
 	LANMessage reply;
@@ -220,6 +232,7 @@ void LANAPI::handleRequestJoin( LANMessage *msg, UnsignedInt senderIP )
 	{
 		if (m_currentGame->isGameInProgress())
 		{
+			AppendStartupTrace("LAN:handleRequestJoin deny reason=game-started");
 			reply.LANMessageType = LANMessage::MSG_JOIN_DENY;
 			reply.GameNotJoined.reason = LANAPIInterface::RET_GAME_STARTED;
 			reply.GameNotJoined.gameIP = m_localIP;
@@ -235,6 +248,7 @@ void LANAPI::handleRequestJoin( LANMessage *msg, UnsignedInt senderIP )
 			if (msg->GameToJoin.iniCRC != TheGlobalData->m_iniCRC ||
 					msg->GameToJoin.exeCRC != TheGlobalData->m_exeCRC)
 			{
+				AppendStartupTrace("LAN:handleRequestJoin deny reason=crc-mismatch");
 				DEBUG_LOG(("LANAPI::handleRequestJoin - join denied because of CRC mismatch. CRCs are them/us INI:%X/%X exe:%X/%X\n",
 					msg->GameToJoin.iniCRC, TheGlobalData->m_iniCRC,
 					msg->GameToJoin.exeCRC, TheGlobalData->m_exeCRC));
@@ -274,6 +288,7 @@ void LANAPI::handleRequestJoin( LANMessage *msg, UnsignedInt senderIP )
 						reply.GameNotJoined.gameIP = m_localIP;
 						reply.GameNotJoined.playerIP = senderIP;
 						canJoin = false;
+						AppendStartupTrace("LAN:handleRequestJoin deny reason=serial-dupe slot=%d", player);
 
 						DEBUG_LOG(("LANAPI::handleRequestJoin - join denied because of duplicate serial # (%s).\n", s.str()));
 						break;
@@ -293,6 +308,7 @@ void LANAPI::handleRequestJoin( LANMessage *msg, UnsignedInt senderIP )
 					reply.GameNotJoined.gameIP = m_localIP;
 					reply.GameNotJoined.playerIP = senderIP;
 					canJoin = false;
+					AppendStartupTrace("LAN:handleRequestJoin deny reason=duplicate-name slot=%d", player);
 
 					DEBUG_LOG(("LANAPI::handleRequestJoin - join denied because of duplicate names.\n"));
 					break;
@@ -339,6 +355,7 @@ void LANAPI::handleRequestJoin( LANMessage *msg, UnsignedInt senderIP )
 						newSlot.setLastHeard(timeGetTime());
 						newSlot.setSerial(msg->GameToJoin.serial);
 						m_currentGame->setSlot(player,newSlot);
+						AppendStartupTrace("LAN:handleRequestJoin accept slot=%d senderIP=0x%08x", player, senderIP);
 						DEBUG_LOG(("LANAPI::handleRequestJoin - added player %ls at ip 0x%08x to the game\n", msg->name, senderIP));
 
 						OnPlayerJoin(player, UnicodeString(msg->name));
@@ -356,23 +373,28 @@ void LANAPI::handleRequestJoin( LANMessage *msg, UnsignedInt senderIP )
 				reply.GameNotJoined.reason = LANAPIInterface::RET_GAME_FULL;
 				reply.GameNotJoined.gameIP = m_localIP;
 				reply.GameNotJoined.playerIP = senderIP;
+				AppendStartupTrace("LAN:handleRequestJoin deny reason=game-full players=%d spots=%d", numPlayers, numStartingSpots);
 				DEBUG_LOG(("LANAPI::handleRequestJoin - join denied because game is full.\n"));
 			}
 		}
 	}
 	else
 	{
+		AppendStartupTrace("LAN:handleRequestJoin deny reason=game-gone");
 		reply.LANMessageType = LANMessage::MSG_JOIN_DENY;
 		reply.GameNotJoined.reason = LANAPIInterface::RET_GAME_GONE;
 		reply.GameNotJoined.gameIP = m_localIP;
 		reply.GameNotJoined.playerIP = senderIP;
 	}
+	AppendStartupTrace("LAN:handleRequestJoin reply type=%u responseIP=0x%08x", reply.LANMessageType, responseIP);
 	sendMessage(&reply, responseIP);
 	RequestGameOptions(GenerateGameOptionsString(), true);
 }
 
 void LANAPI::handleJoinAccept( LANMessage *msg, UnsignedInt senderIP )
 {
+	AppendStartupTrace("LAN:handleJoinAccept senderIP=0x%08x playerIP=0x%08x pending=%d slot=%d", senderIP,
+		msg->GameJoined.playerIP, m_pendingAction, msg->GameJoined.slotPosition);
 	if (msg->GameJoined.playerIP == m_localIP) // Is it for us?
 	{
 		if (m_pendingAction == ACT_JOIN) // Are we trying to join?
@@ -381,6 +403,7 @@ void LANAPI::handleJoinAccept( LANMessage *msg, UnsignedInt senderIP )
 		
 			if (!m_currentGame)
 			{
+				AppendStartupTrace("LAN:handleJoinAccept missing-current-game");
 				DEBUG_ASSERTCRASH(false, ("Could not find game to join!"));
 				OnGameJoin(RET_UNKNOWN, NULL);
 			}
@@ -411,6 +434,7 @@ void LANAPI::handleJoinAccept( LANMessage *msg, UnsignedInt senderIP )
 				prefs["RemoteIP0"] = entry;
 				prefs.write();
 
+				AppendStartupTrace("LAN:handleJoinAccept success senderIP=0x%08x slot=%d", senderIP, pos);
 				OnGameJoin(RET_OK, m_currentGame);
 				//DEBUG_ASSERTCRASH(false, ("setting host to %ls@%ls\n", m_currentGame->getLANSlot(0)->getUser()->getLogin().str(),
 				//	m_currentGame->getLANSlot(0)->getUser()->getHost().str()));
@@ -423,6 +447,8 @@ void LANAPI::handleJoinAccept( LANMessage *msg, UnsignedInt senderIP )
 
 void LANAPI::handleJoinDeny( LANMessage *msg, UnsignedInt senderIP )
 {
+	AppendStartupTrace("LAN:handleJoinDeny senderIP=0x%08x playerIP=0x%08x pending=%d reason=%d",
+		senderIP, msg->GameJoined.playerIP, m_pendingAction, msg->GameNotJoined.reason);
 	if (msg->GameJoined.playerIP == m_localIP) // Is it for us?
 	{
 		if (m_pendingAction == ACT_JOIN) // Are we trying to join?
@@ -436,6 +462,8 @@ void LANAPI::handleJoinDeny( LANMessage *msg, UnsignedInt senderIP )
 
 void LANAPI::handleRequestGameLeave( LANMessage *msg, UnsignedInt senderIP )
 {
+	AppendStartupTrace("LAN:handleRequestGameLeave senderIP=0x%08x inLobby=%d hasGame=%d inProgress=%d",
+		senderIP, m_inLobby ? 1 : 0, m_currentGame ? 1 : 0, (m_currentGame && m_currentGame->isGameInProgress()) ? 1 : 0);
 	if (!m_inLobby && m_currentGame && !m_currentGame->isGameInProgress())
 	{
 		int player;
@@ -445,6 +473,7 @@ void LANAPI::handleRequestGameLeave( LANMessage *msg, UnsignedInt senderIP )
 			{
 				if (player == 0)
 				{
+					AppendStartupTrace("LAN:handleRequestGameLeave host-left");
 					OnHostLeave();
 					removeGame(m_currentGame);
 					delete m_currentGame;
@@ -470,6 +499,7 @@ void LANAPI::handleRequestGameLeave( LANMessage *msg, UnsignedInt senderIP )
 				}
 				else
 				{
+					AppendStartupTrace("LAN:handleRequestGameLeave player-left slot=%d ip=0x%08x", player, senderIP);
 					if (AmIHost())
 					{
 						// remove the deadbeat
@@ -602,8 +632,13 @@ void LANAPI::handleChat( LANMessage *msg, UnsignedInt senderIP )
 
 void LANAPI::handleGameStart( LANMessage *msg, UnsignedInt senderIP )
 {
+	AppendStartupTrace("LAN:handleGameStart senderIP=0x%08x inLobby=%d hasGame=%d hostIP=0x%08x inProgress=%d",
+		senderIP, m_inLobby ? 1 : 0, m_currentGame ? 1 : 0,
+		m_currentGame ? m_currentGame->getIP(0) : 0,
+		(m_currentGame && m_currentGame->isGameInProgress()) ? 1 : 0);
 	if (!m_inLobby && m_currentGame && m_currentGame->getIP(0) == senderIP && !m_currentGame->isGameInProgress())
 	{
+		AppendStartupTrace("LAN:handleGameStart accepted");
 		OnGameStart();
 	}
 }

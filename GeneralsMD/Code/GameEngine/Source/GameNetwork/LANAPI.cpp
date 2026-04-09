@@ -38,6 +38,8 @@
 #include "Common/UserPreferences.h"
 #include "GameLogic/GameLogic.h"
 
+extern void AppendStartupTrace( const char *format, ... );
+
 #ifdef _INTERNAL
 // for occasional debugging...
 //#pragma optimize("", off)
@@ -512,6 +514,8 @@ void LANAPI::update( void )
 		{
 			// We haven't heard from the host in a while.  Bail.
 			// Actually, fake a host leaving message. :)
+			AppendStartupTrace("LAN:update host-timeout now=%u lastHeard=%u hostIP=0x%08x",
+				now, m_currentGame->getLastHeard(), m_currentGame->getIP(0));
 			LANMessage msg;
 			fillInLANMessage( &msg );
 			msg.LANMessageType = LANMessage::MSG_REQUEST_GAME_LEAVE;
@@ -529,6 +533,8 @@ void LANAPI::update( void )
 			{
 				if (m_currentGame->getIP(p) && m_currentGame->getPlayerLastHeard(p) + s_resendDelta*8 < now)
 				{
+					AppendStartupTrace("LAN:update player-timeout slot=%d now=%u lastHeard=%u ip=0x%08x",
+						p, now, m_currentGame->getPlayerLastHeard(p), m_currentGame->getIP(p));
 					LANMessage msg;
 					fillInLANMessage( &msg );
 					UnicodeString theStr;
@@ -556,21 +562,26 @@ void LANAPI::update( void )
 	// Time out old actions
 	if (m_pendingAction != ACT_NONE && now > m_expiration)
 	{
+		AppendStartupTrace("LAN:update action-timeout action=%d now=%u expiration=%u",
+			m_pendingAction, now, m_expiration);
 		switch (m_pendingAction)
 		{
 		case ACT_JOIN:
+			AppendStartupTrace("LAN:update action-timeout join");
 			OnGameJoin(RET_TIMEOUT, NULL);
 			m_pendingAction = ACT_NONE;
 			m_currentGame = NULL;
 			m_inLobby = true;
 			break;
 		case ACT_LEAVE:
+			AppendStartupTrace("LAN:update action-timeout leave");
 			OnPlayerLeave(m_name);
 			m_pendingAction = ACT_NONE;
 			m_currentGame = NULL;
 			m_inLobby = true;
 			break;
 		case ACT_JOINDIRECTCONNECT:
+			AppendStartupTrace("LAN:update action-timeout directconnect");
 			OnGameJoin(RET_TIMEOUT, NULL);
 			m_pendingAction = ACT_NONE;
 			m_currentGame = NULL;
@@ -619,12 +630,14 @@ void LANAPI::RequestGameJoin( LANGameInfo *game, UnsignedInt ip /* = 0 */ )
 {
 	if ((m_pendingAction != ACT_NONE) && (m_pendingAction != ACT_JOINDIRECTCONNECT))
 	{
+		AppendStartupTrace("LAN:RequestGameJoin busy action=%d", m_pendingAction);
 		OnGameJoin( RET_BUSY, NULL );
 		return;
 	}
 
 	if (!game)
 	{
+		AppendStartupTrace("LAN:RequestGameJoin missing-game");
 		OnGameJoin( RET_GAME_GONE, NULL );
 		return;
 	}
@@ -641,22 +654,27 @@ void LANAPI::RequestGameJoin( LANGameInfo *game, UnsignedInt ip /* = 0 */ )
 	strncpy(msg.GameToJoin.serial, s.str(), g_maxSerialLength);
 	msg.GameToJoin.serial[g_maxSerialLength-1] = '\0';
 
+	AppendStartupTrace("LAN:RequestGameJoin send targetIP=0x%08x hostIP=0x%08x exeCRC=%08X iniCRC=%08X directIP=0x%08x",
+		ip, game->getSlot(0)->getIP(), TheGlobalData->m_exeCRC, TheGlobalData->m_iniCRC, m_directConnectRemoteIP);
 	sendMessage(&msg, ip);
 
 	m_pendingAction = ACT_JOIN;
 	m_expiration = timeGetTime() + m_actionTimeout;
+	AppendStartupTrace("LAN:RequestGameJoin pending action=%d expiration=%u", m_pendingAction, m_expiration);
 }
 
 void LANAPI::RequestGameJoinDirectConnect(UnsignedInt ipaddress)
 {
 	if (m_pendingAction != ACT_NONE)
 	{
+		AppendStartupTrace("LAN:RequestGameJoinDirectConnect busy action=%d", m_pendingAction);
 		OnGameJoin( RET_BUSY, NULL );
 		return;
 	}
 
 	if (ipaddress == 0)
 	{
+		AppendStartupTrace("LAN:RequestGameJoinDirectConnect invalid-ip");
 		OnGameJoin( RET_GAME_GONE, NULL );
 		return;
 	}
@@ -670,10 +688,12 @@ void LANAPI::RequestGameJoinDirectConnect(UnsignedInt ipaddress)
 	wcsncpy(msg.PlayerInfo.playerName, m_name.str(), m_name.getLength());
 	msg.PlayerInfo.playerName[m_name.getLength()] = 0;
 
+	AppendStartupTrace("LAN:RequestGameJoinDirectConnect send ip=0x%08x", ipaddress);
 	sendMessage(&msg, ipaddress);
 
 	m_pendingAction = ACT_JOINDIRECTCONNECT;
 	m_expiration = timeGetTime() + m_actionTimeout;
+	AppendStartupTrace("LAN:RequestGameJoinDirectConnect pending action=%d expiration=%u", m_pendingAction, m_expiration);
 }
 
 void LANAPI::RequestGameLeave( void )
@@ -683,6 +703,11 @@ void LANAPI::RequestGameLeave( void )
 	fillInLANMessage( &msg );
 	wcsncpy(msg.GameToLeave.gameName, (m_currentGame)?m_currentGame->getName().str():L"", g_lanGameNameLength);
 	msg.GameToLeave.gameName[g_lanGameNameLength] = 0;
+	AppendStartupTrace("LAN:RequestGameLeave inLobby=%d hasGame=%d isHost=%d inProgress=%d",
+		m_inLobby ? 1 : 0,
+		m_currentGame ? 1 : 0,
+		(m_currentGame && m_currentGame->getIP(0) == m_localIP) ? 1 : 0,
+		(m_currentGame && m_currentGame->isGameInProgress()) ? 1 : 0);
 	sendMessage(&msg);
 	m_transport->update();  // Send immediately, before OnPlayerLeave below resets everything.
 

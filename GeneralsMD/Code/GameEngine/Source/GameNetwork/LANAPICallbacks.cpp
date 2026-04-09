@@ -49,6 +49,8 @@
 #include "GameNetwork/LANAPICallbacks.h"
 #include "GameNetwork/networkutil.h"
 
+extern void AppendStartupTrace( const char *format, ... );
+
 LANAPI *TheLAN = NULL;
 extern Bool LANbuttonPushed;
 
@@ -209,6 +211,11 @@ void LANAPI::OnGameStartTimer( Int seconds )
 
 void LANAPI::OnGameStart( void )
 {
+	AppendStartupTrace("LAN:OnGameStart begin hasGame=%d map=%s host=%d localSlot=%d",
+		m_currentGame ? 1 : 0,
+		m_currentGame ? m_currentGame->getMap().str() : "<null>",
+		(m_currentGame && m_currentGame->amIHost()) ? 1 : 0,
+		m_currentGame ? m_currentGame->getLocalSlotNum() : -1);
 	//DEBUG_LOG(("Map is '%s', preview is '%s'\n", m_currentGame->getMap().str(), GetPreviewFromMap(m_currentGame->getMap()).str()));
 	//DEBUG_LOG(("Map is '%s', INI is '%s'\n", m_currentGame->getMap().str(), GetINIFromMap(m_currentGame->getMap()).str()));
 
@@ -245,19 +252,26 @@ void LANAPI::OnGameStart( void )
 		TheNetwork->init();
 		TheNetwork->setLocalAddress(m_localIP, 8088);
 		TheNetwork->initTransport();
+		AppendStartupTrace("LAN:OnGameStart network ready localIP=0x%08x", m_localIP);
 
 		TheNetwork->parseUserList(m_currentGame);
+		AppendStartupTrace("LAN:OnGameStart parseUserList complete");
 
 		if (TheGameLogic->isInGame())
 			TheGameLogic->clearGameData();
 
+		AppendStartupTrace("LAN:OnGameStart before DoAnyMapTransfers");
 		Bool filesOk = DoAnyMapTransfers(m_currentGame);
+		AppendStartupTrace("LAN:OnGameStart after DoAnyMapTransfers filesOk=%d", filesOk ? 1 : 0);
 
 		// see if we really have the map.  if not, back out.
 		TheMapCache->updateCache();
+		AppendStartupTrace("LAN:OnGameStart after map cache update hasMap=%d",
+			TheMapCache->findMap(m_currentGame->getMap()) != NULL ? 1 : 0);
 		if (!filesOk || TheMapCache->findMap(m_currentGame->getMap()) == NULL)
 		{
 			DEBUG_LOG(("After transfer, we didn't really have the map.  Bailing...\n"));
+			AppendStartupTrace("LAN:OnGameStart map-transfer-failed filesOk=%d", filesOk ? 1 : 0);
 			OnPlayerLeave(m_name);
 			removeGame(m_currentGame);
 			m_currentGame = NULL;
@@ -270,7 +284,9 @@ void LANAPI::OnGameStart( void )
 			return;
 		}
 
+		AppendStartupTrace("LAN:OnGameStart before startGame");
 		m_currentGame->startGame(0);
+		AppendStartupTrace("LAN:OnGameStart after startGame");
 
 		// shutdown the top, but do not pop it off the stack
 		//TheShell->hideShell();
@@ -280,11 +296,13 @@ void LANAPI::OnGameStart( void )
 		// send a message to the logic for a new game
 		GameMessage *msg = TheMessageStream->appendMessage( GameMessage::MSG_NEW_GAME );
 		msg->appendIntegerArgument(GAME_LAN);
+		AppendStartupTrace("LAN:OnGameStart appended MSG_NEW_GAME");
 
 		TheWritableGlobalData->m_useFpsLimit = false;
 
 		// Set the random seed
 		InitGameLogicRandom( m_currentGame->getSeed() );
+		AppendStartupTrace("LAN:OnGameStart init-seed=%d", m_currentGame->getSeed());
 		DEBUG_LOG(("InitGameLogicRandom( %d )\n", m_currentGame->getSeed()));
 	}
 }
@@ -530,6 +548,7 @@ void LANAPI::OnPlayerJoin( Int slot, UnicodeString playerName )
 
 void LANAPI::OnGameJoin( ReturnType ret, LANGameInfo *theGame )
 {
+	AppendStartupTrace("LAN:OnGameJoin ret=%d hasGame=%d", ret, theGame ? 1 : 0);
 	if (ret == RET_OK)
 	{
 		LANbuttonPushed = true;
@@ -561,6 +580,7 @@ void LANAPI::OnGameJoin( ReturnType ret, LANGameInfo *theGame )
 
 void LANAPI::OnHostLeave( void )
 {
+	AppendStartupTrace("LAN:OnHostLeave inLobby=%d hasGame=%d", m_inLobby ? 1 : 0, m_currentGame ? 1 : 0);
 	DEBUG_ASSERTCRASH(!m_inLobby && m_currentGame, ("Game info is gone!"));
 	if (m_inLobby || !m_currentGame)
 		return;
@@ -571,6 +591,11 @@ void LANAPI::OnHostLeave( void )
 
 void LANAPI::OnPlayerLeave( UnicodeString player )
 {
+	AppendStartupTrace("LAN:OnPlayerLeave self=%d inLobby=%d hasGame=%d inProgress=%d",
+		m_name.compare(player) == 0 ? 1 : 0,
+		m_inLobby ? 1 : 0,
+		m_currentGame ? 1 : 0,
+		(m_currentGame && m_currentGame->isGameInProgress()) ? 1 : 0);
 	DEBUG_ASSERTCRASH(!m_inLobby && m_currentGame, ("Game info is gone!"));
 	if (m_inLobby || !m_currentGame || m_currentGame->isGameInProgress())
 		return;
