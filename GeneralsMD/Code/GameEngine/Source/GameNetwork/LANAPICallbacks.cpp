@@ -323,7 +323,10 @@ void LANAPI::OnGameOptions( UnsignedInt playerIP, Int playerSlot, AsciiString op
 	{
 		m_currentGame->setLastHeard(timeGetTime());
 		AsciiString oldOptions = GameInfoToAsciiString(m_currentGame); // save these off for if we get booted
-		if(ParseGameOptionsString(m_currentGame,options))
+		Bool parsed = ParseGameOptionsString(m_currentGame,options);
+		AppendStartupTrace("LAN:OnGameOptions host-update parsed=%d optionsLen=%d",
+			parsed ? 1 : 0, options.getLength());
+		if(parsed)
 		{
 			lanUpdateSlotList();
 			updateGameOptions();
@@ -339,6 +342,7 @@ void LANAPI::OnGameOptions( UnsignedInt playerIP, Int playerSlot, AsciiString op
 		}
 		if(booted)
 		{
+			AppendStartupTrace("LAN:OnGameOptions booted localIP=0x%08x", m_localIP);
 			// restore the options with us in so we can save prefs
 			ParseGameOptionsString(m_currentGame, oldOptions);
 			OnPlayerLeave(m_name);
